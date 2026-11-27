@@ -249,6 +249,25 @@ it("forwards the platform admin NF-e release with PUT only", async () => {
   const post = await POST(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method: "POST", headers, body: "{}" }), context(route));
   expect(post.status).toBe(404);
 });
+
+it("forwards the SVC list with GET and leaving it with POST, nothing else", async () => {
+  fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
+  const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
+  const list = "platform/contingency";
+  const get = await GET(new NextRequest(`http://localhost:4000/api/proxy/v1/${list}`, { method: "GET", headers }), context(list));
+  expect(get.status).toBe(200);
+  const put = await PUT(new NextRequest(`http://localhost:4000/api/proxy/v1/${list}`, { method: "PUT", headers, body: "{}" }), context(list));
+  expect(put.status).toBe(404);
+  const exit = "platform/contingency/SP/2/exit";
+  const post = await POST(new NextRequest(`http://localhost:4000/api/proxy/v1/${exit}`, { method: "POST", headers, body: "{}" }), context(exit));
+  expect(post.status).toBe(200);
+  const wrongEnv = "platform/contingency/SP/3/exit";
+  const refused = await POST(new NextRequest(`http://localhost:4000/api/proxy/v1/${wrongEnv}`, { method: "POST", headers, body: "{}" }), context(wrongEnv));
+  expect(refused.status).toBe(404);
+  const getExit = await GET(new NextRequest(`http://localhost:4000/api/proxy/v1/${exit}`, { method: "GET", headers }), context(exit));
+  expect(getExit.status).toBe(404);
+});
+
 it("answers an unlisted route with a code the dashboard can show, and lets the manual-review routes through", async () => {
   fetchMock.mockResolvedValue(new Response("{}", { status: 202 }));
   const headers = { origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "content-type": "application/json" };

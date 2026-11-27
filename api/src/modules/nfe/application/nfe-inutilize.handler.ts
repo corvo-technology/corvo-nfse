@@ -29,6 +29,11 @@ import {
 import { certificateProblemOf, NfeEventContext } from './nfe-event-context';
 import { inutilizeMessage, prepareInutilizationMessage } from './nfe-messages';
 import { NfeSefazAccess } from './nfe-sefaz-access';
+import {
+  documentTypeOf,
+  gatewayTypeOf,
+  nfeEventName,
+} from './nfe-transition.service';
 
 /** After this many tries without an answer the request stays `pending` and is left to support. */
 export const MAX_INUTILIZATION_ATTEMPTS = 6;
@@ -104,7 +109,11 @@ export class NfeInutilizeHandler implements OutboxHandler, OnModuleInit {
       });
     }
 
-    const authority = this.access.breakerAuthority(issuer.uf, environment);
+    const authority = this.access.breakerAuthority(
+      issuer.uf,
+      environment,
+      inut.model,
+    );
     try {
       await this.breaker.assertAvailable(environment, authority);
     } catch (error) {
@@ -113,7 +122,7 @@ export class NfeInutilizeHandler implements OutboxHandler, OnModuleInit {
       throw error;
     }
 
-    const gateway = this.gateways.get<SignedNfe>('nfe');
+    const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(inut.model));
     if (!gateway.inutilize) throw new Error('The gateway cannot inutilize');
     const outcome = await gateway.inutilize.inutilize(
       {
@@ -125,7 +134,7 @@ export class NfeInutilizeHandler implements OutboxHandler, OnModuleInit {
         justification: inut.justification,
         signedXml: inut.requestXml,
       },
-      this.access.context(issuer.uf, environment, certificate),
+      this.access.context(issuer.uf, environment, certificate, inut.model),
     );
 
     switch (outcome.kind) {
@@ -203,15 +212,18 @@ export class NfeInutilizeHandler implements OutboxHandler, OnModuleInit {
     if (!applied) return;
     await this.webhooks.publish(
       {
-        type: 'nfe',
+        type: documentTypeOf(inut.model),
         id: inut.id,
         tenantId: inut.tenantId,
         environment: inut.environment,
         companyId: inut.companyId,
       },
-      to === 'homologada'
-        ? 'nfe.inutilization.completed'
-        : 'nfe.inutilization.rejected',
+      nfeEventName(
+        inut.model,
+        to === 'homologada'
+          ? 'inutilization.completed'
+          : 'inutilization.rejected',
+      ),
       {
         inutilizationId: inut.id,
         status: to,

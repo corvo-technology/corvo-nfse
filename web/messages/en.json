@@ -206,7 +206,8 @@
     "creditsLoadFailed": "Could not load credits.",
     "newService": "Service invoice (NFS-e)",
     "newProduct": "Product invoice (NF-e)",
-    "newChoose": "Which invoice do you want to issue?"
+    "newChoose": "Which invoice do you want to issue?",
+    "newConsumer": "Consumer sale (NFC-e)"
   },
   "Connections": {
     "title": "Connections",
@@ -2159,6 +2160,16 @@
     "payments_total_mismatch": "The payments minus the change must equal the invoice total.",
     "text_charset_invalid": "Some characters are not accepted by the SEFAZ (emoji, line breaks or special symbols). Use only letters, digits and common punctuation.",
     "out_of_phase1_scope": "This invoice is not accepted yet: for now only normal NF-e from Simples Nacional or MEI companies.",
+    "nfce_ind_pres_invalid": "On a NFC-e the buyer presence must be 1 (in person), 4 (delivery) or 5 (in person outside the establishment).",
+    "nfce_delivery_address_required": "For a delivery sale give the consumer's CPF or CNPJ, name and address.",
+    "nfce_offline_not_available": "The off-line contingency NFC-e is not available yet for the state of this company.",
+    "nfce_contingency_field_locked": "This NFC-e was issued in contingency and is already with the consumer: only the description, barcode, NCM, CEST, unit and additional information can change. The rest (amounts, quantities, payment, consumer) cannot.",
+    "nfce_consumer_id_required": "For this sale total the NFC-e needs the consumer's CPF or CNPJ.",
+    "nfce_card_data_required": "For an integrated payment give the acquirer CNPJ and the authorization number.",
+    "nfce_card_brand_invalid": "The card brand is not in the official table.",
+    "nfce_card_not_allowed": "Card data only applies to credit card, debit card or PIX payments.",
+    "nfce_no_payment_amount": "For the \"no payment\" method (90) the value must be zero.",
+    "nfce_scope_not_supported": "This NFC-e is not supported yet: only normal sales inside the issuer's state.",
     "accountant_email_invalid": "Enter a valid e-mail for the accountant.",
     "package_month_invalid": "Enter the month as YYYY-MM.",
     "package_include_invalid": "Choose xml, pdf or both.",
@@ -3766,16 +3777,21 @@
       "number": "Number / series",
       "amount": "Amount",
       "status": "Status",
-      "created": "Created"
+      "created": "Created",
+      "model": "Model",
+      "consumerAnonymous": "Consumer not identified"
     },
     "filters": {
       "company": "Company",
       "allCompanies": "All",
       "status": "Status",
-      "allStatuses": "All"
+      "allStatuses": "All",
+      "model": "Model",
+      "allModels": "All"
     },
     "status": {
       "queued": "Queued",
+      "contingency_pending": "Issued offline, to be sent",
       "processing": "Sending",
       "authorized": "Authorized",
       "rejected": "Rejected",
@@ -3835,7 +3851,11 @@
       "crtFollows": "It comes from the company's tax profile.",
       "crtEdit": "Change the company's regime",
       "crtUnsupported": "NF-e is only for Simples Nacional and MEI for now. Check the regime in the company's tax profile.",
-      "natOpPlaceholder": "Sale of goods"
+      "natOpPlaceholder": "Sale of goods",
+      "nfceSeries": "NFC-e series",
+      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1.",
+      "nfceAutoOffline": "Issue in offline contingency automatically",
+      "nfceAutoOfflineHint": "When the SEFAZ does not answer, the NFC-e is issued at once with the contingency notice and sent later. It can still be rejected afterwards, after the customer already has it. Off by default."
     },
     "detail": {
       "title": "NF-e",
@@ -3869,6 +3889,9 @@
       "documentsHint": "The files are ready after the SEFAZ authorizes the note.",
       "events": "History",
       "hint": "What to do",
+      "contingencyPending": "This NFC-e was issued in offline contingency and was not sent to the SEFAZ yet. It can already be handed to the customer. It is sent automatically, and the limit is {deadline}.",
+      "contingencyIssued": "Issued in contingency",
+      "svcIssued": "Issued through the {authority} contingency: the state SEFAZ was down. The note is valid and keeps its numbering.",
       "reconciling": "The SEFAZ did not answer. We are checking by the access key, without issuing again.",
       "manualReview": "The SEFAZ has not confirmed this note yet. Use “Check with the SEFAZ” to ask again.",
       "errorType": {
@@ -3879,7 +3902,14 @@
       "email": {
         "sent": "The note was sent by e-mail to the recipient.",
         "failed": "Could not send the e-mail to the recipient."
-      }
+      },
+      "consumer": "Consumer",
+      "consumerAnonymous": "Consumer not identified",
+      "danfce80": "DANFCE (80 mm)",
+      "danfceA4": "DANFCE (A4)",
+      "qrAlt": "QR Code of the NFC-e",
+      "consultLink": "Look up the note on the SEFAZ site",
+      "cancelWindow": "A NFC-e can be cancelled within 30 minutes of authorization. After that, talk to your accountant. A NFC-e has no correction letter: cancel it and issue another."
     },
     "timeline": {
       "empty": "No history yet.",
@@ -4038,6 +4068,50 @@
         "homologada": "Accepted by the SEFAZ",
         "rejected": "Refused"
       }
+    },
+    "consumer": {
+      "issue": "Issue NFC-e",
+      "resubmit": "Send NFC-e again",
+      "tip": "A NFC-e can be cancelled within 30 minutes of authorization and has no correction letter.",
+      "indPres": "How was the sale made?",
+      "indPresHint": "Most of the time it is “In person, at the store”.",
+      "indPres1": "In person, at the store",
+      "indPres4": "Home delivery",
+      "indPres5": "In person, outside the store",
+      "items": "What was sold",
+      "consumerOptional": "Consumer (optional)",
+      "consumerRequired": "Consumer (required for delivery)",
+      "taxIdHint": "Only if the customer asks for the CPF on the note. Sales above the state limit need the identification.",
+      "emailHint": "If you enter one, the customer gets the XML and the DANFCE by e-mail.",
+      "sendEmail": "Send the XML and the DANFCE to the customer by e-mail when the note is authorized",
+      "required": "Fill in this field.",
+      "deliveryNeeds": "For a delivery sale, fill in the consumer CPF or CNPJ, name and address.",
+      "cardBrand": "Card brand",
+      "cardBrandNone": "Do not inform",
+      "cardHint": "Leave empty if the card machine does not talk to your system.",
+      "cardAuth": "Authorization number",
+      "cardAuthPlaceholder": "E.g. 123456",
+      "cardCnpj": "CNPJ of the card operator",
+      "cardCnpjHint": "Only for an integrated payment, together with the authorization.",
+      "brands": {
+        "01": "Visa",
+        "02": "Mastercard",
+        "03": "American Express",
+        "04": "Sorocred",
+        "05": "Diners Club",
+        "06": "Elo",
+        "07": "Hipercard",
+        "08": "Aura",
+        "09": "Cabal",
+        "99": "Other"
+      },
+      "typeTitle": "Which note do you want to issue?",
+      "typeNfe": "NF-e (sale to a company or person, with a recipient)",
+      "typeNfce": "Consumer sale (NFC-e)",
+      "title": "New consumer sale",
+      "subtitle": "Items, payment method and, if the customer asks, the CPF. Nothing is sent when you validate.",
+      "resubmitTitle": "Fix and send the NFC-e again",
+      "resubmitSubtitle": "Fix what the SEFAZ refused and send it again. The note keeps the same number."
     }
   },
   "Admin": {
@@ -4208,10 +4282,47 @@
       "actions": {
         "credit_grant": "Gave extra invoices",
         "user_viewed": "Opened a user",
-        "nfe_access_changed": "Changed NF-e release"
+        "nfe_access_changed": "Changed NF-e release",
+        "nfce_access_set": "Changed NFC-e release",
+        "svc_forced_exit": "Left the SVC contingency"
       },
       "success": "Done",
       "failure": "Failed"
+    },
+    "nfce": {
+      "on": "NFC-e is released for this account.",
+      "off": "NFC-e is not released for this account yet.",
+      "enable": "Release NFC-e",
+      "disable": "Turn NFC-e off",
+      "enableTitle": "Release NFC-e",
+      "disableTitle": "Turn NFC-e off",
+      "enableDescription": "The account will see consumer sales (NFC-e, in testing) in the dashboard, the API and MCP. NF-e and NFC-e are released separately.",
+      "disableDescription": "The account stops seeing NFC-e in the dashboard, the API and MCP. Notes already created are kept.",
+      "reason": "Reason",
+      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
+      "cancel": "Cancel",
+      "errorReason": "The reason must have 5 to 500 characters.",
+      "errorNotFound": "This workspace was not found.",
+      "errorGeneric": "Could not change the release. Nothing was saved. Try again."
+    },
+    "svc": {
+      "title": "NF-e in contingency (SVC)",
+      "empty": "No state is in contingency. NF-e go out through each state's own SEFAZ.",
+      "uf": "State",
+      "env": "Environment",
+      "live": "Production",
+      "test": "Homologation",
+      "authority": "Virtual SEFAZ",
+      "since": "Since",
+      "exit": "Leave the SVC",
+      "exitTitle": "Leave the SVC: {uf}",
+      "exitDescription": "The NF-e of {uf} go out through the origin SEFAZ again. Use it only when it is back. Notes already issued in contingency stay valid.",
+      "reason": "Reason",
+      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
+      "cancel": "Cancel",
+      "errorReason": "The reason must have 5 to 500 characters.",
+      "errorNotFound": "That state is no longer in contingency.",
+      "errorGeneric": "Could not leave the contingency. Nothing was changed. Try again."
     }
   }
 }

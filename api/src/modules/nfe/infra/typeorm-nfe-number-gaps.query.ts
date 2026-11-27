@@ -36,6 +36,7 @@ export class NfeNumberGapsQuery {
     tenantId: string,
     environment: ExecutionEnvironment,
     companyId?: string,
+    model: 55 | 65 = 55,
   ): Promise<NfeNumberGap[]> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -53,18 +54,19 @@ export class NfeNumberGapsQuery {
            SELECT s.company_id, s.series, s.current_number
              FROM ${sequences} s
              JOIN ${companies} c ON c.id = s.company_id AND c.tenant_id = s.tenant_id
-            WHERE s.tenant_id = $1 AND s.model = 55 AND c.environment = $2
+            WHERE s.tenant_id = $1 AND s.model = $4 AND c.environment = $2
               AND ($3::uuid IS NULL OR s.company_id = $3::uuid)
          ),
          used AS (
            SELECT d.company_id, d.series, d.number AS lo, d.number AS hi
              FROM ${documents} d
-            WHERE d.tenant_id = $1 AND d.environment = $2 AND d.model = 55
+            WHERE d.tenant_id = $1 AND d.environment = $2 AND d.model = $4
               AND d.number IS NOT NULL AND d.status <> 'discarded'
            UNION ALL
            SELECT i.company_id, i.series, i.start_number, i.end_number
              FROM ${inutilizations} i
-            WHERE i.tenant_id = $1 AND i.environment = $2 AND i.status = 'homologada'
+            WHERE i.tenant_id = $1 AND i.environment = $2 AND i.model = $4
+              AND i.status = 'homologada'
          ),
          ordered AS (
            SELECT u.company_id, u.series, u.lo,
@@ -89,7 +91,7 @@ export class NfeNumberGapsQuery {
            JOIN seq s ON s.company_id = h.company_id AND s.series = h.series
           WHERE h.gap_start <= LEAST(h.gap_end, s.current_number)
           ORDER BY h.company_id, h.series, h.gap_start`,
-        [tenantId, environment, companyId ?? null],
+        [tenantId, environment, companyId ?? null, model],
       );
       return rows.map((row) => ({
         companyId: row.company_id,

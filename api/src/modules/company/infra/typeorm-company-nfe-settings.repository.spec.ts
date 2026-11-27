@@ -12,6 +12,7 @@ const row = (crt: number | null) => ({
   stateRegistration: '110042490114',
   crt,
   defaultSeries: 1,
+  nfceDefaultSeries: 1,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102',
   defaultOrigin: 0,

@@ -12,7 +12,7 @@ import messages from "@/messages/en.json";
 const mocks = vi.hoisted(() => ({ overview: vi.fn() }));
 vi.mock("@/lib/platform-admin", async (original) => ({
   ...(await original<typeof import("@/lib/platform-admin")>()),
-  platformAdmin: { overview: mocks.overview },
+  platformAdmin: { overview: mocks.overview, svcStates: () => Promise.resolve([]) },
 }));
 
 const t = messages.Admin.overview;

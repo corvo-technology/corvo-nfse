@@ -12,13 +12,18 @@ export class TypeormNfeReleaseReader implements NfeReleaseReader {
     private readonly tenants: Repository<TenantOrmEntity>,
   ) {}
 
-  async releasedAt(tenantId: string): Promise<Date | null> {
+  async releasedAt(
+    tenantId: string,
+    type: 'nfe' | 'nfce' = 'nfe',
+  ): Promise<Date | null> {
     return runWithTenant(tenantId, async () => {
       const tenant = await this.tenants.findOne({
         where: { id: tenantId },
-        select: { id: true, nfeEnabledAt: true },
+        select: { id: true, nfeEnabledAt: true, nfceEnabledAt: true },
       });
-      return tenant?.nfeEnabledAt ?? null;
+      return (
+        (type === 'nfce' ? tenant?.nfceEnabledAt : tenant?.nfeEnabledAt) ?? null
+      );
     });
   }
 }

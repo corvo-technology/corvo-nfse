@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call -- supertest bodies and raw SQL rows are untyped; node-forge ships no types */
 import { randomBytes, randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { getQueueToken } from '@nestjs/bullmq';
 import * as argon2 from 'argon2';
 import * as forge from 'node-forge';
 import { DateTime } from 'luxon';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
+import type { CachePort } from '@/infra/redis/cache.port';
+import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import { SimplesRegistryPort } from '@/modules/company/domain/registry-check';
 import { ImportReaderService } from '@/modules/import/application/import-reader.service';
 import { ImportFileStorage } from '@/modules/import/infra/import-file-storage';
@@ -201,6 +205,15 @@ describe('OpenAPI contract against the real API (e2e)', () => {
               void documents.set(
                 `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
                 body,
+              ),
+            ),
+          fileExists: (
+            ref: { tenantId: string; environment: string; id: string },
+            name: string,
+          ) =>
+            Promise.resolve(
+              documents.has(
+                `${ref.tenantId}/${ref.environment}/nfe/${ref.id}/${name}`,
               ),
             ),
           getFile: (
@@ -947,6 +960,30 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         status: 200,
       });
       expect(res.body.data.stateRegistration).toBe('110042490114');
+      expect(res.body.data.nfceDefaultSeries).toBe(1);
+    });
+
+    it('sets the NFC-e series apart from the NF-e one', async () => {
+      const path = `/companies/${companyId}/nfe-settings`;
+      const saved = await call('PUT /companies/{id}/nfe-settings', {
+        path,
+        body: {
+          stateRegistration: '110042490114',
+          crt: 1,
+          defaultSeries: 2,
+          nfceDefaultSeries: 7,
+        },
+        status: 200,
+      });
+      expect(saved.body.data).toMatchObject({
+        defaultSeries: 2,
+        nfceDefaultSeries: 7,
+      });
+      await call('PUT /companies/{id}/nfe-settings', {
+        path,
+        body: { stateRegistration: '110042490114', crt: 1 },
+        status: 200,
+      });
     });
 
     it('validates an NF-e without sending it: 200 when complete, 422 with the problems otherwise', async () => {
@@ -1004,9 +1041,70 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       });
       expect(bad.body.type).toBe('validation');
     });
+
+    it('POST /invoices/validate with type=nfce answers 200 with { data } and 422 with the issues', async () => {
+      await dataSource.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 65, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
+      );
+      await dataSource.query(
+        `UPDATE "${schema}".tenants SET nfce_enabled_at = NOW() WHERE id = $1`,
+        [tenantId],
+      );
+      await ctx.moduleFixture
+        .get<CachePort>(CACHE_PORT)
+        .delete(`nfce:enabled:${tenantId}`);
+      const nfce = {
+        type: 'nfce',
+        companyId,
+        items: [
+          {
+            code: 'SKU1',
+            description: 'Produto de teste',
+            ncm: '61091000',
+            cfop: '5102',
+            unit: 'UN',
+            quantity: 2,
+            unitPrice: 10,
+          },
+        ],
+        payments: [{ tPag: '17', amount: 20 }],
+      };
+      try {
+        const ok = await call('POST /invoices/validate', {
+          body: nfce,
+          query: { includeXml: 'true' },
+          status: 200,
+        });
+        expect(ok.body.data.valid).toBe(true);
+        expect(ok.body.data.accessKeyPreview.slice(20, 22)).toBe('65');
+        expect(ok.body.data.xml).toContain('<infNFeSupl>');
+        const bad = await call('POST /invoices/validate', {
+          body: { ...nfce, indPres: 4 },
+          status: 422,
+        });
+        expect(bad.body.type).toBe('validation');
+      } finally {
+        await dataSource.query(
+          `UPDATE "${schema}".tenants SET nfce_enabled_at = NULL WHERE id = $1`,
+          [tenantId],
+        );
+        await ctx.moduleFixture
+          .get<CachePort>(CACHE_PORT)
+          .delete(`nfce:enabled:${tenantId}`);
+      }
+    });
   });
 
   describe('nfe issuing', () => {
+    it('GET /invoices?type=nfce answers 404 while NFC-e is not released', async () => {
+      const res = await call('GET /invoices', {
+        query: { type: 'nfce' },
+        status: 404,
+      });
+      expect(res.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
+    });
+
     const nfeBody = () => ({
       type: 'nfe',
       companyId,
@@ -1520,6 +1618,461 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         documentsReady: true,
         emailStatus: null,
       });
+    });
+  });
+
+  describe('nfce issuing', () => {
+    const nfceBody = (extra: Record<string, unknown> = {}) => ({
+      type: 'nfce',
+      companyId,
+      items: [
+        {
+          code: 'SKU1',
+          description: 'Produto de teste',
+          ncm: '61091000',
+          cfop: '5102',
+          unit: 'UN',
+          quantity: 2,
+          unitPrice: 10,
+        },
+      ],
+      payments: [{ tPag: '17', amount: 20 }],
+      ...extra,
+    });
+    const setNfce = (id: string, sets: string, params: unknown[] = []) =>
+      dataSource.query(
+        `UPDATE "${schema}".nfe_documents SET ${sets} WHERE id = $1`,
+        [id, ...params],
+      );
+    const dropCache = () =>
+      ctx.moduleFixture
+        .get<CachePort>(CACHE_PORT)
+        .delete(`nfce:enabled:${tenantId}`);
+
+    beforeAll(async () => {
+      await dataSource.query(
+        `UPDATE "${schema}".nfse_companies
+            SET address_street = 'Avenida Paulista', address_number = '1000', address_district = 'Bela Vista',
+                address_zip = '01310100', address_city = 'São Paulo'
+          WHERE id = $1`,
+        [companyId],
+      );
+      await dataSource.query(
+        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
+         VALUES ('SP', 65, 2, now(), 'docs/fiscal/nfe-runbook.md') ON CONFLICT DO NOTHING`,
+      );
+      await call('PUT /companies/{id}/nfe-settings', {
+        path: `/companies/${companyId}/nfe-settings`,
+        body: { stateRegistration: '110042490114', crt: 1 },
+        status: 200,
+      });
+      await dataSource.query(
+        `UPDATE "${schema}".tenants SET nfce_enabled_at = NOW() WHERE id = $1`,
+        [tenantId],
+      );
+      await dropCache();
+    });
+
+    afterAll(async () => {
+      await dataSource.query(
+        `UPDATE "${schema}".tenants SET nfce_enabled_at = NULL WHERE id = $1`,
+        [tenantId],
+      );
+      await dropCache();
+    });
+
+    it('issues, replays, lists and reads a NFC-e; the other operations follow its state', async () => {
+      const missing = await call('POST /invoices', {
+        body: nfceBody(),
+        status: 400,
+      });
+      expect(missing.body.code).toBe('ERROR_IDEMPOTENCY_KEY_REQUIRED');
+
+      const created = await call('POST /invoices', {
+        body: nfceBody(),
+        headers: { 'Idempotency-Key': 'e2e-nfce-1' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      expect(created.body.data).toEqual({
+        type: 'nfce',
+        id,
+        status: 'queued',
+      });
+      const again = await call('POST /invoices', {
+        body: nfceBody(),
+        headers: { 'Idempotency-Key': 'e2e-nfce-1' },
+        status: 200,
+      });
+      expect(again.body.data).toEqual({
+        type: 'nfce',
+        id,
+        status: 'queued',
+        replayed: true,
+      });
+      await call('POST /invoices', {
+        body: nfceBody({ additionalInfo: 'outro corpo' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-1' },
+        status: 409,
+      });
+
+      // Only model 65 is listed with type=nfce; type=nfe does not see it; type=all mixes them.
+      const list = await call('GET /invoices', {
+        query: { type: 'nfce', companyId, status: 'queued' },
+        status: 200,
+      });
+      expect(list.body.data.map((n: { id: string }) => n.id)).toEqual([id]);
+      const nfeList = await call('GET /invoices', {
+        query: { type: 'nfe', companyId, limit: 100 },
+        status: 200,
+      });
+      expect(nfeList.body.data.map((n: { id: string }) => n.id)).not.toContain(
+        id,
+      );
+      const everything = await call('GET /invoices', {
+        query: { type: 'all', companyId, limit: 100 },
+        status: 200,
+      });
+      expect(
+        everything.body.data.find((row: { id: string }) => row.id === id).type,
+      ).toBe('nfce');
+
+      const read = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(read.body.data).toMatchObject({
+        type: 'nfce',
+        id,
+        model: 65,
+        status: 'queued',
+        recipient: null,
+        number: null,
+        lastError: null,
+        qrCode: null,
+        urlChave: null,
+        environment: 'test',
+      });
+
+      // What the worker leaves behind once the SEFAZ authorizes it.
+      await setNfce(
+        id,
+        `status = 'authorized', series = 1, number = 31, access_key = '35261111222333000181650010000000311123456780',
+         protocol = '135260000000001', signed_xml = '<NFe/>', issued_at = now(), authorized_at = now(),
+         qr_code = 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=x|3|2',
+         url_chave = 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta'`,
+      );
+      const authorized = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(authorized.body.data).toMatchObject({
+        status: 'authorized',
+        qrCode: expect.stringContaining('|3|2'),
+        urlChave: expect.stringContaining('/consulta'),
+      });
+
+      // No correction letter for the NFC-e.
+      const correction = await call('POST /invoices/{id}/corrections', {
+        path: `/invoices/${id}/corrections`,
+        body: { correction: 'Corrigir o endereço de entrega da observação' },
+        status: 422,
+      });
+      expect(correction.body.code).toBe(
+        'ERROR_INVOICE_OPERATION_NOT_SUPPORTED',
+      );
+
+      // Sync on a settled note answers the note; discard needs a rejected one.
+      const synced = await call('POST /invoices/{id}/sync', {
+        path: `/invoices/${id}/sync`,
+        status: 200,
+      });
+      expect(synced.body.data).toMatchObject({
+        type: 'nfce',
+        status: 'authorized',
+      });
+      const notDiscardable = await call('POST /invoices/{id}/discard', {
+        path: `/invoices/${id}/discard`,
+        status: 409,
+      });
+      expect(notDiscardable.body.code).toBe('ERROR_NFE_INVALID_STATE');
+
+      // Cancellation: the justification is checked, then the NFC-e is cancelling.
+      const short = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${id}/cancel`,
+        body: { justification: 'curta' },
+        status: 422,
+      });
+      expect(short.body.code).toBe('ERROR_JUSTIFICATION_LENGTH');
+      const cancelled = await call('POST /invoices/{id}/cancel', {
+        path: `/invoices/${id}/cancel`,
+        body: {
+          justification: 'Pedido cancelado pelo cliente antes da entrega',
+        },
+        status: 202,
+      });
+      expect(cancelled.body.data).toMatchObject({
+        type: 'nfce',
+        id,
+        status: 'cancelling',
+      });
+      const timeline = await call('GET /invoices/{id}/events', {
+        path: `/invoices/${id}/events`,
+        status: 200,
+      });
+      expect(
+        timeline.body.data.some(
+          (entry: { kind: string; tpEvento: string | null }) =>
+            entry.kind === 'event' && entry.tpEvento === '110111',
+        ),
+      ).toBe(true);
+    });
+
+    it('issues a NFC-e off-line (contingency "offline"): 201 at once with the key, the QR Code and the files; the same key answers 200', async () => {
+      const created = await call('POST /invoices', {
+        body: nfceBody({ contingency: 'offline', additionalInfo: 'offline' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-offline' },
+        status: 201,
+      });
+      const id = created.body.data.id as string;
+      expect(created.body.data).toMatchObject({
+        type: 'nfce',
+        status: 'contingency_pending',
+        xmlUrl: `/v1/invoices/${id}/xml`,
+        pdfUrl: `/v1/invoices/${id}/pdf`,
+      });
+      expect((created.body.data.accessKey as string)[34]).toBe('9');
+      expect(created.body.data.qrCode).toContain(
+        `?p=${created.body.data.accessKey as string}|3|2|`,
+      );
+      const detail = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(detail.body.data).toMatchObject({
+        status: 'contingency_pending',
+        contingencyReason:
+          'Emissao em contingencia off-line solicitada pelo emitente',
+      });
+      const xml = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${id}/xml`,
+        status: 200,
+      });
+      expect(xml.text).toContain('<tpEmis>9</tpEmis>');
+      const pdf = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 200,
+      });
+      expect(pdf.text.startsWith('%PDF-')).toBe(true);
+      const again = await call('POST /invoices', {
+        body: nfceBody({ contingency: 'offline', additionalInfo: 'offline' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-offline' },
+        status: 200,
+      });
+      expect(again.body.data).toMatchObject({
+        id,
+        status: 'contingency_pending',
+        replayed: true,
+      });
+    });
+
+    it('serves the DANFCE of a NFC-e: 80 mm by default, A4 with ?layout=a4, 409 before the documents are ready', async () => {
+      const created = await call('POST /invoices', {
+        body: nfceBody({ additionalInfo: 'cupom' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-danfce' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await setNfce(
+        id,
+        `status = 'authorized', series = 1, number = 32, access_key = '35261111222333000181650010000000321123456780',
+         protocol = '135260000000002', signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()`,
+      );
+      const early = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 409,
+      });
+      expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
+
+      // What the worker leaves behind: the nfeProc and the cupom, then the ready mark.
+      const stored = `${tenantId}/test/nfe/${id}`;
+      documents.set(
+        `${stored}/nfe-proc.xml`,
+        readFileSync(
+          join(
+            __dirname,
+            '../src/modules/nfce/infra/danfce/__fixtures__/nfce-proc-simples.xml',
+          ),
+          'utf8',
+        ),
+      );
+      documents.set(`${stored}/danfce.pdf`, Buffer.from('%PDF-1.4 cupom 80mm'));
+      await setNfce(id, `documents_ready_at = now()`);
+
+      const cupom = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 200,
+      });
+      expect(cupom.contentType).toContain('application/pdf');
+      expect(cupom.text).toContain('cupom 80mm');
+      const a4 = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        query: { layout: 'a4' },
+        status: 200,
+      });
+      expect(a4.contentType).toContain('application/pdf');
+      expect(a4.text.startsWith('%PDF-')).toBe(true);
+      expect(a4.text).not.toContain('cupom 80mm');
+      expect(a4.text).toContain('/MediaBox [0 0 595.28 841.89]');
+      const explicit = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        query: { layout: '80mm' },
+        status: 200,
+      });
+      expect(explicit.text).toContain('cupom 80mm');
+      const link = await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
+        body: { format: 'pdf' },
+        status: 200,
+      });
+      expect(link.body.data).toMatchObject({
+        fileName: 'nfce-32.pdf',
+        mimeType: 'application/pdf',
+      });
+    });
+
+    it('corrects a rejected NFC-e and sends it again, or gives it up', async () => {
+      const created = await call('POST /invoices', {
+        body: nfceBody({ additionalInfo: 'rejeitada' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-2' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await setNfce(
+        id,
+        `status = 'rejected', last_error_type = 'validation', last_error_code = '225', last_error_message = 'Rejeição: Falha no Schema XML do lote de NFe'`,
+      );
+      const rejected = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(rejected.body.data.lastError).toMatchObject({
+        type: 'validation',
+        code: '225',
+        hint: expect.stringContaining('schema'),
+      });
+      const resubmitted = await call('PUT /invoices/{id}', {
+        path: `/invoices/${id}`,
+        body: nfceBody({ additionalInfo: 'corrigida' }),
+        status: 202,
+      });
+      expect(resubmitted.body.data).toEqual({
+        type: 'nfce',
+        id,
+        status: 'queued',
+      });
+      await setNfce(id, `status = 'rejected'`);
+      const discarded = await call('POST /invoices/{id}/discard', {
+        path: `/invoices/${id}/discard`,
+        status: 200,
+      });
+      expect(discarded.body.data).toMatchObject({
+        type: 'nfce',
+        status: 'discarded',
+      });
+    });
+
+    it('serves the nfeProc of a NFC-e once the documents are ready', async () => {
+      const created = await call('POST /invoices', {
+        body: nfceBody({ additionalInfo: 'arquivos' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-files' },
+        status: 202,
+      });
+      const id = created.body.data.id as string;
+      await setNfce(
+        id,
+        `status = 'authorized', series = 1, number = 77, access_key = '35261111222333000181650010000000771123456780',
+         protocol = '135260000000001', signed_xml = '<NFe/>', issued_at = now(), authorized_at = now()`,
+      );
+      const early = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${id}/xml`,
+        status: 409,
+      });
+      expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
+      documents.set(`${tenantId}/test/nfe/${id}/nfe-proc.xml`, '<nfeProc/>');
+      await setNfce(id, `documents_ready_at = now()`);
+      const xml = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${id}/xml`,
+        status: 200,
+      });
+      expect(xml.text).toBe('<nfeProc/>');
+      const link = await call('POST /invoices/{id}/download-url', {
+        path: `/invoices/${id}/download-url`,
+        body: { format: 'xml' },
+        status: 200,
+      });
+      expect(link.body.data).toMatchObject({
+        fileName: 'nfce-77.xml',
+        mimeType: 'application/xml',
+      });
+    });
+
+    it('inutilizes a range of the NFC-e series, lists it and lists the gaps', async () => {
+      const inut = {
+        type: 'nfce',
+        companyId,
+        series: 8,
+        start: 10,
+        end: 12,
+        justification: 'Numeração pulada por falha do sistema emissor',
+      };
+      const accepted = await call('POST /invoices/inutilizations', {
+        body: inut,
+        headers: { 'Idempotency-Key': 'e2e-nfce-inut-1' },
+        status: 202,
+      });
+      expect(accepted.body.data).toMatchObject({
+        status: 'pending',
+        model: 65,
+        series: 8,
+        start: 10,
+        end: 12,
+      });
+      const replayed = await call('POST /invoices/inutilizations', {
+        body: inut,
+        headers: { 'Idempotency-Key': 'e2e-nfce-inut-1' },
+        status: 200,
+      });
+      expect(replayed.body.data).toMatchObject({
+        id: accepted.body.data.id,
+        replayed: true,
+      });
+      const overlap = await call('POST /invoices/inutilizations', {
+        body: { ...inut, start: 12, end: 15 },
+        status: 409,
+      });
+      expect(overlap.body.code).toBe('ERROR_INUTILIZATION_RANGE_OVERLAP');
+      const nfceList = await call('GET /invoices/inutilizations', {
+        query: { type: 'nfce', companyId },
+        status: 200,
+      });
+      expect(nfceList.body.data.map((i: { id: string }) => i.id)).toContain(
+        accepted.body.data.id,
+      );
+      const nfeList = await call('GET /invoices/inutilizations', {
+        query: { type: 'nfe', companyId },
+        status: 200,
+      });
+      expect(nfeList.body.data.map((i: { id: string }) => i.id)).not.toContain(
+        accepted.body.data.id,
+      );
+      const gaps = await call('GET /invoices/number-gaps', {
+        query: { type: 'nfce', companyId },
+        status: 200,
+      });
+      expect(gaps.body.data).toEqual(
+        expect.arrayContaining([{ companyId, series: 8, start: 1, end: 12 }]),
+      );
     });
   });
 

@@ -1,6 +1,6 @@
 import type { DocGroupKey, DocSlug } from "./types";
 
-export const NFE_SLUGS = ["nfe", "nfe-company", "nfe-issue", "nfe-errors", "nfe-events", "nfe-files"] as const satisfies readonly DocSlug[];
+export const NFE_SLUGS = ["nfe", "nfe-company", "nfe-issue", "nfe-errors", "nfe-events", "nfe-files", "nfce"] as const satisfies readonly DocSlug[];
 
 /** Published docs paths. Split from the content trees so redirects can import it without the page bodies. */
 export const DOC_GROUPS: { key: DocGroupKey; slugs: DocSlug[] }[] = [

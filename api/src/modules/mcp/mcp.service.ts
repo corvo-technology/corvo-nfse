@@ -322,6 +322,7 @@ export class McpService {
       this.wrapWithScopeCheck(
         byType(createNfseReviewHandler(this.invoiceReview, this.invoiceRepo), {
           nfe: createNfeReviewHandler(this.nfe),
+          nfce: createNfeReviewHandler(this.nfe, 'nfce'),
         }),
         'nfse:write',
         SCOPE_PERMISSION['nfse:write'],
@@ -390,6 +391,7 @@ export class McpService {
       this.wrapWithScopeCheck(
         byType(createNfseIssueHandler(this.emissionRouter), {
           nfe: createNfeIssueHandler(this.nfe),
+          nfce: createNfeIssueHandler(this.nfe, 'nfce'),
         }),
         'nfse:write',
       ),
@@ -406,6 +408,7 @@ export class McpService {
       this.wrapWithScopeCheck(
         byType(createNfseCancelHandler(this.invoiceService), {
           nfe: createNfeCancelHandler(this.nfe),
+          nfce: createNfeCancelHandler(this.nfe, 'nfce'),
         }),
         'nfse:write',
       ),
@@ -536,12 +539,13 @@ export class McpService {
           createNfseListHandler(this.invoiceService),
           {
             nfe: createNfeListHandler(this.nfe),
+            nfce: createNfeListHandler(this.nfe, 'nfce'),
             all: createAllListHandler(
               this.nfe,
               createNfseListHandler(this.invoiceService),
             ),
           },
-          ['nfse', 'nfe', 'all'],
+          ['nfse', 'nfe', 'nfce', 'all'],
         ),
         'nfse:read',
       ),
@@ -551,7 +555,10 @@ export class McpService {
       this.wrapWithScopeCheck(
         byType(
           createNfseDownloadPdfHandler(this.invoiceService, this.invoiceRepo),
-          { nfe: createNfeDownloadPdfHandler(this.nfe) },
+          {
+            nfe: createNfeDownloadPdfHandler(this.nfe),
+            nfce: createNfeDownloadPdfHandler(this.nfe, 'nfce'),
+          },
         ),
         'nfse:read',
       ),
@@ -564,7 +571,10 @@ export class McpService {
             this.invoiceService,
             this.invoiceRepo,
           ),
-          { nfe: createNfeGetDownloadUrlHandler(this.nfe) },
+          {
+            nfe: createNfeGetDownloadUrlHandler(this.nfe),
+            nfce: createNfeGetDownloadUrlHandler(this.nfe, 'nfce'),
+          },
         ),
         'nfse:read',
       ),
@@ -594,6 +604,7 @@ export class McpService {
         NFSE_GET_TOOL,
         byType(createNfseGetHandler(this.invoiceService), {
           nfe: createNfeGetHandler(this.nfe),
+          nfce: createNfeGetHandler(this.nfe, 'nfce'),
         }),
       ],
       [
@@ -622,14 +633,19 @@ export class McpService {
   }
 
   /**
-   * Tools that only exist for NF-e. They are listed only for connections whose account has NF-e
-   * released, and every call checks the release and the member permission again.
+   * Tools that only exist for NF-e and NFC-e. They are listed only for connections whose account
+   * has NF-e or NFC-e released (`nfe_correct`, only with NF-e: the NFC-e has no correction letter),
+   * and every call checks the release and the member permission again.
    */
   private registerNfeTools(): void {
-    const visibleWhen = (ctx: AuthContext) => this.nfe.isEnabled(ctx);
+    const visibleWhen = (ctx: AuthContext) => this.nfe.isEnabledAny(ctx);
+    this.server.registerTool(
+      NFE_CORRECT_TOOL,
+      this.wrapWithScopeCheck(createNfeCorrectHandler(this.nfe), 'nfse:write'),
+      { visibleWhen: (ctx: AuthContext) => this.nfe.isEnabled(ctx) },
+    );
     for (const [tool, handler, scope] of [
       [NFE_VALIDATE_TOOL, createNfeValidateHandler(this.nfe), 'nfse:write'],
-      [NFE_CORRECT_TOOL, createNfeCorrectHandler(this.nfe), 'nfse:write'],
       [NFE_INUTILIZE_TOOL, createNfeInutilizeHandler(this.nfe), 'nfse:write'],
       [
         NFE_SETTINGS_UPDATE_TOOL,

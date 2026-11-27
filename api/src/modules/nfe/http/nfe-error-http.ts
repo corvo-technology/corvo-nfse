@@ -1,6 +1,7 @@
 import { explainCstat } from '@/infra/external/nfe/sefaz/cstat';
 import type { NfePreconditionError } from '@/modules/fiscal-core/application/nfe-emission-preconditions';
 import type { ValidationIssue } from '@/modules/fiscal-core/domain/ports/tax-validator.port';
+import { cancellationHint } from '../application/nfe-messages';
 import type { NfeDocumentSnapshot, NfeErrorType } from '../domain/nfe-document';
 
 /**
@@ -60,9 +61,14 @@ export function toNfeHttpError(
       },
     };
   if (!source.lastErrorType || !source.lastErrorCode) return null;
+  // A refused cancellation leaves the NFC-e `authorized` with the reason in `lastError`.
+  const cancellation =
+    source.status === 'authorized'
+      ? cancellationHint(source.model, source.lastErrorCode)
+      : undefined;
   const hint =
     source.lastErrorType === 'validation'
-      ? explainCstat(source.lastErrorCode)
+      ? (cancellation ?? explainCstat(source.lastErrorCode))
       : undefined;
   return {
     error: {

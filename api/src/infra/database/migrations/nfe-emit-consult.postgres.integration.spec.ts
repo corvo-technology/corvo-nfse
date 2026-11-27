@@ -76,11 +76,17 @@ describePostgres('NF-e emit/consult migrations', () => {
   });
 
   it('down then up again: both changes undo and redo without leftovers', async () => {
-    // The newest migrations (inutilization idempotency, PR 5, and send_email, PR 6) sit on top of the two of this PR.
-    await db.undoLastMigration();
-    await db.undoLastMigration();
-    await db.undoLastMigration();
-    await db.undoLastMigration();
+    // Newer migrations (inutilization idempotency, send_email, NFC-e) sit on top of the two of this PR:
+    // undo until both are gone, so a new migration never breaks the count.
+    for (let undone = 0; undone < 20; undone += 1) {
+      if (
+        !(await columns('credit_transactions')).includes(
+          'reserved_nfe_document_id',
+        )
+      )
+        break;
+      await db.undoLastMigration();
+    }
     expect(await columns('webhook_deliveries')).not.toContain('document_id');
     expect(await indexes('webhook_deliveries')).not.toContain(
       'idx_webhook_deliveries_document',

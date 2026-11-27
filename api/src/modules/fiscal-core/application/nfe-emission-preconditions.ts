@@ -26,7 +26,8 @@ export interface NfeEmissionPreconditionsInput {
   environment: ExecutionEnvironment;
   company: Company;
   settings: NfeSettings | null;
-  model: 55;
+  /** 55 = NF-e, 65 = NFC-e. */
+  model: 55 | 65;
 }
 
 const STEP = 'nfe_preconditions';
@@ -48,7 +49,7 @@ function configurationError(
 
 /**
  * Checked before anything is numbered, in this order: production lock, complete company, released
- * UF. Only the NF-e is affected; the NFS-e never goes through here.
+ * UF, for the model of the document (55 NF-e, 65 NFC-e). The NFS-e never goes through here.
  */
 @Injectable()
 export class NfeEmissionPreconditions {
@@ -61,19 +62,20 @@ export class NfeEmissionPreconditions {
   async check(
     input: NfeEmissionPreconditionsInput,
   ): Promise<NfePreconditionError | null> {
+    const label = input.model === 65 ? 'NFC-e' : 'NF-e';
     if (
       input.environment === 'live' &&
       this.config.get<boolean>('NFE_PRODUCTION_ENABLED') !== true
     )
       return configurationError(
         'NFE_PRODUCTION_DISABLED',
-        'NF-e em produção ainda não liberada',
+        `${label} em produção ainda não liberada`,
       );
     const missing = nfeReadinessMissing(input.company, input.settings);
     if (missing.length > 0)
       return configurationError(
         'COMPANY_NFE_INCOMPLETE',
-        'Complete o cadastro da empresa para emitir NF-e',
+        `Complete o cadastro da empresa para emitir ${label}`,
         { missing },
       );
     const uf = input.company.addressState ?? '';

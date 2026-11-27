@@ -97,8 +97,9 @@ export class NfeInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
 
   async owns(id: string, call: InvoiceCall): Promise<boolean> {
     return (
-      (await this.documents.findById(id, call.tenantId, call.environment)) !==
-      null
+      (await this.documents.findById(id, call.tenantId, call.environment, {
+        model: 55,
+      })) !== null
     );
   }
 
@@ -143,11 +144,10 @@ export class NfeInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
       ),
       'query',
     );
-    const page = await this.documents.list(
-      call.tenantId,
-      call.environment,
-      filters,
-    );
+    const page = await this.documents.list(call.tenantId, call.environment, {
+      ...filters,
+      model: 55,
+    });
     return page.map((doc) => toNfeResponse(doc));
   }
 
@@ -156,6 +156,7 @@ export class NfeInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
       id,
       call.tenantId,
       call.environment,
+      { model: 55 },
     );
     if (!doc) throw nfeNotFound();
     return data(toNfeResponse(doc));
@@ -305,7 +306,7 @@ export class NfeInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
     const page = await this.inutilizations.list(
       call.tenantId,
       call.environment,
-      filters,
+      { ...filters, model: 55 },
     );
     return page.map(toNfeInutilizationResponse);
   }
@@ -317,6 +318,7 @@ export class NfeInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
       call.tenantId,
       call.environment,
       filters.companyId,
+      55,
     );
     return data(found.map(toNfeNumberGapResponse));
   }

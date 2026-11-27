@@ -86,6 +86,13 @@ export type AccountNotice =
       nfseNumber: number | null;
       reason: string | null;
     }
+  // An NFC-e issued off-line is 20 hours old and was not transmitted yet (the limit is 24 hours).
+  | {
+      kind: 'nfce-contingency-deadline';
+      documentId: string;
+      number: number | null;
+      deadlineAt: Date;
+    }
   | {
       kind: 'invoice-blocked-on-portal';
       invoiceId: string;

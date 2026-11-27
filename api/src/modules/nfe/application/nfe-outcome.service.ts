@@ -50,7 +50,9 @@ export class NfeOutcomeService {
    * note for the same CPF/CNPJ is filled in. Best effort: it never fails or delays the note.
    */
   private async rememberRecipient(doc: NfeDocument): Promise<void> {
-    const { taxId, name, email } = doc.toSnapshot().recipient;
+    const recipient = doc.toSnapshot().recipient;
+    if (!recipient) return;
+    const { taxId, name, email } = recipient;
     const clean = name?.trim();
     if (!this.customers || !taxId || !clean || clean.length > CUSTOMER_NAME_MAX)
       return;

@@ -86,6 +86,7 @@ function setup() {
     resolver,
     new XmllintSchemaValidator(),
     1000,
+    {},
     () => new Date('2026-11-26T13:00:00Z'),
     (ms) => {
       slept.push(ms);

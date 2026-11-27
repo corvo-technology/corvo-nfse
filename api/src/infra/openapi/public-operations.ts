@@ -203,16 +203,17 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'POST /invoices': {
     id: 'invoices_create',
     tag: 'Invoices',
-    summary: 'Issue an invoice (NFS-e or NF-e), or schedule one',
+    summary: 'Issue an invoice (NFS-e, NF-e or NFC-e), or schedule one',
     ok: {
       200: data(ref('NfeAccepted')),
+      201: data(ref('NfceOfflineAccepted')),
       202: {
         type: 'object',
         required: ['data'],
         properties: {
           data: {
             description:
-              'The invoice, or the schedule when `options.type` is `SCHEDULE` or `RECURRING`, or `{ type: "nfe", id, status }` for an NF-e.',
+              'The invoice, or the schedule when `options.type` is `SCHEDULE` or `RECURRING`, or `{ type: "nfe" | "nfce", id, status }` for an NF-e or a NFC-e.',
             oneOf: [
               ref('InvoiceResponseDto'),
               ref('ScheduleResponseDto'),
@@ -223,16 +224,21 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
       },
     },
     description:
-      'Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: "nfe"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.',
+      'Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: "nfe"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded. Answers 404 while NF-e is not released for the workspace.\n\n**With `type: "nfce"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples Nacional, homologation only, QR Code v3 online, no CSC). Same body as the dry-run `POST /invoices/validate` with `type: "nfce"`; the consumer is optional. Same rules as the NF-e: `Idempotency-Key` required, `202` with `{ type: "nfce", id, status: "queued" }`, the result by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The note carries `qrCode` and `urlChave` once the first attempt is built. Answers 404 while NFC-e is not released for the workspace.\n\n**Off-line NFC-e (`contingency: "offline"`):** the PDV asks for the contingency `tpEmis` 9. Corvo numbers, signs and answers **`201` at once** with `{ type: "nfce", id, status: "contingency_pending", accessKey, qrCode, xmlUrl, pdfUrl }`; the DANFCE says "EMITIDA EM CONTINGÊNCIA". Nothing is sent to the SEFAZ in this call: Corvo transmits when the authority answers and warns by e-mail and by webhook `nfce.contingency.deadline_near` after 20 hours (the limit is 24). Without `contingency`, a company that turned on "issue off-line automatically" gets the same answer when the SEFAZ cannot be reached; otherwise the NFC-e goes the normal way. A state with no off-line QR Code address answers `422 NFCE_OFFLINE_NOT_AVAILABLE`. The note can still be rejected after it was handed to the consumer: fix it with `PUT /invoices/{id}` (only the description, barcode, NCM, CEST, unit and `additionalInfo` may change, `422 NFCE_CONTINGENCY_FIELD_LOCKED` otherwise).',
     idempotent: true,
     errors: [400, 402, 409, 422],
     requestBody: {
-      oneOf: [ref('NfseInvoiceRequest'), ref('NfeInvoiceRequest')],
+      oneOf: [
+        ref('NfseInvoiceRequest'),
+        ref('NfeInvoiceRequest'),
+        ref('NfceInvoiceRequest'),
+      ],
       discriminator: {
         propertyName: 'type',
         mapping: {
           nfse: '#/components/schemas/NfseInvoiceRequest',
           nfe: '#/components/schemas/NfeInvoiceRequest',
+          nfce: '#/components/schemas/NfceInvoiceRequest',
         },
       },
     },
@@ -250,7 +256,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_list',
     tag: 'Invoices',
     description:
-      'Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: "nfe"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.',
+      'Newest first. Filter by `status`, `origin`, `companyId`, `externalId`, `customerTaxId` or a `from`/`to` competence-date range, and walk the pages with `cursor`. A test key lists only test invoices and a live key only live ones.\n\n**With `type: "nfe"`:** The NF-e of the environment of the key, newest first. Filter by `companyId` and `status`.\n\n**With `type: "nfce"`:** The NFC-e (model 65) of the environment of the key, newest first, with the same filters. Answers 404 while NFC-e (or NF-e, for `type: "nfe"`) is not released for the workspace.',
     ok: {
       200: {
         oneOf: [
@@ -260,6 +266,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
         ],
       },
     },
+    errors: [404],
     paramDescriptions: {
       from: 'Only invoices with a competence date on or after this date (ISO 8601).',
       to: 'Only invoices with a competence date on or before this date (ISO 8601).',
@@ -279,14 +286,14 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_get',
     tag: 'Invoices',
     description:
-      'Returns the invoice in its current state. Issuing is asynchronous: poll this route or use the invoice webhooks until `status` is final.\n\n**For an NF-e:** The NF-e with its state, number, key and protocol. While it is `reconciliation_required` or `manual_review`, `lastError.type` is `communication`: the SEFAZ did not answer and Corvo checks by the key, you must not issue it again. A SEFAZ rejection has `lastError.type` `validation`, the cStat in `lastError.code` and, for the known ones, a `hint`.',
+      'Returns the invoice in its current state. Issuing is asynchronous: poll this route or use the invoice webhooks until `status` is final.\n\n**For an NF-e:** The NF-e with its state, number, key and protocol. While it is `reconciliation_required` or `manual_review`, `lastError.type` is `communication`: the SEFAZ did not answer and Corvo checks by the key, you must not issue it again. A SEFAZ rejection has `lastError.type` `validation`, the cStat in `lastError.code` and, for the known ones, a `hint`.\n\n**For a NFC-e:** Same as the NF-e, with `type: "nfce"`, `model: 65`, `recipient` `null` when the consumer was not identified, and the `qrCode` and `urlChave` of the current attempt.',
     ok: { 200: data({ oneOf: [ref('InvoiceResponseDto'), ref('Nfe')] }) },
   },
   'GET /invoices/{id}/xml': {
     id: 'invoices_downloadXml',
     tag: 'Invoices',
     description:
-      'The authorized NFS-e XML. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the customer keeps. Available once `documentsReady` is `true`; before that, and for an NF-e that was never authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation (the cancellation XML is in the events).',
+      'The authorized NFS-e XML. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The `nfeProc`: the signed NF-e followed by the SEFAZ protocol, the file the customer keeps. Available once `documentsReady` is `true`; before that, and for an NF-e that was never authorized, `409 DOCUMENTS_NOT_READY`. It stays available after a cancellation (the cancellation XML is in the events). A NFC-e has the same `nfeProc`.',
     errors: [409],
     file: {
       contentType: 'application/xml',
@@ -297,7 +304,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_downloadPdf',
     tag: 'Invoices',
     description:
-      'The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`.',
+      'The DANFSe PDF. Available once `documentsStatus` is `ready`.\n\n**For an NF-e:** The DANFE, portrait A4. A test company gets the mark `SEM VALOR FISCAL`; a cancelled NF-e gets `CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. \n\n**For a NFC-e:** The DANFCE, the cupom of the sale: 80 mm wide (thermal-printer width, one page as tall as it needs) by default, or an A4 sheet with `?layout=a4`. The QR Code is drawn in the PDF. A test company gets `EMITIDA EM AMBIENTE DE HOMOLOGAÇÃO - SEM VALOR FISCAL`; a cancelled NFC-e gets `NFC-e CANCELADA`. Available once `documentsReady` is `true`; before that, `409 DOCUMENTS_NOT_READY`. `layout` is ignored for NFS-e and NF-e.',
     errors: [409],
     file: { contentType: 'application/pdf', description: 'The DANFSe PDF.' },
   },
@@ -316,7 +323,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'invoices_createDownloadUrl',
     tag: 'Invoices',
     description:
-      'Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.',
+      'Returns a short-lived signed URL for the PDF or XML, to hand to a browser or another service without sharing the API key. The response is never cached.\n\n**For an NF-e:** A short-lived signed URL for the `xml` (the `nfeProc`) or the `pdf` (the DANFE), to hand to a browser or another service without sharing the API key. The response is never cached. Before the documents are ready, `409 DOCUMENTS_NOT_READY`.\n\n**For a NFC-e:** The `pdf` is the 80 mm DANFCE (the A4 sheet is only served by `GET /invoices/{id}/pdf?layout=a4`).',
     ok: { 200: data(ref('InvoiceDownloadUrl')) },
     errors: [409],
   },
@@ -334,7 +341,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     tag: 'Invoices',
     summary: 'Cancel an invoice',
     description:
-      'Answers 200 when a queued invoice is cancelled locally, and 202 while the NFS-e cancellation event is processed or when the request is registered on an invoice still being issued (`processing`, with `cancellationRequestedAt` set). `description` (15 to 255 characters) is required. An authorized invoice is cancelled at the Sefin (event 101101) and its credit is not refunded; if a processing emission ends rejected or failed the request is discarded and the reservation is refunded as usual. Repeating the request returns the current state (the first request wins). `retry_pending`, `reconciliation_required` and `manual_review` answer 409 `ERROR_INVOICE_NOT_CANCELLABLE`.\n\n**For an NF-e:** Only for an NF-e in `authorized`. The body is the justification (15 to 255 characters, `422 JUSTIFICATION_LENGTH`). Answers `202` with the NF-e in `cancelling`; the SEFAZ answer comes by webhook (`nfe.document.cancelled`, or `nfe.document.cancellation_rejected` with the reason as the SEFAZ wrote it, and the NF-e goes back to `authorized`) and in `GET /invoices/{id}/events`. If the SEFAZ does not answer, the event stays `pending_check` and Corvo checks by the key; the same signed request is the only one ever sent. The legal deadline depends on the state: past it, the SEFAZ rejection is shown as it comes. **Cancelling does not give the credit back** (the NF-e was authorized). Any other state answers `409 NFE_INVALID_STATE`.',
+      'Answers 200 when a queued invoice is cancelled locally, and 202 while the NFS-e cancellation event is processed or when the request is registered on an invoice still being issued (`processing`, with `cancellationRequestedAt` set). `description` (15 to 255 characters) is required. An authorized invoice is cancelled at the Sefin (event 101101) and its credit is not refunded; if a processing emission ends rejected or failed the request is discarded and the reservation is refunded as usual. Repeating the request returns the current state (the first request wins). `retry_pending`, `reconciliation_required` and `manual_review` answer 409 `ERROR_INVOICE_NOT_CANCELLABLE`.\n\n**For an NF-e:** Only for an NF-e in `authorized`. The body is the justification (15 to 255 characters, `422 JUSTIFICATION_LENGTH`). Answers `202` with the NF-e in `cancelling`; the SEFAZ answer comes by webhook (`nfe.document.cancelled`, or `nfe.document.cancellation_rejected` with the reason as the SEFAZ wrote it, and the NF-e goes back to `authorized`) and in `GET /invoices/{id}/events`. If the SEFAZ does not answer, the event stays `pending_check` and Corvo checks by the key; the same signed request is the only one ever sent. The legal deadline depends on the state: past it, the SEFAZ rejection is shown as it comes. **Cancelling does not give the credit back** (the NF-e was authorized). Any other state answers `409 NFE_INVALID_STATE`.\n\n**For a NFC-e:** Same as the NF-e, with `nfce.document.cancelled` and `nfce.document.cancellation_rejected`. The state allows a short window after the authorization (30 minutes in SP); past it the SEFAZ refuses, the NFC-e goes back to `authorized` and `lastError` carries the refusal with a `hint`.',
     ok: {
       200: data(ref('InvoiceResponseDto')),
       202: data({ oneOf: [ref('InvoiceResponseDto'), ref('Nfe')] }),
@@ -437,12 +444,21 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'POST /invoices/validate': {
     id: 'invoices_validate',
     tag: 'Invoices',
-    summary: 'Validate an NF-e without sending it (dry-run)',
+    summary: 'Validate an NF-e or NFC-e without sending it (dry-run)',
     description:
-      'Dry-run of `POST /invoices` with `type: "nfe"` (same body): runs the company checks, every validator and the official XSD, and answers `200` with `accessKeyPreview` (the key the next NF-e would get; it changes at each call) or `422` with all the problems at once. Nothing is saved, no credit is used and the SEFAZ is not called. Add `?includeXml=true` to get the preview XML (without a real signature).\n\nA `422` has `type` `validation` (fix the fields in `details`, `NFE_VALIDATION_FAILED`) or `configuration` (complete the company or wait for the release: `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). Answers 404 while NF-e is not released for the workspace.',
+      'Dry-run of `POST /invoices` with `type: "nfe"` (same body): runs the company checks, every validator and the official XSD, and answers `200` with `accessKeyPreview` (the key the next NF-e would get; it changes at each call) or `422` with all the problems at once. Nothing is saved, no credit is used and the SEFAZ is not called. Add `?includeXml=true` to get the preview XML (without a real signature).\n\nA `422` has `type` `validation` (fix the fields in `details`, `NFE_VALIDATION_FAILED`) or `configuration` (complete the company or wait for the release: `COMPANY_NFE_INCOMPLETE`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`). Answers 404 while NF-e is not released for the workspace.\n\n**With `type: "nfce"`:** the same dry-run for a NFC-e (model 65, sale to the final consumer, homologation only): the consumer is optional (the CPF or CNPJ is required from the limit of the state, R$ 10.000,00 by default, and for a delivery sale, `indPres` 4), payments may carry the `card` group, and the preview XML has the QR Code (`infNFeSupl`). Besides `NFE_VALIDATION_FAILED`, the issues can be `NFCE_CONSUMER_ID_REQUIRED`, `NFCE_DELIVERY_ADDRESS_REQUIRED`, `NFCE_IND_PRES_INVALID`, `NFCE_CARD_DATA_REQUIRED`, `NFCE_CARD_BRAND_INVALID`, `NFCE_CARD_NOT_ALLOWED`, `NFCE_NO_PAYMENT_AMOUNT` and `NFCE_SCOPE_NOT_SUPPORTED`. Answers 404 while NFC-e is not released for the workspace.',
     ok: { 200: data(ref('NfeValidation')) },
     errors: [422],
-    requestBody: ref('NfeInvoiceRequest'),
+    requestBody: {
+      oneOf: [ref('NfeInvoiceRequest'), ref('NfceInvoiceRequest')],
+      discriminator: {
+        propertyName: 'type',
+        mapping: {
+          nfe: '#/components/schemas/NfeInvoiceRequest',
+          nfce: '#/components/schemas/NfceInvoiceRequest',
+        },
+      },
+    },
     paramDescriptions: {
       includeXml: 'Send `true` to receive the preview XML in `xml`.',
     },
@@ -485,7 +501,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     tag: 'Invoices',
     summary: 'Send a correction letter (CC-e)',
     description:
-      'Only for an NF-e in `authorized`. The body is the correction (15 to 1000 characters, `422 CORRECTION_LENGTH`); it cannot change values, taxes, the parties or the dates. Each letter takes the next `sequence` (`nSeqEvento`), even if two arrive at once; the 21st answers `422 CORRECTION_LIMIT_REACHED`. Answers `202` with the event in `pending`; the result comes by webhook (`nfe.document.corrected`) and in `GET /invoices/{id}/events`. The newest letter replaces the earlier ones. A letter costs no credit and does not change the state of the NF-e. Any other state answers `409 NFE_INVALID_STATE`.',
+      'Only for an NF-e in `authorized`. The body is the correction (15 to 1000 characters, `422 CORRECTION_LENGTH`); it cannot change values, taxes, the parties or the dates. Each letter takes the next `sequence` (`nSeqEvento`), even if two arrive at once; the 21st answers `422 CORRECTION_LIMIT_REACHED`. Answers `202` with the event in `pending`; the result comes by webhook (`nfe.document.corrected`) and in `GET /invoices/{id}/events`. The newest letter replaces the earlier ones. A letter costs no credit and does not change the state of the NF-e. Any other state answers `409 NFE_INVALID_STATE`. A NFC-e has no correction letter: `422 INVOICE_OPERATION_NOT_SUPPORTED`.',
     ok: { 202: data(ref('NfeEvent')) },
     errors: [409, 422],
     requestBody: ref('CorrectNfe'),
@@ -493,10 +509,10 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'POST /invoices/inutilizations': {
     id: 'invoices_createInutilization',
     tag: 'Invoices',
-    summary: 'Inutilize a range of NF-e numbers',
+    summary: 'Inutilize a range of NF-e or NFC-e numbers',
     idempotent: true,
     description:
-      'Voids the numbers `start` to `end` of a series that will never be used (the numbers of an NF-e that was `discarded`, or skipped). Answers `202` with the request in `pending`; the result comes by webhook (`nfe.inutilization.completed` or `nfe.inutilization.rejected`) and in `GET /invoices/inutilizations?type=nfe`. The range is refused with `409 INUTILIZATION_RANGE_IN_USE` when an NF-e that is not `discarded` holds a number in it, and with `409 INUTILIZATION_RANGE_OVERLAP` when another request, waiting or approved, covers part of it. A range that goes past the last number used raises the numbering to `end`, so the numbers voided are never emitted. The justification has 15 to 255 characters (`422 JUSTIFICATION_LENGTH`). `Idempotency-Key` is optional: repeating it with the same body answers `200` with `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.',
+      'Voids the numbers `start` to `end` of a series that will never be used (the numbers of an NF-e that was `discarded`, or skipped). Answers `202` with the request in `pending`; the result comes by webhook (`nfe.inutilization.completed` or `nfe.inutilization.rejected`) and in `GET /invoices/inutilizations?type=nfe`. The range is refused with `409 INUTILIZATION_RANGE_IN_USE` when an NF-e that is not `discarded` holds a number in it, and with `409 INUTILIZATION_RANGE_OVERLAP` when another request, waiting or approved, covers part of it. A range that goes past the last number used raises the numbering to `end`, so the numbers voided are never emitted. The justification has 15 to 255 characters (`422 JUSTIFICATION_LENGTH`). `Idempotency-Key` is optional: repeating it with the same body answers `200` with `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\n**With `type: "nfce"`:** the same for the numbers of the NFC-e series (model 65, its own numbering); the webhooks are `nfce.inutilization.completed` and `nfce.inutilization.rejected`.',
     ok: {
       200: data(ref('NfeInutilization')),
       202: data(ref('NfeInutilization')),
@@ -508,7 +524,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
         {
           type: 'object',
           required: ['type'],
-          properties: { type: { type: 'string', enum: ['nfe'] } },
+          properties: { type: { type: 'string', enum: ['nfe', 'nfce'] } },
         },
       ],
     },
@@ -516,9 +532,9 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'GET /invoices/inutilizations': {
     id: 'invoices_listInutilizations',
     tag: 'Invoices',
-    summary: 'List NF-e inutilizations',
+    summary: 'List NF-e or NFC-e inutilizations',
     description:
-      'The inutilization requests of the environment of the key, newest first. Filter by `companyId` and `status`.',
+      'The inutilization requests of the environment of the key, newest first. Filter by `companyId` and `status`. `type` picks the model: `nfe` (55) or `nfce` (65).',
     ok: { 200: page(ref('NfeInutilization')) },
     errors: [422],
     extraParams: [
@@ -527,8 +543,8 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
         in: 'query',
         required: true,
         description:
-          'Only `nfe`: inutilizations and number gaps exist only for NF-e.',
-        schema: { type: 'string', enum: ['nfe'] },
+          '`nfe` (model 55) or `nfce` (model 65): inutilizations and number gaps exist only for these.',
+        schema: { type: 'string', enum: ['nfe', 'nfce'] },
       },
       {
         name: 'limit',
@@ -572,8 +588,8 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
         in: 'query',
         required: true,
         description:
-          'Only `nfe`: inutilizations and number gaps exist only for NF-e.',
-        schema: { type: 'string', enum: ['nfe'] },
+          '`nfe` (model 55) or `nfce` (model 65): inutilizations and number gaps exist only for these.',
+        schema: { type: 'string', enum: ['nfe', 'nfce'] },
       },
       {
         name: 'companyId',

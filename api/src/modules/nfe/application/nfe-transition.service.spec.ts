@@ -1,6 +1,6 @@
 import { NfeDocument } from '../domain/nfe-document';
 import { documentParams } from '../testing/document-fixture';
-import { NfeTransitionService } from './nfe-transition.service';
+import { NfeTransitionService, nfeEventName } from './nfe-transition.service';
 
 function build(stored: NfeDocument | null) {
   const calls: string[] = [];
@@ -45,6 +45,20 @@ function build(stored: NfeDocument | null) {
   );
   return { service, documents, ledger, outbox, webhooks, cache, calls };
 }
+
+describe('nfeEventName', () => {
+  it('names the event by model', () => {
+    expect(nfeEventName(55, 'document.authorized')).toBe(
+      'nfe.document.authorized',
+    );
+    expect(nfeEventName(65, 'document.authorized')).toBe(
+      'nfce.document.authorized',
+    );
+    expect(nfeEventName(65, 'inutilization.completed')).toBe(
+      'nfce.inutilization.completed',
+    );
+  });
+});
 
 const keyOf = (doc: NfeDocument) => ({
   id: doc.id,
@@ -95,6 +109,23 @@ describe('NfeTransitionService', () => {
       protocol: '135260000000001',
       protNfeXml: '<protNFe/>',
     });
+  });
+
+  it('a NFC-e (model 65) settles the credit and sends the webhook as nfce', async () => {
+    const doc = NfeDocument.create(documentParams({ model: 65 }));
+    doc.transitionTo('processing');
+    const f = build(doc);
+    await f.service.apply(keyOf(doc), 'authorized', {});
+    expect(f.ledger.settle).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'nfce', id: doc.id }),
+      'processing',
+      'authorized',
+    );
+    expect(f.webhooks.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'nfce', id: doc.id }),
+      'nfce.document.authorized',
+      expect.anything(),
+    );
   });
 
   it('does nothing when the stored state already is the destination (the once-only latch)', async () => {

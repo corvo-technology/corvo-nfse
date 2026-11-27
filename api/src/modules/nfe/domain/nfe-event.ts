@@ -31,6 +31,8 @@ export interface NfeInutilization {
   tenantId: string;
   companyId: string;
   environment: 'test' | 'live';
+  /** 55 NF-e, 65 NFC-e. */
+  model: 55 | 65;
   series: number;
   start: number;
   end: number;

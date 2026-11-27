@@ -3384,15 +3384,15 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         },
         {
           "kind": "text",
-          "body": "Para contas com a NF-e liberada (teste, sem valor fiscal), as ferramentas `nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` e `nfse_download_pdf` aceitam `type`: `nfse` (padrão, nada muda) ou `nfe`. Em `nfse_list`, `type: \"all\"` lista NFS-e e NF-e juntas. Com `type: \"nfe\"` use `invoice_id` (não a chave de acesso). `nfse_issue` com `nfe` exige `company_id`, o objeto `nfe` (o mesmo corpo de `POST /v1/invoices`, sem `companyId`) e `idempotency_key`; `nfse_cancel` usa só `description` como justificativa. A Corvo não calcula imposto: o agente informa CFOP, NCM e CSOSN."
+          "body": "Para contas com a NF-e liberada (teste, sem valor fiscal), as ferramentas `nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` e `nfse_download_pdf` aceitam `type`: `nfse` (padrão, nada muda), `nfe` ou `nfce` (venda ao consumidor, também em teste e com liberação própria). Em `nfse_list`, `type: \"all\"` lista NFS-e, NF-e e NFC-e juntas. Com `type: \"nfce\"` o corpo da NFC-e vai no objeto `nfe` de `nfse_issue` (sem `natOp`, com o CPF do consumidor opcional), e a NFC-e não tem carta de correção e só se cancela em até 30 minutos. Com `type: \"nfe\"` use `invoice_id` (não a chave de acesso). `nfse_issue` com `nfe` exige `company_id`, o objeto `nfe` (o mesmo corpo de `POST /v1/invoices`, sem `companyId`) e `idempotency_key`; `nfse_cancel` usa só `description` como justificativa. A Corvo não calcula imposto: o agente informa CFOP, NCM e CSOSN."
         },
         {
           "kind": "list",
           "items": [
-            "`nfe_validate` (`nfse:write`): teste a seco, devolve os problemas campo a campo e nunca o XML. Rode antes de emitir.",
+            "`nfe_validate` (`nfse:write`): teste a seco, devolve os problemas campo a campo e nunca o XML. Aceita `type` (`nfe` ou `nfce`). Rode antes de emitir.",
             "`nfe_settings_get` (`nfse:read`) e `nfe_settings_update` (`nfse:write`): IE, CRT, série e padrões da empresa, e o que falta para emitir.",
-            "`nfe_correct` (`nfse:write`): carta de correção de uma NF-e autorizada.",
-            "`nfe_number_gaps` (`nfse:read`) e `nfe_inutilize` (`nfse:write`): números pulados e a inutilização de uma faixa (peça a confirmação da pessoa antes).",
+            "`nfe_correct` (`nfse:write`): carta de correção de uma NF-e autorizada (numa NFC-e responde `INVOICE_OPERATION_NOT_SUPPORTED`).",
+            "`nfe_number_gaps` (`nfse:read`) e `nfe_inutilize` (`nfse:write`): números pulados e a inutilização de uma faixa, com `model` 55 (NF-e, padrão) ou 65 (NFC-e); peça a confirmação da pessoa antes de inutilizar. `nfe_settings_update` também grava `nfce_default_series`, a série da NFC-e.",
             "Essas seis só aparecem na lista de ferramentas quando a NF-e está liberada para a conta; cancelar, corrigir e inutilizar exigem papel com `nfe.documents.manage`, e emitir e validar, `nfe.documents.issue`."
           ]
         },

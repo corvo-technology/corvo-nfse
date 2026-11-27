@@ -46,9 +46,12 @@ describePostgres('AddNfeInutilizationIdempotency (up and down)', () => {
   });
 
   it('down removes them and up puts them back', async () => {
-    // The newest migration (send_email, PR 6) sits on top of this one.
-    await h.admin.undoLastMigration({ transaction: 'each' });
-    await h.admin.undoLastMigration({ transaction: 'each' });
+    // Newer migrations (send_email, NFC-e) sit on top of this one: undo until the columns are gone,
+    // so a new migration never breaks the count.
+    for (let undone = 0; undone < 20; undone += 1) {
+      if (!(await columns()).includes('idempotency_key')) break;
+      await h.admin.undoLastMigration({ transaction: 'each' });
+    }
     expect(await columns()).not.toContain('idempotency_key');
     expect(await columns()).not.toContain('request_hash');
     await h.admin.runMigrations();

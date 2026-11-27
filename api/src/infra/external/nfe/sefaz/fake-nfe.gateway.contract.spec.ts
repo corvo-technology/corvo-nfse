@@ -26,6 +26,19 @@ describeGatewayContract('FakeNfeGateway', () => new FakeNfeGateway(), {
   ctx,
 });
 
+describeGatewayContract(
+  'FakeNfeGateway (nfce)',
+  () => new FakeNfeGateway(() => new Date(), 'nfce'),
+  {
+    authorized: nfe('FAKE-100'),
+    rejected: nfe('FAKE-225'),
+    timeout: nfe('FAKE-TIMEOUT'),
+    denied: nfe('FAKE-302'),
+    consultKey: nfe('FAKE-100').accessKey,
+    ctx,
+  },
+);
+
 describe('FakeNfeGateway scenarios', () => {
   const clock = () => new Date('2026-11-26T12:00:00Z');
   const make = () => new FakeNfeGateway(clock);

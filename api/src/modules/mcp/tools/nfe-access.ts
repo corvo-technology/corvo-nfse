@@ -22,6 +22,12 @@ import { missingMemberPermissionMessage } from '../mcp-client-policy';
 export const NFE_NOT_AVAILABLE_MESSAGE =
   'NF-e não está liberada para esta conta. Peça à Corvo para liberar a NF-e (homologação) ou use type "nfse".';
 
+export const NFCE_NOT_AVAILABLE_MESSAGE =
+  'NFC-e não está liberada para esta conta. Peça à Corvo para liberar a NFC-e (homologação) ou use type "nfse" ou "nfe".';
+
+/** The document kinds of the fiscal-core routes that are not NFS-e. */
+export type McpGoodsType = 'nfe' | 'nfce';
+
 /** `{ data: X }` (the HTTP envelope the shared routes answer) back to `X`. */
 export function unwrapData<T>(value: unknown): T {
   if (
@@ -60,9 +66,9 @@ export function describeHttpError(error: unknown): Error {
 }
 
 /**
- * How the MCP tools reach NF-e: the shared `/v1/invoices` routes of the type, behind the same
- * release check (`NFE_ENABLED` + the workspace release) and the same member permission the
- * dashboard and the API keys need.
+ * How the MCP tools reach NF-e and NFC-e: the shared `/v1/invoices` routes of the type, behind the
+ * same release check (`NFE_ENABLED` + the workspace release of that type) and the same member
+ * permission the dashboard and the API keys need (`nfe.documents.*` for both).
  */
 @Injectable()
 export class McpNfe {
@@ -82,9 +88,16 @@ export class McpNfe {
     };
   }
 
-  /** Is NF-e released for the workspace of the connection? (tools/list uses it.) */
-  isEnabled(ctx: AuthContext): Promise<boolean> {
-    return this.access.isEnabled(ctx.activeTenantId);
+  /** Is NF-e (or NFC-e) released for the workspace of the connection? (tools/list uses it.) */
+  isEnabled(ctx: AuthContext, type: McpGoodsType = 'nfe'): Promise<boolean> {
+    return this.access.isEnabled(ctx.activeTenantId, type);
+  }
+
+  /** NF-e or NFC-e: the tools both share are listed when either is released. */
+  async isEnabledAny(ctx: AuthContext): Promise<boolean> {
+    return (
+      (await this.isEnabled(ctx, 'nfe')) || (await this.isEnabled(ctx, 'nfce'))
+    );
   }
 
   /** The role may have changed since the person authorized the connection. */
@@ -105,35 +118,49 @@ export class McpNfe {
   private async assertAllowed(
     ctx: AuthContext,
     permission: TenantPermission,
+    type?: McpGoodsType,
   ): Promise<void> {
-    if (!(await this.isEnabled(ctx)))
-      throw new Error(NFE_NOT_AVAILABLE_MESSAGE);
+    const released = type
+      ? await this.isEnabled(ctx, type)
+      : await this.isEnabledAny(ctx);
+    if (!released)
+      throw new Error(
+        type === 'nfce'
+          ? NFCE_NOT_AVAILABLE_MESSAGE
+          : NFE_NOT_AVAILABLE_MESSAGE,
+      );
     if (!(await this.hasPermission(ctx, permission)))
       throw new Error(missingMemberPermissionMessage(permission));
   }
 
-  /** The NF-e routes, after the release and the member permission were checked. */
+  /** The routes of the type, after the release and the member permission were checked. */
   async routes(
     ctx: AuthContext,
     permission: TenantPermission,
+    type: McpGoodsType = 'nfe',
   ): Promise<InvoiceRoutes> {
-    await this.assertAllowed(ctx, permission);
+    await this.assertAllowed(ctx, permission, type);
     try {
-      return await this.router.forType('nfe', this.call(ctx), permission);
+      return await this.router.forType(type, this.call(ctx), permission);
     } catch (error) {
       if (error instanceof NotFoundException)
-        throw new Error(NFE_NOT_AVAILABLE_MESSAGE);
+        throw new Error(
+          type === 'nfce'
+            ? NFCE_NOT_AVAILABLE_MESSAGE
+            : NFE_NOT_AVAILABLE_MESSAGE,
+        );
       throw describeHttpError(error);
     }
   }
 
-  /** Runs one call on the NF-e routes and turns HTTP errors into readable messages. */
+  /** Runs one call on the routes of the type and turns HTTP errors into readable messages. */
   async run<T>(
     ctx: AuthContext,
     permission: TenantPermission,
     work: (routes: InvoiceRoutes, call: InvoiceCall) => Promise<unknown>,
+    type: McpGoodsType = 'nfe',
   ): Promise<T> {
-    const routes = await this.routes(ctx, permission);
+    const routes = await this.routes(ctx, permission, type);
     try {
       return unwrapData<T>(await work(routes, this.call(ctx)));
     } catch (error) {
@@ -141,10 +168,35 @@ export class McpNfe {
     }
   }
 
-  /** NFS-e and NF-e in one list; NF-e only when released and the member may read it. */
+  /**
+   * Runs one call on the routes of the document that has this id (an NF-e or a NFC-e), so an
+   * operation one of them does not have answers with the API's own error.
+   */
+  async runOwned<T>(
+    ctx: AuthContext,
+    permission: TenantPermission,
+    id: string,
+    work: (routes: InvoiceRoutes, call: InvoiceCall) => Promise<unknown>,
+  ): Promise<T> {
+    await this.assertAllowed(ctx, permission);
+    try {
+      const call = this.call(ctx);
+      const routes = await this.router.owner(id, call, permission);
+      if (!routes)
+        throw new NotFoundException({
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Resource not found',
+        });
+      return unwrapData<T>(await work(routes, call));
+    } catch (error) {
+      throw describeHttpError(error);
+    }
+  }
+
+  /** NFS-e, NF-e and NFC-e in one list; the last two only when released and the member may read them. */
   async summaries(ctx: AuthContext, query: Omit<InvoiceSummaryQuery, 'types'>) {
     const withNfe =
-      (await this.isEnabled(ctx)) &&
+      (await this.isEnabledAny(ctx)) &&
       (await this.hasPermission(ctx, 'nfe.documents.view'));
     try {
       if (withNfe)

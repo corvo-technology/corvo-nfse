@@ -51,20 +51,23 @@ function violations(files: string[], forbidden: RegExp): string[] {
 }
 
 describe('fiscal architecture boundaries', () => {
-  it('fiscal-core does not import invoice or nfe', () => {
+  it('fiscal-core does not import invoice, nfe or nfce', () => {
     const files = production('modules/fiscal-core');
     expect(files.length).toBeGreaterThan(0);
     expect(
       violations(
         files,
-        /^(@\/modules\/(invoice|nfe)(\/|$)|(\.\.\/)+(invoice|nfe)(\/|$))/,
+        /^(@\/modules\/(invoice|nfe|nfce)(\/|$)|(\.\.\/)+(invoice|nfe|nfce)(\/|$))/,
       ),
     ).toEqual([]);
   });
 
-  it('nfe domain does not import infra', () => {
+  it('nfe and nfce domains do not import infra', () => {
     expect(
       violations(production('modules/nfe/domain'), /^@\/infra(\/|$)/),
+    ).toEqual([]);
+    expect(
+      violations(production('modules/nfce/domain'), /^@\/infra(\/|$)/),
     ).toEqual([]);
   });
 

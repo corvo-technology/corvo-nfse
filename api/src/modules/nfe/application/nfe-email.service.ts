@@ -1,5 +1,8 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { nfeAuthorizedEmail } from '@/infra/external/email/email-templates';
+import {
+  nfceAuthorizedEmail,
+  nfeAuthorizedEmail,
+} from '@/infra/external/email/email-templates';
 import {
   MillionSendEmailProvider,
   PermanentEmailError,
@@ -15,16 +18,21 @@ import type { ExecutionEnvironment } from '@/shared/domain/execution-environment
 import { formatBrl } from '@/shared/utils/currency';
 import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
-import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
+import { DANFCE_FILE, DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 import { keyOf } from './nfe-outcome.service';
-import { NfeTransitionService } from './nfe-transition.service';
+import {
+  NfeTransitionService,
+  documentTypeOf,
+  nfeEventName,
+} from './nfe-transition.service';
 
 const dateBr = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo',
 });
 
 /**
- * The e-mail of an authorized NF-e to its recipient: the `nfeProc` and the DANFE attached, in the
+ * The e-mail of an authorized NF-e or NFC-e to its recipient: the `nfeProc` and the DANFE (the
+ * DANFCE, for a NFC-e: only when the consumer gave an address) attached, in the
  * same pipeline and template format as the NFS-e one (`[TESTE]` in the subject for a test
  * company). Runs once per NF-e (its outbox message has a dedupe key and the provider call an
  * idempotency key). The recipient's address and the XML never go to a log.
@@ -63,7 +71,7 @@ export class NfeEmailService {
     const s = doc.toSnapshot();
     // Never after a cancellation; a second delivery of the message finds it already sent.
     if (s.status !== 'authorized' || s.emailStatus === 'sent') return;
-    const to = s.recipient.email;
+    const to = s.recipient?.email;
     if (!to || !s.documentsReadyAt) return;
 
     try {
@@ -71,11 +79,14 @@ export class NfeEmailService {
       await this.transitions.touch(keyOf(doc), {
         change: (locked) => locked.recordEmail('sent', sentAt),
       });
-      await this.publish(doc, 'nfe.document.email_sent', {
+      await this.publish(doc, 'document.email_sent', {
         emailStatus: 'sent',
         sentAt: sentAt.toISOString(),
       });
-      this.logger.log({ documentId }, 'NF-e e-mail sent');
+      this.logger.log(
+        { documentId },
+        `${doc.toSnapshot().model === 65 ? 'NFC-e' : 'NF-e'} e-mail sent`,
+      );
     } catch (error: unknown) {
       if (!(error instanceof PermanentEmailError) && !lastAttempt) throw error;
       this.logger.warn(
@@ -85,7 +96,7 @@ export class NfeEmailService {
       await this.transitions.touch(keyOf(doc), {
         change: (locked) => locked.recordEmail('failed'),
       });
-      await this.publish(doc, 'nfe.document.email_failed', {
+      await this.publish(doc, 'document.email_failed', {
         emailStatus: 'failed',
       });
     }
@@ -100,9 +111,10 @@ export class NfeEmailService {
       tenantId: doc.tenantId,
       environment: doc.environment,
     };
+    const isNfce = s.model === 65;
     const [xml, pdf] = await Promise.all([
       this.storage.getFile(ref, NFE_PROC_FILE),
-      this.storage.getFile(ref, DANFE_FILE),
+      this.storage.getFile(ref, isNfce ? DANFCE_FILE : DANFE_FILE),
     ]);
     const company = await this.companies.findByIdAndTenantId(
       s.companyId,
@@ -111,9 +123,10 @@ export class NfeEmailService {
     );
     if (!company) throw new Error('NF-e company not found');
     const number = String(s.number ?? '');
-    const { subject, html, text } = nfeAuthorizedEmail({
+    const template = isNfce ? nfceAuthorizedEmail : nfeAuthorizedEmail;
+    const { subject, html, text } = template({
       companyName: company.tradeName ?? company.legalName,
-      customerName: s.recipient.name,
+      customerName: s.recipient?.name ?? '',
       amount: formatBrl(Number(s.totals.vNF)),
       number,
       series: String(s.series ?? ''),
@@ -128,36 +141,36 @@ export class NfeEmailService {
       text,
       attachments: [
         {
-          filename: `nfe-${number}.xml`,
+          filename: `${isNfce ? 'nfce' : 'nfe'}-${number}.xml`,
           content: xml,
           contentType: 'application/xml',
         },
         {
-          filename: `danfe-${number}.pdf`,
+          filename: `${isNfce ? 'danfce' : 'danfe'}-${number}.pdf`,
           content: pdf,
           contentType: 'application/pdf',
         },
       ],
-      idempotencyKey: `nfe-email-${doc.id}`,
+      idempotencyKey: `${isNfce ? 'nfce' : 'nfe'}-email-${doc.id}`,
     });
     return new Date();
   }
 
   private publish(
     doc: NfeDocument,
-    type: 'nfe.document.email_sent' | 'nfe.document.email_failed',
+    suffix: 'document.email_sent' | 'document.email_failed',
     extra: Record<string, unknown>,
   ): Promise<void> {
     const s = doc.toSnapshot();
     return this.webhooks.publish(
       {
-        type: 'nfe',
+        type: documentTypeOf(s.model),
         id: s.id,
         tenantId: s.tenantId,
         environment: s.environment,
         companyId: s.companyId,
       },
-      type,
+      nfeEventName(s.model, suffix),
       {
         status: s.status,
         accessKey: s.accessKey,

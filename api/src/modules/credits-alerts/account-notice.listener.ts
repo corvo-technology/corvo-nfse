@@ -21,6 +21,7 @@ import {
   invoiceBlockedOnPortalEmail,
   invoiceCancelledOnPortalEmail,
   invoiceRejectedByTakerEmail,
+  nfceContingencyDeadlineEmail,
   creditsAddedEmail,
   creditsExhaustedEmail,
   memberInvitedEmail,
@@ -291,6 +292,19 @@ export class AccountNoticeListener {
           invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
         });
         to = await this.recipients.emailsFor(tenantId);
+        break;
+      }
+      case 'nfce-contingency-deadline': {
+        if (
+          !(await this.once(`nfce:deadline:${notice.documentId}`, 3 * DAY_MS))
+        )
+          return;
+        message = nfceContingencyDeadlineEmail({
+          number: notice.number,
+          deadline: `${notice.deadlineAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (Brasília)`,
+          documentUrl: this.page(`nfe/${notice.documentId}`),
+        });
+        to = await this.recipients.ownerEmailsFor(tenantId);
         break;
       }
       case 'invoice-blocked-on-portal': {

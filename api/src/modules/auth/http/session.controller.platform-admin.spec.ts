@@ -20,7 +20,7 @@ const context = {
   permissions: [],
 };
 
-function build(isAdmin: boolean, nfe = false) {
+function build(isAdmin: boolean, nfe = false, nfce = false) {
   const sessions = {
     generateCsrfToken: jest.fn().mockReturnValue('csrf'),
     switchTenant: jest.fn().mockResolvedValue(session),
@@ -32,7 +32,11 @@ function build(isAdmin: boolean, nfe = false) {
   const policy = {
     resolve: jest.fn().mockResolvedValue({ isAdmin, email: 'a@x.com' }),
   };
-  const nfeAccess = { isEnabled: jest.fn().mockResolvedValue(nfe) };
+  const nfeAccess = {
+    isEnabled: jest.fn((_tenant: string, type: 'nfe' | 'nfce' = 'nfe') =>
+      Promise.resolve(type === 'nfce' ? nfce : nfe),
+    ),
+  };
   const controller = new SessionController(
     sessions as unknown as CookieSessionService,
     contexts as unknown as AuthContextService,
@@ -71,13 +75,21 @@ describe('SessionController platform admin flag', () => {
     const on = build(false, true);
     expect((await on.controller.getSession(req)).data.features).toEqual({
       nfe: true,
+      nfce: false,
     });
     expect(on.nfeAccess.isEnabled).toHaveBeenCalledWith('t1');
     const off = build(false, false);
     expect((await off.controller.getSession(req)).data.features).toEqual({
       nfe: false,
+      nfce: false,
     });
+    const both = build(false, true, true);
+    expect((await both.controller.getSession(req)).data.features).toEqual({
+      nfe: true,
+      nfce: true,
+    });
+    expect(both.nfeAccess.isEnabled).toHaveBeenCalledWith('t1', 'nfce');
     const switched = await on.controller.switchTenant(req, { tenantId: 't1' });
-    expect(switched.data.features).toEqual({ nfe: true });
+    expect(switched.data.features).toEqual({ nfe: true, nfce: false });
   });
 });

@@ -79,7 +79,7 @@ export function mcpInstructions(selfHosted: boolean): string {
   }
   lines.push(
     'If an invoice is in manual_review, explain it to the person and suggest nfse_review with retry; use discard only after the person explicitly confirms.',
-    'NF-e (goods, model 55) is only for accounts where it was released, in homologação only. There the shared tools take type "nfe" (nfse_issue, nfse_list, nfse_get, nfse_cancel, nfse_review, nfse_get_download_url, nfse_download_pdf; type "all" in nfse_list). Fill the company with nfe_settings_update, always run nfe_validate before nfse_issue with type "nfe", and use nfe_correct, nfe_number_gaps and nfe_inutilize for the rest. Corvo does not calculate taxes: the person informs CFOP, NCM and CSOSN.',
+    'NF-e (goods, model 55) and NFC-e (sale to the consumer, model 65) are only for accounts where each was released, in homologação only. There the shared tools take type "nfe" or "nfce" (nfse_issue, nfse_list, nfse_get, nfse_cancel, nfse_review, nfse_get_download_url, nfse_download_pdf; type "all" in nfse_list). Fill the company with nfe_settings_update, always run nfe_validate (with type "nfe" or "nfce") before nfse_issue, and use nfe_correct (NF-e only: the NFC-e has no correction letter), nfe_number_gaps and nfe_inutilize (model 55 or 65) for the rest. A NFC-e can be cancelled within 30 minutes of the authorization. Corvo does not calculate taxes: the person informs CFOP, NCM and CSOSN.',
     'If the person asks whether their system got a notice (webhook), use webhook_deliveries_list with the invoice_id; for a failed one, offer webhook_delivery_retry.',
     'If a tool says it lacks permission, ask the person to reconnect and tick that option when authorizing.',
   );

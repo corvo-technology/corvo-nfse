@@ -15,7 +15,7 @@ const sources = (dir: string): string[] => readdirSync(dir, { withFileTypes: tru
   return entry.isDirectory() ? sources(path) : /\.tsx?$/.test(entry.name) ? [path] : [];
 });
 /** Path pieces that are one of a few fixed words rather than an id. */
-const WORDS: Record<string, string[]> = { direction: ["upgrade", "downgrade"], kind: ["xml", "pdf"] };
+const WORDS: Record<string, string[]> = { direction: ["upgrade", "downgrade"], kind: ["xml", "pdf"], "idPath(uf)": ["SP"], tpAmb: ["1", "2"] };
 const ID = "12345678901234"; // satisfies [^/]+, \d+ and the 14-character CNPJ pattern alike
 
 /** The text between the call's parentheses, skipping strings and `${...}` so nested brackets balance. */

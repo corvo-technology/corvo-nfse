@@ -71,6 +71,7 @@ import {
   SubstituteInvoiceDto,
   CreateInvoiceDto,
   GetDownloadUrlDto,
+  InvoicePdfQuery,
   ListInvoicesQuery,
   RequestInvoiceEmailDto,
 } from './invoice.dto';
@@ -151,10 +152,11 @@ export class InvoiceController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    if ((dto as { type?: string }).type === 'nfe' && this.types) {
-      // The validation pipe let it through untouched: the NF-e validates its own body.
+    const bodyType = (dto as { type?: string }).type;
+    if ((bodyType === 'nfe' || bodyType === 'nfce') && this.types) {
+      // The validation pipe let it through untouched: NF-e and NFC-e validate their own body.
       const call = this.callOf(req);
-      const routes = await this.types.forType('nfe', call, ISSUE.nfe);
+      const routes = await this.types.forType(bodyType, call, ISSUE.nfe);
       return routes.create(dto, idempotencyKey, call, res!);
     }
     this.types?.assertNfse(this.callOf(req), ISSUE);
@@ -269,11 +271,14 @@ export class InvoiceController {
     @Query() query: ListInvoicesQuery,
     @Req() req: RequestWithAuthContext,
   ) {
-    if (this.types && (query.type === 'nfe' || query.type === 'all')) {
+    if (
+      this.types &&
+      (query.type === 'nfe' || query.type === 'nfce' || query.type === 'all')
+    ) {
       const call = this.callOf(req);
       const raw = { ...query } as Record<string, unknown>;
-      if (query.type === 'nfe')
-        return (await this.types.forType('nfe', call, VIEW.nfe)).list(
+      if (query.type === 'nfe' || query.type === 'nfce')
+        return (await this.types.forType(query.type, call, VIEW.nfe)).list(
           raw,
           call,
         );
@@ -375,13 +380,14 @@ export class InvoiceController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
     @Res({ passthrough: true }) res: Response,
+    @Query() query: InvoicePdfQuery,
   ): Promise<StreamableFile> {
     return this.byId(
       id,
       req,
       VIEW,
       () => this.nfsePdf(id, req, res),
-      (routes, call) => routes.pdf(id, call, res),
+      (routes, call) => routes.pdf(id, call, res, { layout: query.layout }),
     );
   }
 
