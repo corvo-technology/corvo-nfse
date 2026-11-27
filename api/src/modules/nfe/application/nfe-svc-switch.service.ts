@@ -22,6 +22,11 @@ export const SEFAZ_STATUS = Symbol('SEFAZ_STATUS');
 
 export type SvcSwitchResult = 'entered' | 'exited' | 'unchanged';
 
+/** Consecutive minutes of `authority_down` before a UF enters the SVC (one bad probe is noise). */
+export const ENTER_AFTER = 3;
+/** Consecutive healthy minutes (breaker closed, origin answering) before a UF leaves the SVC. */
+export const LEAVE_AFTER = 3;
+
 const environmentOf = (tpAmb: 1 | 2): ExecutionEnvironment =>
   tpAmb === 1 ? 'live' : 'test';
 
@@ -37,6 +42,9 @@ const environmentOf = (tpAmb: 1 | 2): ExecutionEnvironment =>
 @Injectable()
 export class NfeSvcSwitchService {
   private readonly logger = new Logger(NfeSvcSwitchService.name);
+
+  /** Consecutive evaluations that went the same way, per `uf-tpAmb` (memory of this process). */
+  private readonly streaks = new Map<string, number>();
 
   constructor(
     private readonly states: TypeormNfeContingencyStates,
@@ -60,8 +68,17 @@ export class NfeSvcSwitchService {
     });
     const advice = adviseContingency(origin);
 
+    const key = `${uf}-${tpAmb}`;
+    // Counts only the evaluations that point the same way as the current state wants to change.
+    const streak = (agrees: boolean): number => {
+      const next = agrees ? (this.streaks.get(key) ?? 0) + 1 : 0;
+      this.streaks.set(key, next);
+      return next;
+    };
+
     if (current.mode === 'none') {
-      if (advice !== 'authority_down') return 'unchanged';
+      // "Unknown" (no probe, not enough signal) is `normal` here: it never counts as down.
+      if (streak(advice === 'authority_down') < ENTER_AFTER) return 'unchanged';
       const svc = await this.reader.situation({
         authority: nfeBreakerAuthority(info.svc, tpAmb),
         environment,
@@ -77,6 +94,7 @@ export class NfeSvcSwitchService {
         now,
       );
       if (!won) return 'unchanged';
+      this.streaks.delete(key);
       this.logger.warn(
         { uf, tpAmb, authority: info.svc },
         'NF-e entered the SVC',
@@ -90,9 +108,29 @@ export class NfeSvcSwitchService {
       return 'entered';
     }
 
-    if (advice !== 'normal') return 'unchanged';
-    if (!(await this.status.isUp(uf, tpAmb, 1))) return 'unchanged';
+    const healthy =
+      advice === 'normal' && (await this.status.isUp(uf, tpAmb, 1));
+    if (streak(healthy) < LEAVE_AFTER) return 'unchanged';
+    this.streaks.delete(key);
     return this.leave(uf, tpAmb, now);
+  }
+
+  /**
+   * Leaves the SVC with no webhook and no e-mail: for a UF no company uses any more, so nobody
+   * needs to hear about it (it was entered on a probe nobody depended on).
+   */
+  async clearSilently(
+    uf: Uf,
+    tpAmb: 1 | 2,
+    now: Date = new Date(),
+  ): Promise<boolean> {
+    this.streaks.delete(`${uf}-${tpAmb}`);
+    if (!(await this.states.exit(uf, tpAmb, now))) return false;
+    this.logger.warn(
+      { uf, tpAmb },
+      'NF-e SVC cleared: no company uses this UF and environment',
+    );
+    return true;
   }
 
   /** The platform admin's button: leaves the SVC even if the origin does not look healthy yet. */

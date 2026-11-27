@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '@/infra/redis/redis.constants';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { EmailService } from '@/modules/email/application/email.service';
 import { FiscalWebhookPublisher } from '@/modules/fiscal-core/application/fiscal-webhook.publisher';
@@ -11,6 +13,9 @@ import {
   svcExitedEmail,
   type SvcEmailInput,
 } from './nfe-svc.email';
+
+/** Never e-mail the same kind of SVC change for the same UF and environment more often than this. */
+export const MAIL_COOLDOWN_MS = 30 * 60_000;
 
 export interface SvcTransition {
   uf: Uf;
@@ -36,6 +41,7 @@ export class NfeSvcAnnouncer {
     private readonly webhooks: FiscalWebhookPublisher,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   async entered(change: SvcTransition): Promise<void> {
@@ -88,11 +94,33 @@ export class NfeSvcAnnouncer {
     }
   }
 
+  /** At most one e-mail of each kind per UF and environment in `MAIL_COOLDOWN_MS`. */
+  private async mailAllowed(
+    event: 'entered' | 'exited',
+    change: SvcTransition,
+  ): Promise<boolean> {
+    try {
+      const key = `ops:nfe-svc-mail:${change.uf}:${change.tpAmb}:${event}`;
+      const set = await this.redis.set(key, '1', 'PX', MAIL_COOLDOWN_MS, 'NX');
+      return set === 'OK';
+    } catch {
+      // Redis down: better one repeated e-mail than a lost alert.
+      return true;
+    }
+  }
+
   private async mail(
     rendered: ReturnType<typeof svcEnteredEmail>,
     event: 'entered' | 'exited',
     change: SvcTransition,
   ): Promise<void> {
+    if (change.by === undefined && !(await this.mailAllowed(event, change))) {
+      this.logger.log(
+        { uf: change.uf, tpAmb: change.tpAmb, event },
+        'SVC e-mail skipped: already sent in the last 30 minutes',
+      );
+      return;
+    }
     const recipients = opsAlertEmails(
       this.config.get<string>('OPS_ALERT_EMAILS'),
     );
