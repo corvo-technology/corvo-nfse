@@ -47,6 +47,7 @@ function probeTls(host: string): Promise<string> {
       port: 443,
       servername: host,
       // Reachability only: the ICP-Brasil chain is not in Node's default store, and nothing is sent.
+      // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification -- manual script: alcançabilidade apenas, nada é enviado
       rejectUnauthorized: false,
       timeout: TIMEOUT_MS,
     });
