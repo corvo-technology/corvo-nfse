@@ -29,7 +29,7 @@ export type EnqueueOptions = {
   delayMs?: number;
   idempotencyKey?: string;
   removeOnComplete?: boolean;
-  removeOnFail?: number;
+  removeOnFail?: number | boolean;
   priority?: number;
   jobId?: string;
 };
