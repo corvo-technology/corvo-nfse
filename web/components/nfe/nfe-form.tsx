@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
@@ -108,31 +109,31 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
       {banner && <p role="alert" className="banner banner-danger">{banner}</p>}
       {preview && <p role="status" className="banner banner-ok">{t("validOk", { key: preview })}</p>}
 
-      <Card className="grid gap-4 p-5 sm:grid-cols-2">
+      <Card className="grid items-start gap-4 p-5 sm:grid-cols-2">
         <h2 className="font-medium sm:col-span-2">{t("issuer")}</h2>
         <Field label={t("company")} error={err("companyId")} required>
           {(c) => (
-            <select {...c} className="field" value={form.companyId} disabled={resubmitId !== undefined} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
+            <Select {...c} value={form.companyId} disabled={resubmitId !== undefined} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
               <option value="">{t("companyChoose")}</option>
               {companies.map((company) => <option key={company.id} value={company.id}>{company.tradeName || company.legalName}</option>)}
-            </select>
+            </Select>
           )}
         </Field>
         <Field label={t("natOp")} hint={t("natOpHint")} error={err("natOp")}>{(c) => <Input {...c} maxLength={60} placeholder={settings?.defaultNatOp ?? t("natOpPlaceholder")} value={form.natOp} onChange={(e) => setForm({ ...form, natOp: e.target.value })} />}</Field>
       </Card>
 
-      <Card className="grid gap-4 p-5 sm:grid-cols-6">
+      <Card className="grid items-start gap-4 p-5 sm:grid-cols-6">
         <h2 className="font-medium sm:col-span-6">{t("recipient")}</h2>
         <Field className="sm:col-span-3" label={t("taxId")} hint={t("taxIdHint")} error={err("recipient.taxId")} required>{(c) => <Input {...c} inputMode="text" autoComplete="off" placeholder={t("taxIdPlaceholder")} value={form.recipient.taxId} onChange={(e) => setRecipient({ taxId: maskTaxId(e.target.value) })} />}</Field>
         <Field className="sm:col-span-3" label={t("name")} error={err("recipient.name")} required>{(c) => <Input {...c} maxLength={60} placeholder={t("namePlaceholder")} value={form.recipient.name} onChange={(e) => setRecipient({ name: e.target.value })} />}</Field>
         {autofilled && <p role="status" className="text-[12.5px] text-text-3 sm:col-span-6">{t(`autofilled.${autofilled}`)}</p>}
         <Field className="sm:col-span-3" label={t("indIeDest")} hint={t("indIeDestHint")} error={err("recipient.indIeDest")} required>
           {(c) => (
-            <select {...c} className="field" value={form.recipient.indIeDest} onChange={(e) => setRecipient({ indIeDest: e.target.value as "1" | "2" | "9" })}>
+            <Select {...c} value={form.recipient.indIeDest} onChange={(e) => setRecipient({ indIeDest: e.target.value as "1" | "2" | "9" })}>
               <option value="9">{t("ie9")}</option>
               <option value="1">{t("ie1")}</option>
               <option value="2">{t("ie2")}</option>
-            </select>
+            </Select>
           )}
         </Field>
         {form.recipient.indIeDest === "1" && <Field className="sm:col-span-3" label={t("stateRegistration")} error={err("recipient.stateRegistration")} required>{(c) => <Input {...c} autoComplete="off" placeholder={t("stateRegistrationPlaceholder", { example: ieExample(form.recipient.state) })} value={form.recipient.stateRegistration} onChange={(e) => setRecipient({ stateRegistration: e.target.value })} />}</Field>}
@@ -161,16 +162,16 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("payments.title")}</h2>
         {form.payments.map((payment, index) => (
-          <div key={index} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <div key={index} className="grid items-start gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <Field label={t("payments.means")} error={err(`payments[${index}].tPag`)}>
               {(c) => (
-                <select {...c} className="field" value={payment.tPag} onChange={(e) => setForm({ ...form, payments: form.payments.map((p, i) => (i === index ? { ...p, tPag: e.target.value } : p)) })}>
+                <Select {...c} value={payment.tPag} onChange={(e) => setForm({ ...form, payments: form.payments.map((p, i) => (i === index ? { ...p, tPag: e.target.value } : p)) })}>
                   {PAYMENT_MEANS.map((means) => <option key={means} value={means}>{tPay(means)}</option>)}
-                </select>
+                </Select>
               )}
             </Field>
             <Field label={t("payments.amount")} hint={index === 0 && !payTouched ? t("payments.amountAuto") : undefined} error={err(`payments[${index}].amount`)} required>{(c) => <Input {...c} inputMode="decimal" placeholder="0,00" value={payment.amount} onChange={(e) => { setPayTouched(true); setForm({ ...form, payments: form.payments.map((p, i) => (i === index ? { ...p, amount: maskCurrency(e.target.value) } : p)) }); }} />}</Field>
-            {form.payments.length > 1 && <Button variant="ghost" onClick={() => { setPayTouched(true); setForm({ ...form, payments: form.payments.filter((_, i) => i !== index) }); }} aria-label={t("payments.remove", { number: index + 1 })}><Trash2 size={14} aria-hidden /></Button>}
+            {form.payments.length > 1 && <Button variant="ghost" className="sm:mt-[26px]" onClick={() => { setPayTouched(true); setForm({ ...form, payments: form.payments.filter((_, i) => i !== index) }); }} aria-label={t("payments.remove", { number: index + 1 })}><Trash2 size={14} aria-hidden /></Button>}
           </div>
         ))}
         <div><Button variant="secondary" onClick={() => { setPayTouched(true); setForm({ ...form, payments: [...form.payments, emptyPayment()] }); }}><Plus size={14} aria-hidden />{t("payments.add")}</Button></div>

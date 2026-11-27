@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, ListChecks, Package, Plus } from "lucide-react";
@@ -80,26 +81,26 @@ export default function NfeListPage() {
         {nfceReleased && (
           <label className="flex items-center gap-2 text-sm text-text-3">
             <span>{t("filters.model")}</span>
-            <select value={model} onChange={(event) => setModel(event.target.value as NfeKind | "all")} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+            <Select value={model} onChange={(event) => setModel(event.target.value as NfeKind | "all")}>
               <option value="nfe">NF-e</option>
               <option value="nfce">NFC-e</option>
               <option value="all">{t("filters.allModels")}</option>
-            </select>
+            </Select>
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-text-3">
           <span>{t("filters.company")}</span>
-          <select value={companyId} onChange={(event) => setCompanyId(event.target.value)} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+          <Select value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
             <option value="">{t("filters.allCompanies")}</option>
             {companies.map((company) => <option key={company.id} value={company.id}>{company.tradeName || company.legalName}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="flex items-center gap-2 text-sm text-text-3">
           <span>{t("filters.status")}</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as NfeStatus | "")} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+          <Select value={status} onChange={(event) => setStatus(event.target.value as NfeStatus | "")}>
             <option value="">{t("filters.allStatuses")}</option>
             {NFE_STATUSES.map((value) => <option key={value} value={value}>{t(`status.${value}`)}</option>)}
-          </select>
+          </Select>
         </label>
       </div>
       <Card className="overflow-hidden" aria-live="polite">

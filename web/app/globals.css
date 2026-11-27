@@ -275,6 +275,20 @@ html {
   .field[aria-invalid="true"] {
     border-color: var(--danger);
   }
+  .field:disabled,
+  .field[readonly] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  textarea.field {
+    min-height: 84px;
+    line-height: 1.5;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--accent);
+    color-scheme: dark;
+  }
   select.field {
     color-scheme: dark;
     cursor: pointer;

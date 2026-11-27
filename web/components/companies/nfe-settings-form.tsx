@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
@@ -93,7 +94,7 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
           <ul className="list-disc pl-5">{missing.map((field) => <li key={field}>{t.has(`missing.${field}`) ? t(`missing.${field}`) : field}</li>)}</ul>
         </div>
       )}
-      <form noValidate onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+      <form noValidate onSubmit={save} className="grid items-start gap-4 sm:grid-cols-2">
         <Field label={t("stateRegistration")} hint={t("stateRegistrationHint")} error={ieError ?? undefined} required>
           {(control) => <Input {...control} value={stateRegistration} disabled={!canManage} inputMode="numeric" autoComplete="off" placeholder={t("stateRegistrationPlaceholder", { example: ieExample(uf) })} onChange={(event) => setStateRegistration(event.target.value)} />}
         </Field>
@@ -124,10 +125,10 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
         </Field>
         <Field label={t("csosn")} hint={t("csosnHint")}>
           {(control) => (
-            <select {...control} className="field" value={csosn} disabled={!canManage} onChange={(event) => setCsosn(event.target.value as "102" | "400")}>
+            <Select {...control} value={csosn} disabled={!canManage} onChange={(event) => setCsosn(event.target.value as "102" | "400")}>
               <option value="102">{t("csosn102")}</option>
               <option value="400">{t("csosn400")}</option>
-            </select>
+            </Select>
           )}
         </Field>
         <div className="flex flex-col justify-end gap-2 sm:col-span-2">
