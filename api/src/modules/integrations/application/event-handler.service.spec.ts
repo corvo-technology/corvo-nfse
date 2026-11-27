@@ -160,6 +160,37 @@ describe('EventHandlerService with an event that only names the original payment
     );
   });
 
+  it('still finds a sale whose buyer and raw data were erased by the retention job', async () => {
+    // The shape notice-retention.ts leaves behind: references, state, dates and amount stay.
+    const erasedSale = {
+      ...sale,
+      customer: null,
+      description: undefined,
+      items: [{ externalProductId: 'prod-1', description: null, quantity: 1 }],
+      erased: true,
+    } as NormalizedOperation;
+    const { handler, operations, emitter } = setup(
+      jest.fn().mockResolvedValue(refund),
+    );
+    const original = await operations.upsertFromNormalized({
+      tenantId: TENANT,
+      connectionId: 'c1',
+      provider: 'fake',
+      environment: 'test',
+      externalAccountId: 'acc',
+      normalized: erasedSale,
+    });
+    await handler.handle(event);
+    expect(operations.rows.size).toBe(1);
+    const stored = operations.rows.get(original.id)!;
+    expect(stored.commercialState).toBe('refunded');
+    expect(stored.operationKey).toBe('charge:pedido-123');
+    expect(stored.snapshot.items).toEqual(erasedSale.items);
+    expect(emitter.run).toHaveBeenCalledWith(
+      expect.objectContaining({ id: original.id }),
+    );
+  });
+
   it('a refund for a payment the sale list does not know is ignored, saying why, and creates nothing', async () => {
     const { handler, operations, emitter } = setup(
       jest.fn().mockResolvedValue(refund),

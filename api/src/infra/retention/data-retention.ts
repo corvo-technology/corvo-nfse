@@ -9,12 +9,17 @@ export const RETENTION_MAX_BATCHES = 200;
  * One purge rule: the rows of `table` that match `where` are old enough to go.
  * `where` is trusted SQL written in code (never user input); `params` fill its $1, $2...
  * The table must have an `id` column.
+ *
+ * With `erase` the rows are kept and only that SQL assignment list runs on them (for example
+ * `payload = NULL`), so the row, its keys and its metadata stay. Then `where` must stop matching a row
+ * once it was erased, or the rule would count and rewrite the same rows every night.
  */
 export interface RetentionRule {
   table: string;
   rule: string;
   where: string;
   params: unknown[];
+  erase?: string;
 }
 
 export interface RetentionOutcome {
@@ -23,6 +28,7 @@ export interface RetentionOutcome {
   dryRun: boolean;
   /** Rows that matched when the rule started. */
   matched: number;
+  /** Rows deleted, or erased when the rule has `erase`. */
   deleted: number;
   durationMs: number;
 }
@@ -51,9 +57,12 @@ export async function runRetentionRule(
   let deleted = 0;
   if (enabled && matched > 0) {
     const limitParam = `$${rule.params.length + 1}`;
+    const action = rule.erase
+      ? `UPDATE ${rule.table} SET ${rule.erase}`
+      : `DELETE FROM ${rule.table}`;
     for (let batch = 0; batch < limits.maxBatches; batch++) {
       const raw: unknown = await dataSource.query(
-        `DELETE FROM ${rule.table} WHERE id IN (
+        `${action} WHERE id IN (
            SELECT id FROM ${rule.table} WHERE ${rule.where}
            LIMIT ${limitParam} FOR UPDATE SKIP LOCKED
          ) RETURNING id`,

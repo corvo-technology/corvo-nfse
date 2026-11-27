@@ -2359,6 +2359,7 @@
     "inbound_invalid": "Invalid webhook request.",
     "webhook_not_found": "Webhook not found.",
     "webhook_delivery_not_found": "Delivery not found.",
+    "webhook_delivery_content_erased": "This delivery's content was erased after 30 days and cannot be sent again.",
     "database_unique_constraint": "A record like this already exists.",
     "database_constraint_violation": "The data breaks a system rule. Check it and try again.",
     "customer_required": "Subscribe or buy notes before managing billing.",

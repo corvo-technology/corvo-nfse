@@ -102,18 +102,21 @@ describe('TypeOrmOutboxRetention', () => {
     return { query, scheduler: new TypeOrmOutboxRetention(db) };
   };
 
-  it('is a dry run by default: three counts, no delete', async () => {
+  it('is a dry run by default: eight counts (outbox and notices), no delete, no update', async () => {
     const { query, scheduler } = build();
     await scheduler.purge(false, now);
-    expect(query).toHaveBeenCalledTimes(3);
-    expect(query.mock.calls.some(([sql]) => /DELETE/.test(sql))).toBe(false);
+    expect(query).toHaveBeenCalledTimes(8);
+    expect(query.mock.calls.some(([sql]) => /^(DELETE|UPDATE)/.test(sql))).toBe(
+      false,
+    );
   });
 
-  it('deletes when enabled', async () => {
+  it('when enabled, deletes outbox rows and old failed notices, and erases the content of the others', async () => {
     const { query, scheduler } = build();
     await scheduler.purge(true, now);
-    expect(query.mock.calls.filter(([sql]) => /DELETE/.test(sql))).toHaveLength(
-      3,
-    );
+    const starts = (word: string) =>
+      query.mock.calls.filter(([sql]) => sql.startsWith(word)).length;
+    expect(starts('DELETE')).toBe(4);
+    expect(starts('UPDATE')).toBe(4);
   });
 });

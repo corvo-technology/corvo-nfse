@@ -2,11 +2,15 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('integration_events')
+@Index('idx_integration_events_finished', ['updatedAt'], {
+  where: "state IN ('processed','ignored') AND payload_enc <> ''",
+})
 export class IntegrationEventOrmEntity {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ name: 'tenant_id', type: 'uuid' }) tenantId!: string;

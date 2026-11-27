@@ -25,6 +25,9 @@ import {
 })
 @Index('idx_webhook_deliveries_tenant_created_at', ['tenantId', 'createdAt'])
 @Index('idx_webhook_deliveries_retry', ['status', 'nextRetryAt'])
+@Index('idx_webhook_deliveries_finished', ['createdAt'], {
+  where: "status IN ('sent','failed')",
+})
 @ManagedIndex('idx_webhook_deliveries_cursor', { synchronize: false })
 @ManagedIndex('idx_webhook_deliveries_invoice', { synchronize: false })
 @ManagedIndex('idx_webhook_deliveries_document', { synchronize: false })
