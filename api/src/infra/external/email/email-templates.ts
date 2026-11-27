@@ -118,13 +118,22 @@ export function creditsLowEmail(input: {
   remaining: number;
   total: number;
   billingUrl: string;
+  /** Days until the credits run out at the recent pace; left out when there is not enough history. */
+  daysLeft?: number | null;
 }): RenderedEmail {
-  return emailLayout('Seus créditos estão acabando', [
+  const blocks = [
     paragraph(
       `Restam ${input.remaining} de ${input.total} notas no plano ${input.planName}.`,
     ),
-    button(input.billingUrl, 'Ver plano e créditos'),
-  ]);
+  ];
+  if (input.daysLeft != null && input.daysLeft > 0)
+    blocks.push(
+      paragraph(
+        `No ritmo atual, seus créditos acabam em ~${input.daysLeft} ${input.daysLeft === 1 ? 'dia' : 'dias'}.`,
+      ),
+    );
+  blocks.push(button(input.billingUrl, 'Comprar créditos'));
+  return emailLayout('Seus créditos estão acabando', blocks);
 }
 
 export function scheduleRetryEmail(input: {
@@ -418,6 +427,102 @@ export function invoiceRejectedEmail(input: {
     button(input.invoiceUrl, 'Revisar nota'),
     note(
       'Se outras notas forem rejeitadas na próxima hora, não enviaremos novos avisos: veja todas no painel.',
+    ),
+  ]);
+}
+
+/** Rejected note, with the reason in plain words and a way back to fix it. */
+export function invoiceRejectedHelpEmail(input: {
+  reason: string;
+  invoiceUrl: string;
+}): RenderedEmail {
+  return emailLayout('Uma nota foi rejeitada', [
+    paragraph('Uma nota fiscal foi rejeitada pelo governo e não foi emitida.'),
+    paragraph(`O que aconteceu: ${input.reason}`),
+    button(input.invoiceUrl, 'Corrigir e emitir de novo'),
+    note(
+      'Se outras notas forem rejeitadas na próxima hora, não enviaremos novos avisos: veja todas no painel.',
+    ),
+  ]);
+}
+
+/** Sent once per workspace, when the first live invoice is authorized. */
+export function firstInvoiceEmail(input: {
+  customerEmailed: boolean;
+  integrationsUrl: string;
+}): RenderedEmail {
+  return emailLayout('Sua primeira nota fiscal saiu', [
+    paragraph('Parabéns: sua primeira nota fiscal pelo Corvo foi autorizada.'),
+    paragraph(
+      input.customerEmailed
+        ? 'Ela já foi enviada por e-mail ao seu cliente.'
+        : 'Você pode baixar o PDF e o XML na página da nota.',
+    ),
+    paragraph(
+      'Para dar menos trabalho nas próximas, conecte a sua cobrança, agende as notas que se repetem ou cadastre o seu contador.',
+    ),
+    button(input.integrationsUrl, 'Conectar minha cobrança'),
+  ]);
+}
+
+const plural = (count: number, one: string, many: string): string =>
+  `${count} ${count === 1 ? one : many}`;
+
+/** First day of the month: what was issued in the month that ended. */
+export function monthlySummaryEmail(input: {
+  monthLabel: string;
+  count: number;
+  total: string;
+  topCustomers: string[];
+  rejected: number;
+  creditsRemaining: number;
+  hasAccountant: boolean;
+  accountantUrl: string;
+}): RenderedEmail {
+  const blocks = [
+    paragraph(
+      `Em ${input.monthLabel} você emitiu ${plural(input.count, 'nota', 'notas')}, somando ${input.total}.`,
+    ),
+  ];
+  if (input.topCustomers.length > 0)
+    blocks.push(
+      paragraph(
+        `${input.topCustomers.length === 1 ? 'Cliente' : 'Clientes'} de maior valor: ${input.topCustomers.join(', ')}.`,
+      ),
+    );
+  if (input.rejected > 0)
+    blocks.push(
+      paragraph(
+        `${plural(input.rejected, 'nota foi rejeitada', 'notas foram rejeitadas')} pelo governo e não ${input.rejected === 1 ? 'foi emitida' : 'foram emitidas'}.`,
+      ),
+    );
+  blocks.push(
+    paragraph(
+      `Ainda restam ${plural(input.creditsRemaining, 'nota', 'notas')} na sua conta.`,
+    ),
+    button(
+      input.accountantUrl,
+      input.hasAccountant ? 'Enviar ao contador' : 'Cadastrar contador',
+    ),
+  );
+  return emailLayout(
+    `Resumo de ${input.monthLabel}: ${plural(input.count, 'nota emitida', 'notas emitidas')}`,
+    blocks,
+  );
+}
+
+/** One reminder, a day after a checkout was started and not paid. */
+export function paymentPendingEmail(input: {
+  what: string;
+  billingUrl: string;
+}): RenderedEmail {
+  return emailLayout('Seu pagamento ficou pendente', [
+    paragraph(
+      `Você começou a comprar ${input.what}, mas o pagamento não foi concluído. Nada foi cobrado.`,
+    ),
+    button(input.billingUrl, 'Tentar de novo'),
+    note(
+      'Se desistiu, é só ignorar este e-mail. Não enviaremos outro lembrete desta compra.',
     ),
   ]);
 }

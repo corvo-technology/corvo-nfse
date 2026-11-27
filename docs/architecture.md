@@ -111,7 +111,7 @@ flowchart LR
 
   tx --> pending[("outbox_messages<br/>status = pending")]
 
-  subgraph relay["OutboxRelay (só no worker), a cada 2 s"]
+  subgraph relay["OutboxRelay (só no worker), a cada 1 s"]
     claim["claim até 50<br/>FOR UPDATE SKIP LOCKED<br/>status = claimed, lease 120 s, attempts + 1"]
     handle["handler do tipo<br/>(uma mensagem por vez)"]
     claim --> handle
@@ -264,7 +264,7 @@ stateDiagram-v2
 
 | Fila ou rotina | Quem coloca | O que faz | Tentativas |
 | --- | --- | --- | --- |
-| `OutboxRelay` (a cada 2 s) | — | Entrega as mensagens da outbox aos handlers | 10, espera até 5 min |
+| `OutboxRelay` (a cada 1 s) | — | Entrega as mensagens da outbox aos handlers | 10, espera até 5 min |
 | `nfse-emission` | `invoice.emit` | Monta, assina e envia a DPS (1 por vez por worker; o PR #175 sobe para 3) | 5, espera de 5 s; esgotou: `queued` vira `rejected` e `processing` vai para reconciliação |
 | `nfse-reconciliation` | o próprio workflow | Pergunta de novo ao portal pela mesma DPS | 5 por job; espera de 1 min dobrando até 30 min |
 | `nfse-doc-prep` | depois da autorização | Gera o PDF e envia o e-mail | 5, espera de 10 s |
@@ -272,7 +272,7 @@ stateDiagram-v2
 | `nfse-cancellation` | `invoice.cancel` | Envia o evento de cancelamento 101101 | — |
 | `import-read`, `import-emit` | importação de planilha | Lê as linhas e cria as notas em blocos de 50 | — |
 | `docs-recovery` (a cada 5 min) | — | Rede de segurança: reenfileira a reconciliação de notas paradas há mais de 5 min em `processing` ou `reconciliation_required`, e o PDF de notas autorizadas sem documento (até 50 de cada por cliente) | 5 por job |
-| Webhooks (a cada 30 s) | `InvoiceWebhookPublisher` grava a entrega como `pending` | Entrega os webhooks assinados (`X-Corvo-Signature: sha256=…`) com timeout de 10 s. A primeira tentativa sai no próximo ciclo, até 30 s depois | 5: 0 s, 60 s, 160 s, 15 min, 30 min |
+| Webhooks (a cada 10 s) | `InvoiceWebhookPublisher` grava a entrega como `pending` | Entrega os webhooks assinados (`X-Corvo-Signature: sha256=…`) com timeout de 10 s. A primeira tentativa sai no próximo ciclo, até 10 s depois | 5: 0 s, 60 s, 160 s, 15 min, 30 min |
 | `EventProcessorScheduler` (a cada 5 s) | integrações de venda | Ver [docs/integrations/architecture.md](integrations/architecture.md) | — |
 | Cobrança (de hora em hora) | — | Reconcilia a cobrança (`billing.reconcile`) | — |
 

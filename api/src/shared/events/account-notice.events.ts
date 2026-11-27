@@ -3,7 +3,13 @@ export const ACCOUNT_NOTICE = 'account.notice';
 /** Something the workspace's admins should hear about by e-mail. Live only: callers never publish test activity. */
 export type AccountNotice =
   | { kind: 'credits-added'; units: number }
-  | { kind: 'invoice-rejected'; invoiceId: string; reason: string }
+  | {
+      kind: 'invoice-rejected';
+      invoiceId: string;
+      reason: string;
+      /** Our own code or the Receita's (E0120 and the like), when the invoice has one. */
+      errorCode?: string | null;
+    }
   | { kind: 'api-key-created'; name: string }
   | { kind: 'mcp-connected'; clientName: string }
   | { kind: 'credits-exhausted' }
