@@ -44,6 +44,16 @@ export type QueueConfig = {
   nfseEmissionConcurrency: number;
 };
 
+/** Brake on calls to government hosts (per host, shared by every replica). */
+export type GovRateLimitConfig = {
+  /** Sustained requests per second per host. */
+  perSecond: number;
+  /** Requests allowed at once after a quiet moment. */
+  burst: number;
+  /** How long a caller waits for a token before the job is delayed instead. */
+  maxWaitMs: number;
+};
+
 /** How the worker reacts when the national NFS-e portal stops answering. */
 export type FiscalPortalConfig = {
   /** Unanswered calls in a row that pause emission. */

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { buildDpsId } from 'open-nfse';
 import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import type {
@@ -7,6 +7,7 @@ import type {
 } from '@/infra/external/nfse/nfse-fiscal-provider';
 import { ApplicationCertificateDecryptor } from '@/modules/certificate/application/certificate-decryptor';
 import { CompanyService } from '@/modules/company/application/company.service';
+import { FiscalPortalBreaker } from './fiscal-portal-breaker';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import {
   DPS_SEQUENCE_REPOSITORY,
@@ -17,8 +18,11 @@ import {
   type IInvoiceRepository,
 } from '../domain/invoice.repository';
 
-/** How many consecutive numbers are asked to the government at most (stops at the first free one). */
-export const NUMBERING_PROBE_LIMIT = 50;
+/**
+ * How many consecutive numbers are asked to the government at most (stops at the first free one).
+ * When all are used the owner is asked to check the numbering instead of probing further.
+ */
+export const NUMBERING_PROBE_LIMIT = 10;
 
 export const DPS_NUMBERING_NEEDS_CONFIRMATION =
   'DPS_NUMBERING_NEEDS_CONFIRMATION';
@@ -96,6 +100,7 @@ export class DpsNumberingService {
     private readonly companies: CompanyService,
     private readonly certificates: ApplicationCertificateDecryptor,
     private readonly providers: NfseProviderFactory,
+    @Optional() private readonly breaker?: FiscalPortalBreaker,
   ) {}
 
   /** Probes the portal for the next numbers. Throws NumberingCheckUnavailableError when it cannot answer. */
@@ -138,6 +143,14 @@ export class DpsNumberingService {
       } as IIssuePayload;
     } catch (error) {
       throw new NumberingCheckUnavailableError(error);
+    }
+    // While the portal is paused no probe is sent.
+    if (!this.providers.isSimulated(environment)) {
+      try {
+        await this.breaker?.assertAvailable(environment);
+      } catch (error) {
+        throw new NumberingCheckUnavailableError(error);
+      }
     }
     const used: number[] = [];
     for (let i = 0; i < NUMBERING_PROBE_LIMIT; i++) {
