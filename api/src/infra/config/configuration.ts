@@ -106,6 +106,12 @@ export default function configuration(): AppConfiguration {
       uncertainMaxHours: env.NFSE_UNCERTAIN_MAX_HOURS,
     },
     webhooks: { retryIntervalMs: env.WEBHOOK_RETRY_INTERVAL_MS },
+    govRateLimit: {
+      perSecond: env.GOV_RATE_LIMIT_PER_SECOND,
+      burst: env.GOV_RATE_LIMIT_BURST,
+      maxWaitMs: env.GOV_RATE_LIMIT_MAX_WAIT_MS,
+    },
+    docsRecovery: { maxPerRun: env.DOCS_RECOVERY_MAX_PER_RUN },
     outbox: {
       relayIntervalMs: env.OUTBOX_RELAY_INTERVAL_MS,
       batchSize: env.OUTBOX_BATCH_SIZE,
