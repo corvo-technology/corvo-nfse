@@ -105,6 +105,12 @@ export default function configuration(): AppConfiguration {
       breakerCooldownMs: env.NFSE_PORTAL_BREAKER_COOLDOWN_MS,
       uncertainMaxHours: env.NFSE_UNCERTAIN_MAX_HOURS,
     },
+    govRateLimit: {
+      perSecond: env.GOV_RATE_LIMIT_PER_SECOND,
+      burst: env.GOV_RATE_LIMIT_BURST,
+      maxWaitMs: env.GOV_RATE_LIMIT_MAX_WAIT_MS,
+    },
+    docsRecovery: { maxPerRun: env.DOCS_RECOVERY_MAX_PER_RUN },
     outbox: {
       relayIntervalMs: env.OUTBOX_RELAY_INTERVAL_MS,
       batchSize: env.OUTBOX_BATCH_SIZE,

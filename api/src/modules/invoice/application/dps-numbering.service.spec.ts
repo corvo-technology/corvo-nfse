@@ -6,6 +6,7 @@ import {
   numberingNeedsConfirmationMessage,
   skippedNumbersMessage,
 } from './dps-numbering.service';
+import { PortalUnavailableError } from './fiscal-portal-breaker';
 
 const company = {
   id: 'c1',
@@ -19,6 +20,7 @@ function build(
     checkedAt?: Date | null;
     hasNote?: boolean;
     lastNumber?: number;
+    breaker?: { assertAvailable: jest.Mock };
   } = {},
 ) {
   const provider = { queryByDps: jest.fn() };
@@ -49,6 +51,7 @@ function build(
     companies as never,
     certificates as never,
     providers as never,
+    opts.breaker as never,
   );
   return { service, provider, sequences, invoices };
 }
@@ -57,6 +60,43 @@ const taken = { status: 'authorized', xmlAuthorized: '<x/>' };
 const free = { status: 'not_found' };
 
 describe('DpsNumberingService.check', () => {
+  it('asks at most 10 numbers by default', () => {
+    expect(NUMBERING_PROBE_LIMIT).toBe(10);
+  });
+
+  it('checks the portal breaker before probing and sends nothing while it is open', async () => {
+    const breaker = {
+      assertAvailable: jest
+        .fn()
+        .mockRejectedValue(
+          new PortalUnavailableError(new Date(Date.now() + 1)),
+        ),
+    };
+    const { service, provider } = build({ breaker });
+    await expect(service.check('c1', 't1', 'live')).rejects.toBeInstanceOf(
+      NumberingCheckUnavailableError,
+    );
+    expect(breaker.assertAvailable).toHaveBeenCalledWith('live');
+    expect(provider.queryByDps).not.toHaveBeenCalled();
+  });
+
+  it('probes normally when the breaker is closed', async () => {
+    const breaker = { assertAvailable: jest.fn().mockResolvedValue(undefined) };
+    const { service, provider } = build({ breaker });
+    provider.queryByDps.mockResolvedValue(free);
+    await service.check('c1', 't1', 'live');
+    expect(provider.queryByDps).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks the owner to check the numbering when all 10 numbers are used', async () => {
+    const { service, provider } = build();
+    provider.queryByDps.mockResolvedValue(taken);
+    await expect(
+      service.skipForward('c1', 't1', 'live'),
+    ).rejects.toBeInstanceOf(NumberingNeedsConfirmationError);
+    expect(provider.queryByDps).toHaveBeenCalledTimes(10);
+  });
+
   it('asks for the next number and stops at the first free one', async () => {
     const { service, provider } = build({ lastNumber: 0 });
     provider.queryByDps
