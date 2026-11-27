@@ -1,4 +1,4 @@
-> Novo contrato HTTP: consulte [sucesso, erros, cursor e rate limit](docs/api/http-contract.md) e a [matriz de rotas](docs/api/route-contract-matrix.md). Exemplos antigos de respostas e paginação neste documento devem ser migrados.
+> Contrato público da API: [`docs/openapi`](../docs/openapi) (`openapi.json` e tabela de rotas). Este documento é o inventário das rotas que o painel usa; em caso de diferença, vale o OpenAPI.
 
 # API para o frontend Corvo
 
@@ -22,8 +22,8 @@ devem estar no mesmo site para os cookies SameSite=Lax funcionarem.
 
 `S` na tabela significa sessão com tenant ativo. `S/K` também aceita `x-api-key`
 com escopo suficiente. API keys são para integrações; o dashboard usa sessão.
-Rotas públicas dispensam sessão. OAuth está registrado, mas permanece pendente
-para uso como login público; ver pendências abaixo.
+Rotas públicas dispensam sessão. O login social (Google e GitHub) só aparece quando o
+servidor tem as credenciais do provedor; sem elas o código por e-mail continua valendo.
 
 ## Ambientes test e live
 
@@ -195,10 +195,10 @@ no caminho, normalmente UUID. As permissões são verificadas no backend.
 | GET    | `/auth/api-keys`                                       | S, `api_keys.manage`            | Lista sem hashes/chaves completas                                                  |
 | POST   | `/auth/api-keys`                                       | S, `api_keys.manage`            | JSON: `name`, `environment`, `scope`, `expiresAt?`; chave completa uma vez; 201    |
 | DELETE | `/auth/api-keys/{id}`                                  | S, `api_keys.manage`            | Revoga chave                                                                       |
-| GET    | `/auth/oauth/google/authorize`                         | Pendente                        | Retorno `{url}`; implementação ainda exige sessão                                  |
-| GET    | `/auth/oauth/google/callback`                          | Pendente                        | Query: `code`; callback do provedor                                                |
-| GET    | `/auth/oauth/github/authorize`                         | Pendente                        | Retorno `{url}`; implementação ainda exige sessão                                  |
-| GET    | `/auth/oauth/github/callback`                          | Pendente                        | Query: `code`; callback do provedor                                                |
+| GET    | `/auth/oauth/google/authorize`                         | Público                         | Guarda o `state` num cookie e redireciona (302) ao Google                          |
+| GET    | `/auth/oauth/google/callback`                          | Público                         | Query: `code`, `state`; confere o `state`, cria a sessão e redireciona; erro vai para `/login?error=` |
+| GET    | `/auth/oauth/github/authorize`                         | Público                         | Guarda o `state` num cookie e redireciona (302) ao GitHub                          |
+| GET    | `/auth/oauth/github/callback`                          | Público                         | Query: `code`, `state`; confere o `state`, cria a sessão e redireciona; erro vai para `/login?error=` |
 | GET    | `/plans`                                               | Público                         | Query: `cycle=monthly\|annual`                                                     |
 | GET    | `/plans/quote`                                         | Público                         | Query: `volume`, `cycle?`; recomendação para volume                                |
 | GET    | `/plans/{slug}`                                        | Público                         | Query: `cycle?`; detalhes/preço do plano                                           |
@@ -499,7 +499,7 @@ Para login, usar as duas rotas `/auth/magic-link`, que também criam sessão.
 | `role` em convite            | `admin`, `developer`, `billing`                                                                                                                                                                                                         |
 | API key `environment`        | `live`, `test`                                                                                                                                                                                                                          |
 | API key `scope`              | `full_access`, `invoices_issue`, `invoices_view`, `invoices_read_write`                                                                                                                                                                 |
-| `plan_slug` / `slug`         | `free`, `developer`, `growth`, `scale`, `volume`                                                                                                                                                                                        |
+| `plan_slug` / `slug`         | `free`, `solo`, `equipe`, `empresa`, `escala` (`self-hosted` só em instalações próprias)                                                                                                                                                                                        |
 | `cycle`                      | `monthly`, `annual`                                                                                                                                                                                                                     |
 | Empresa / nota `environment` | `test`, `live`; somente leitura na resposta                                                                                                                                                                                             |
 | `taxRegime`                  | `MEI`, `Simples Nacional`                                                                                                                                                                                                                |
@@ -863,6 +863,8 @@ proxy do Next). `redirect_uri` aceitos no registro: `https`, `http` em
 
 ### Ferramentas (`tools/call`)
 
+A tabela mostra as ferramentas principais. A lista completa (empresas, certificado, cálculo, importação de planilha, agendas, webhooks, NF-e/NFC-e e créditos) vem de `tools/list` e está em `api/src/modules/mcp/tools`.
+
 | Tool                | Escopo       | Entrada principal                                                                                                                              | Saída                                                            |
 | ------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `nfse_issue`        | `nfse:write` | `company_id`, `customer {name, tax_id, email?}`, `services [{description, quantity, unit_price}]`, `competence_date`, `service_code?`, `idempotency_key?` | `{ invoice_id, access_key, status }`                             |
@@ -927,15 +929,9 @@ ou `response.text()`, não `response.json()`.
 
 ## Pendências reais antes de integrar funcionalidades completas
 
-- **OAuth Google/GitHub**: caminhos foram normalizados para `/v1`, mas o
-  controller ainda exige sessão, não valida `state` e emite cookies próprios
-  incompatíveis com a política de sessão. Não habilitar os botões como login
-  funcional antes de corrigir esse fluxo, configurar credenciais/callbacks e
-  testar com os provedores. O authorize retorna JSON `{url}`, não redireciona.
-- **Pagamento**: `/billing/upgrade` muda plano sem validar pagamento, e
-  `/credits/purchase/confirm` concede créditos sem consultar o provedor.
-  Não tratar uma chamada do navegador como comprovação de pagamento.
-  Checkout e confirmação confiável via servidor/webhook precisam ser ligados.
+- **Cobrança**: as rotas `/billing/*`, `/credits/*` e os webhooks de pagamento só
+  existem com `DEPLOYMENT_MODE=cloud`; numa instalação própria (`self_hosted`) elas
+  respondem `404 BILLING_DISABLED`.
 - **Convite**: `/auth/invite` cria um convite pendente e envia por e-mail um link
   com token de uso único (7 dias; só o hash fica no banco). A pessoa entra com o
   mesmo e-mail e aceita em `/accept-invite`; só então vira membro e o admin

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Notas fiscais de serviço (NFS-e) brasileiras, dentro do seu produto.</strong>
+  <strong>Notas fiscais eletrônicas brasileiras (NFS-e, NF-e e NFC-e), dentro do seu produto.</strong>
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
   <a href="README.md">English</a> · <strong>Português (Brasil)</strong>
 </p>
 
-O Corvo é uma API REST e um servidor MCP para emitir NFS-e no padrão nacional, com foco em empresas **MEI e Simples Nacional**. Ele cadastra as empresas emissoras, guarda os certificados A1, calcula os tributos antes de emitir, processa cada nota em segundo plano, guarda o PDF e o XML e avisa cada mudança de status por webhook. O painel e os agentes de IA (Claude Code, Cursor, Codex e outros) usam a mesma API.
+O Corvo é uma API REST e um servidor MCP para emitir notas fiscais eletrônicas brasileiras, com foco em empresas **MEI e Simples Nacional**. O centro dele é a **NFS-e** (serviços) no padrão nacional; a **NF-e** (mercadorias, modelo 55) e a **NFC-e** (varejo, modelo 65) usam as mesmas rotas e estão disponíveis em teste. Ele cadastra as empresas emissoras, guarda os certificados A1, calcula os tributos antes de emitir, processa cada nota em segundo plano, guarda o PDF e o XML e avisa cada mudança de status por webhook. O painel e os agentes de IA (Claude Code, Cursor, Codex e outros) usam a mesma API.
 
 [Início rápido](#início-rápido) · [Usar a API](#usar-a-api) · [Agentes de IA](#agentes-de-ia-mcp) · [Deploy](#deploy-em-produção) · [Desenvolver](#desenvolver) · [Documentação](#documentação) · [Contribuir](CONTRIBUTING.md)
 
@@ -44,14 +44,17 @@ O Corvo é uma API REST e um servidor MCP para emitir NFS-e no padrão nacional,
 | Cancelamento | `POST /v1/invoices/:id/cancel` cancela na hora uma nota ainda na fila, ou envia o evento de cancelamento à Sefin para uma NFS-e emitida (ou ainda em emissão) e informa o resultado por webhook. |
 | Importação de planilha | Envie um CSV ou Excel, revise os problemas e emita centenas de notas de uma vez, com contadores ao vivo. Pelo painel, pela API ou por MCP. |
 | Várias empresas | Gerencie vários emissores, cada um com seu perfil fiscal e certificado A1, num único workspace. |
-| Documentos e entrega | Guarda PDF e XML, links de download assinados, envio por e-mail e webhooks assinados a cada mudança de status. |
-| Agentes de IA | Um servidor MCP remoto permite que agentes emitam e consultem notas, e o `llms.txt` permite que um agente de código escreva a integração para você. |
+| Documentos e entrega | Guarda PDF e XML, links de download assinados, envio por e-mail e webhooks assinados a cada mudança de status (com novas tentativas automáticas e registro dos envios). |
+| Integrações de vendas e pagamentos | Conecte uma plataforma e cada venda aprovada vira nota sozinha, com as suas regras e novas tentativas, e cancelamento opcional no reembolso. Conectores na `main`: Stripe, AbacatePay, Woovi, PushinPay, Hotmart e Kiwify. Veja [como criar um conector](docs/integrations/new-connector.md) (em inglês). |
+| SDKs | SDKs oficiais para Node.js, Python, Go, PHP, Ruby, Rust, Java, Elixir e .NET, todos sobre a mesma API (lista na [referência da API](http://localhost:4000/pt/docs/sdks)). |
+| Agentes de IA | Um servidor MCP remoto permite que agentes emitam, consultem, cancelem, importem e agendem notas, e o `llms.txt` permite que um agente de código escreva a integração para você. |
 | Painel | Empresas, notas, chaves de API, membros, cobrança e agentes conectados, em português ou inglês. |
 | Ambientes fiscais | Teste e produção ficam separados. O teste não exige certificado e não tem valor fiscal. |
-| Planos e créditos | Um ambiente de teste gratuito, planos pagos com franquia mensal e créditos avulsos por nota. Preços públicos em `GET /v1/plans`. |
+| Planos e créditos | Um ambiente de teste gratuito, 5 notas grátis para cada conta nova na nuvem, planos pagos com franquia mensal e créditos avulsos por nota. Preços públicos em `GET /v1/plans`. |
+| Self-hosted | Rode no seu servidor com `DEPLOYMENT_MODE=self_hosted`: sem cobrança, sem créditos e sem limite de plano. Veja o [SELF_HOSTING.md](SELF_HOSTING.md). |
 
 > [!NOTE]
-> O Corvo cobre **NFS-e (serviços)**. A NF-e (mercadorias, modelo 55) existe só em teste (homologação), nas contas em que foi liberada, pelas mesmas rotas `/v1/invoices` com `type: "nfe"`; a NFC-e não é coberta. Veja as [limitações fiscais](docs/fiscal/limitations.md) para o que ainda não é coberto.
+> A **NFS-e** (serviços) é o produto em produção. A **NF-e** (mercadorias, modelo 55) e a **NFC-e** (varejo, modelo 65) funcionam em teste (homologação) para toda conta, pelas mesmas rotas `/v1/invoices` com `type: "nfe"` ou `type: "nfce"`. A produção das duas continua bloqueada (`422 NFE_PRODUCTION_DISABLED`) até `NFE_PRODUCTION_ENABLED=true`. O Corvo não calcula os impostos da NF-e e da NFC-e: você informa CFOP, NCM e CSOSN de cada item, para empresas do Simples Nacional e MEI. Veja as [limitações fiscais](docs/fiscal/limitations.md).
 
 ## Como funciona
 
@@ -112,7 +115,7 @@ RESEND_BASE_URL=https://api.millionsend.com
 EMAIL_FROM=Corvo <noreply@seudominio.com>
 ```
 
-Use um remetente autorizado pelo seu provedor. Os valores locais do Stripe só permitem que a aplicação inicie; troque por credenciais de teste do Stripe para experimentar a cobrança. Depois de editar o arquivo de ambiente, rode o mesmo comando do Compose de novo. Com o Yarn, `yarn local:logs` acompanha os logs e `yarn local:down` para o ambiente.
+Use um remetente autorizado pelo seu provedor. Os valores locais do Stripe só permitem que a aplicação inicie; troque por credenciais de teste do Stripe para experimentar a cobrança da nuvem (ou use `DEPLOYMENT_MODE=self_hosted` para desligar a cobrança). Depois de editar o arquivo de ambiente, rode o mesmo comando do Compose de novo. Com o Yarn, `yarn local:logs` acompanha os logs e `yarn local:down` para o ambiente.
 
 ## Usar a API
 
@@ -155,7 +158,7 @@ Depois de rodar o setup, edite o `deploy/.env` com base no [deploy/.env.example]
 | URLs públicas em HTTPS | `APP_ORIGIN`, `PUBLIC_API_URL` |
 | Armazenamento S3 | `STORAGE_S3_BUCKET`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_REGION`, `STORAGE_S3_ACCESS_KEY_ID`, `STORAGE_S3_SECRET_ACCESS_KEY` |
 | Envio de e-mail e códigos de login | `RESEND_API_KEY`, `RESEND_BASE_URL`, `EMAIL_FROM` |
-| Cobrança com Stripe | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET` |
+| Cobrança com Stripe | Só com `DEPLOYMENT_MODE=cloud`: `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET` |
 | Calculadora de tributos | Nada a preencher; construída da versão fixa no GitHub (ou informe uma `RTC_IMAGE` pronta) |
 
 > [!WARNING]
@@ -167,7 +170,7 @@ Use origens públicas sem caminho e sem barra no final, como `https://corvo.exem
 yarn deploy:up   # valida a configuração, depois constrói e sobe o ambiente
 ```
 
-Configure o HTTPS na sua plataforma de hospedagem, ou ative o proxy Caddy opcional numa VPS. Veja o [guia de self-hosting](SELF_HOSTING.md) para as duas opções, atualizações e solução de problemas.
+O `deploy/.env` já vem com `DEPLOYMENT_MODE=self_hosted`: sem cobrança, sem créditos e sem precisar do Stripe. Configure o HTTPS na sua plataforma de hospedagem, ative o proxy Caddy opcional numa VPS, ou use o `deploy/docker-compose.dokploy.yml` no Dokploy (sem Caddy e sem portas publicadas). Veja o [guia de self-hosting](SELF_HOSTING.md) (em inglês) para as três opções, atualizações, limpeza de dados e solução de problemas.
 
 ## Desenvolver
 
@@ -179,7 +182,7 @@ yarn setup
 
 | Comando | Ação |
 | --- | --- |
-| `yarn dev` | Roda web, API e worker com recarga automática. |
+| `yarn dev` | Roda web, API e worker com recarga automática (precisa da infraestrutura do `yarn infra:up` e dos arquivos de ambiente do `yarn setup`). |
 | `yarn local:up` / `local:logs` / `local:down` | Constrói, acompanha e para o ambiente Docker local. |
 | `yarn deploy:up` / `deploy:logs` / `deploy:down` | Valida, sobe, acompanha e para o ambiente de produção. |
 | `yarn infra:up` / `infra:down` | Sobe ou para só o PostgreSQL, o Redis e o LocalStack para desenvolver fora do Docker. |
@@ -210,12 +213,14 @@ A API e o worker compartilham código de backend e rodam como processos separado
 | Onde | O quê |
 | --- | --- |
 | Referência da API em `/pt/docs` e `/en/docs` (no ambiente local: [localhost:4000/pt/docs](http://localhost:4000/pt/docs)) | Endpoints, erros, webhooks, cobrança e agentes de IA. |
-| [llms.txt](web/public/llms.txt) e `/llms-full.txt` | A mesma documentação para ferramentas de IA. |
-| [SELF_HOSTING.md](SELF_HOSTING.md) | Rodar o Corvo na sua própria infraestrutura. |
+| `/llms.txt` e `/llms-full.txt` (código: [web/lib/llms.ts](web/lib/llms.ts)) | A mesma documentação para ferramentas de IA. |
+| [SELF_HOSTING.md](SELF_HOSTING.md) | Rodar o Corvo na sua própria infraestrutura (Compose, Caddy ou Dokploy), em inglês. |
 | [deploy/README.md](deploy/README.md) | Arquivos Docker e a calculadora de tributos. |
 | [docs/openapi](docs/openapi) | O contrato da API pública (`openapi.json`, também em `https://corvo.tech/openapi.json`), a tabela de rotas e o changelog para quem mantém os SDKs. |
+| [docs/integrations](docs/integrations) | [Como criar um conector](docs/integrations/new-connector.md) (em inglês) e o [desenho](docs/integrations/architecture.md) das integrações de vendas e pagamentos. |
 | [docs/architecture.md](docs/architecture.md) | Como funciona por dentro: outbox, ledger de créditos, transações, status e filas, com diagramas. |
-| [docs/fiscal](docs/fiscal) | Regras fiscais, exemplos, limitações, observabilidade e runbooks. |
+| [docs/fiscal](docs/fiscal) | Regras fiscais, exemplos, limitações, observabilidade e runbooks, incluindo NF-e e NFC-e. |
+| [api/README.md](api/README.md) · [web/README.md](web/README.md) | Cada aplicação: comandos, configuração, organização do código e testes (em inglês). |
 
 ## Aviso legal
 

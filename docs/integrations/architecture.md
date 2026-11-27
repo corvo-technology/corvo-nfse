@@ -1,15 +1,14 @@
 # Integrações de vendas e pagamentos — infraestrutura extensível do Corvo
 
-Data: 2026-10-17  
-Status: proposta de arquitetura; implementação ainda não iniciada.  
-Prioridade de entrega: infraestrutura compartilhada primeiro; conectores depois.  
-Conectores prioritários: Stripe, AbacatePay, Hotmart, Kiwify e Woovi.
+Data do desenho: 2026-10-17  
+Status: implementado. Este documento é o desenho que guiou a infraestrutura; o código está em `api/src/modules/integrations`. Para escrever um conector novo, leia o [guia de conectores](new-connector.md).  
+Conectores no repositório hoje: Stripe, AbacatePay, Hotmart, Kiwify, Woovi e PushinPay (`api/src/modules/integrations/connectors`).
 
 ## 1. Objetivo e decisão principal
 
 Criar uma infraestrutura que receba eventos de plataformas externas, identifique operações elegíveis e solicite a emissão automática de NFS-e pelo fluxo existente do Corvo.
 
-A primeira entrega é a infraestrutura de integrações. Os cinco conectores reais serão entregas posteriores sobre essa base. A infraestrutura deve ser verificável com conectores de teste, sem depender de contas ou credenciais dessas plataformas.
+A infraestrutura de integrações vem primeiro e os conectores reais se apoiam nela. A infraestrutura é verificável com conectores de teste, sem depender de contas ou credenciais dessas plataformas.
 
 Adicionar um conector que implemente as capacidades existentes deve exigir seu Adapter, configuração, registro na composição da aplicação, testes e deploy. O processamento compartilhado, o modelo fiscal e o fluxo de emissão não devem ganhar condições específicas por plataforma.
 
@@ -32,7 +31,7 @@ Webhooks notificam mudanças; APIs permitem consultar detalhes e recuperar infor
 
 ## 3. Escopo por entrega
 
-### 3.1 Infraestrutura — primeira entrega
+### 3.1 Infraestrutura
 
 - Contratos e registro de conectores.
 - Catálogo de capacidades e descrição dos campos de configuração.
@@ -50,11 +49,9 @@ Webhooks notificam mudanças; APIs permitem consultar detalhes e recuperar infor
 
 Os conectores sintéticos existem apenas em testes. Não devem aparecer como integrações disponíveis em produção.
 
-### 3.2 Conectores — entregas posteriores
+### 3.2 Conectores
 
-Adicionar Stripe primeiro; depois AbacatePay, Hotmart, Kiwify e Woovi. Essa sequência organiza a execução dentro do conjunto prioritário, sem excluir nenhuma das cinco.
-
-Cada entrega deve declarar os fluxos efetivamente suportados. A existência de um conector Stripe, por exemplo, não implica suporte imediato a todos os produtos e tipos de cobrança da Stripe.
+Cada conector deve declarar os fluxos efetivamente suportados. A existência de um conector Stripe, por exemplo, não implica suporte imediato a todos os produtos e tipos de cobrança da Stripe.
 
 ### 3.3 Recorte inicial do produto
 
@@ -82,7 +79,7 @@ O Stripe de billing usa a conta e a configuração do Corvo. Os conectores de ve
 
 Os webhooks de saída de `webhooks-config` notificam sistemas dos clientes sobre resultados do Corvo. A inbox proposta recebe eventos de plataformas externas; seus registros e suas responsabilidades são diferentes.
 
-A outbox de invoice permanece na entrada fiscal. A nova inbox não exige mover a outbox para um módulo genérico nem substituir por outbox cada etapa posterior do pipeline. Preservar o limite da [spec de outbox](../superpowers/specs/2026-10-13-outbox-intake-schedule-design.md).
+A outbox de invoice permanece na entrada fiscal. A nova inbox não exige mover a outbox para um módulo genérico nem substituir por outbox cada etapa posterior do pipeline. Preservar esse limite: a outbox continua sendo da entrada fiscal.
 
 ## 5. Arquitetura e fluxo
 
@@ -296,7 +293,7 @@ Valor líquido recebido não é automaticamente valor do serviço. Descontos, ta
 
 Pagamento confirmado é gatilho operacional. A competência é determinada por política explícita compatível com a operação e a regra fiscal, sem assumir que a data de recebimento ou o fim da garantia sempre define a competência.
 
-Não oferecer agendamento após garantia como comportamento genérico nesta primeira entrega. Ele depende de especificação própria e dos limites atuais de agendamento do Corvo.
+Não oferecer agendamento após garantia como comportamento genérico nesta etapa. Ele depende de especificação própria e dos limites atuais de agendamento do Corvo.
 
 Se duas plataformas representarem a mesma venda, configurar uma origem emissora. Igualdade de nome, valor e horário não é prova de identidade. Conciliação entre plataformas exige referência comercial explícita.
 
@@ -418,9 +415,9 @@ A infraestrutura só está pronta para receber os conectores reais quando estes 
 
 Usar testes unitários para regras e contratos, integração PostgreSQL para unicidade/claims/RLS e testes do fluxo de recuperação. Nenhum teste da fase de infraestrutura depende de credenciais reais. A homologação fiscal existente continua sendo uma verificação separada.
 
-## 20. Roadmap dos conectores prioritários
+## 20. Notas de pesquisa por conector
 
-Esta seção registra pontos da investigação para orientar cada entrega. Não representa implementação, homologação nem garantia de cobertura integral. Revalidar documentação, permissões e payloads reais ao implementar.
+Esta seção registra pontos da investigação de cada plataforma. Não é garantia de cobertura integral: o que cada conector suporta de fato está no código e no manifesto dele. Revalide a documentação da plataforma, as permissões e os payloads reais ao mexer em um conector.
 
 ### 20.1 Stripe
 
@@ -474,13 +471,3 @@ Fontes: [autenticação](https://developers.woovi.com/docs/apis/api-getting-star
 8. Homologar com conta de teste e piloto controlado, documentando o recorte antes de habilitar produção.
 
 Alterações esperadas: módulo do conector, registro de composição, fixtures, testes e documentação. Mudanças no núcleo fiscal ou migrations específicas de provedor indicam requisito novo ou abstração a revisar.
-
-## 22. Sequência de trabalho após esta documentação
-
-1. Revisar esta arquitetura e transformar a fase de infraestrutura em plano de implementação com contratos completos, migrations e cenários de teste.
-2. Implementar e validar a infraestrutura com os dois conectores sintéticos.
-3. Concluir os critérios da seção 19 antes de iniciar os conectores reais.
-4. Entregar Stripe e verificar sua aderência aos contratos.
-5. Adicionar AbacatePay, Hotmart, Kiwify e Woovi sobre a mesma base.
-
-O resultado esperado da infraestrutura é uma base operacional que possa receber novos conectores por extensão. O resultado de cada conector é um fluxo comercial delimitado, autenticado, recuperável e rastreável até uma única solicitação fiscal inicial por operação elegível.

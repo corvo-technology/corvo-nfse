@@ -22,7 +22,7 @@ A Corvo **sai** sozinha quando a SEFAZ de origem voltou ao normal (disjuntor fec
 sonda dela responde.
 
 Ao entrar e ao sair, a Corvo avisa por webhook (`nfe.contingency.entered` e `nfe.contingency.exited`) as
-contas com NF-e liberada e ao menos uma empresa no estado, e por e-mail os endereços de
+contas que têm ao menos uma empresa no estado, e por e-mail os endereços de
 `OPS_ALERT_EMAILS`.
 
 ## O que muda em cada nota

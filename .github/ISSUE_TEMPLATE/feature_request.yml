@@ -17,6 +17,6 @@ body:
   - type: dropdown
     id: scope
     attributes:
-      label: Is it about NFS-e (services)?
-      description: NF-e and NFC-e are out of scope. See docs/fiscal/limitations.md.
-      options: ["Yes", "Not sure"]
+      label: Which document is it about?
+      description: NFS-e (services) is the production product. NF-e and NFC-e run in test mode. See docs/fiscal/limitations.md.
+      options: ["NFS-e (services)", "NF-e or NFC-e (goods, retail)", "Not about a document", "Not sure"]

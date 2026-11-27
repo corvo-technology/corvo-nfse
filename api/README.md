@@ -6,7 +6,7 @@
   <img alt="License: AGPL-3.0-only" src="https://img.shields.io/badge/license-AGPL--3.0--only-blue" />
 </p>
 
-NestJS backend that registers companies, calculates taxes, issues NFS-e on the national standard and reports the result by webhook. Part of the [Corvo monorepo](../README.md); the dashboard is in [`web/`](../web/README.md).
+NestJS backend that registers companies, calculates taxes, issues NFS-e on the national standard (and NF-e and NFC-e in test mode) and reports the result by webhook. Part of the [Corvo monorepo](../README.md); the dashboard is in [`web/`](../web/README.md).
 
 ## 📑 Contents
 
@@ -25,7 +25,7 @@ NestJS backend that registers companies, calculates taxes, issues NFS-e on the n
 
 ## 🧱 Stack
 
-PostgreSQL with TypeORM and row-level security, Redis with BullMQ, S3-compatible document storage, the [`open-nfse`](https://www.npmjs.com/package/open-nfse) library for the national NFS-e integration, the official tax calculator (RTC) for IBS/CBS, Stripe for billing, and OpenTelemetry and Sentry for observability.
+PostgreSQL with TypeORM and row-level security, Redis with BullMQ, S3-compatible document storage, the [`open-nfse`](https://www.npmjs.com/package/open-nfse) library for the national NFS-e integration, the official tax calculator (RTC) for IBS/CBS, Stripe for billing (cloud mode only; `DEPLOYMENT_MODE=self_hosted` turns billing off), and OpenTelemetry and Sentry for observability.
 
 ## ⚙️ Runtimes
 
@@ -35,7 +35,7 @@ PostgreSQL with TypeORM and row-level security, Redis with BullMQ, S3-compatible
 | `src/main.worker.ts` | Queue consumers, scheduled jobs and health endpoints | 3002 |
 | `src/main.dev.ts` | API and worker together for development | 3000 and 3002 |
 
-The worker completes invoice processing, document preparation, email and webhook delivery, and the hourly billing reconciliation. Production runs API and worker as separate processes. The development bootstrap rejects `NODE_ENV=production`.
+The worker completes invoice processing, document preparation, email and webhook delivery, sales-platform event processing, the daily data cleanup and, in cloud mode, the hourly billing reconciliation. Production runs API and worker as separate processes. The development bootstrap rejects `NODE_ENV=production`.
 
 ## 🚀 Quick start
 
@@ -65,6 +65,7 @@ Run inside `api/`, or use the equivalent root commands:
 | `yarn test:e2e` | End-to-end suites against a local test database. |
 | `yarn test:fiscal:integration` | Fiscal integration suite. |
 | `yarn migration:show` / `run` / `revert` / `create` | Manage database migrations. |
+| `yarn openapi:generate` | Regenerate the public OpenAPI (`docs/openapi`, `web/public/openapi.json`). CI fails when it is out of date. |
 | `yarn test:api-key` | Smoke-test an API key against a running API. |
 | `yarn stripe:provision` | Create the Stripe products and prices. |
 
@@ -75,15 +76,17 @@ Copy [.env.example](.env.example) to `.env` for development outside Docker. The 
 | Group | Variables |
 | --- | --- |
 | Runtime | `NODE_ENV`, `PORT`, `WORKER_PORT`, `API_PREFIX`, `CORS_ORIGINS`, `PUBLIC_API_URL`, `DASHBOARD_URL`, `APP_URL` |
+| Deployment mode | `DEPLOYMENT_MODE` (`cloud` or `self_hosted`), `PLATFORM_ADMIN_EMAILS`, `OPS_ALERT_EMAILS` |
 | Database | `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SCHEMA`, `DB_POOL_*`, `E2E_DATABASE_URL` |
 | Database TLS | `DB_SSL`, `DB_SSL_CA`, `DB_SSL_REJECT_UNAUTHORIZED` |
 | Redis | `REDIS_URL`, `REDIS_KEY_PREFIX` |
 | Secrets | `AUTH_JWT_SECRET`, `AUTH_CSRF_SIGNING_SECRET`, `SECRETS_ENCRYPTION_KEY`, `NFSE_MASTER_KEY`, `OTP_HMAC_SECRET` |
 | Storage | `STORAGE_PROVIDER`, `STORAGE_S3_*`, `STORAGE_PUBLIC_BASE_URL` |
 | Email and sign-in | `RESEND_API_KEY`, `RESEND_BASE_URL`, `EMAIL_FROM`, `MAGIC_LINK_*`, `GOOGLE_*`, `GITHUB_*` |
-| Billing | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET`, `STRIPE_PORTAL_CONFIGURATION_ID`, `STRIPE_CHECKOUT_*` |
+| Billing (cloud mode only) | `STRIPE_SECRET_KEY`, `STRIPE_PLATFORM_WEBHOOK_SECRET`, `STRIPE_PORTAL_CONFIGURATION_ID`, `STRIPE_CHECKOUT_*` |
+| NF-e and NFC-e | `NFE_PRODUCTION_ENABLED` (default `false`: production blocked), `NFE_TEST_PROVIDER`, `NFE_SEFAZ_TIMEOUT_MS`, `NFE_RESP_TEC_*` |
 | Tax calculator | `RTC_CALCULATOR_URL`, `RTC_CALCULATOR_*`, `FISCAL_DPS_LAYOUT`, `FISCAL_IBSCBS_UNAVAILABLE_MODE` |
-| Outbox and scheduling | `OUTBOX_RELAY_INTERVAL_MS`, `OUTBOX_BATCH_SIZE`, `OUTBOX_SCHEDULE_MAX_DAYS`, `NFSE_EMISSION_CONCURRENCY`, `TEST_QUEUE_CONCURRENCY`, `NFSE_PORTAL_BREAKER_*`, `NFSE_UNCERTAIN_MAX_HOURS`, `PORTAL_SYNC_ENABLED`, `MANUAL_REVIEW_SWEEP_*` |
+| Outbox and scheduling | `OUTBOX_RELAY_INTERVAL_MS`, `OUTBOX_BATCH_SIZE`, `OUTBOX_SCHEDULE_MAX_DAYS`, `NFSE_EMISSION_CONCURRENCY`, `TEST_QUEUE_CONCURRENCY`, `NFSE_PORTAL_BREAKER_*`, `NFSE_UNCERTAIN_MAX_HOURS`, `PORTAL_SYNC_ENABLED`, `MANUAL_REVIEW_SWEEP_*`, `GOV_RATE_LIMIT_*`, `DATA_RETENTION_ENABLED` |
 | Rate limits | `RATE_LIMIT_AUTHENTICATED`, `RATE_LIMIT_PUBLIC`, `RATE_LIMIT_PRE_AUTH` |
 | Observability | `OTEL_ENABLED`, `OTEL_SERVICE_NAME`, `SENTRY_ENABLED` |
 
@@ -99,10 +102,14 @@ Copy [.env.example](.env.example) to `.env` for development outside Docker. The 
 ## 🗂️ Code layout
 
 ```text
-src/modules/    auth, billing, certificate, company, credits, credits-alerts,
-                email, health, invoice, mcp, plans, security, webhooks-config
-src/infra/      config, database, queues, redis, storage, external (nfse, stripe,
-                email), observability, openapi, persistence
+src/modules/    account-audit, auth, billing, certificate, company, credits,
+                credits-alerts, email, fiscal-core, health, import,
+                integrations (sales and payment connectors), invoice (NFS-e),
+                invoice-schedule, lifecycle-emails, mcp, nfce, nfe,
+                platform-admin, plans, portal-reachability, portal-sync,
+                public-config, security, service-favorites, webhooks-config
+src/infra/      config, database, queues, redis, storage, retention, external
+                (nfse, nfe, stripe, email), observability, openapi, persistence
 src/shared/     dates, errors, events, fiscal helpers, http, tax-id
 test/           end-to-end and fiscal integration suites
 scripts/        runtime-role SQL, smoke tests, scenario runner, release helpers
@@ -130,7 +137,7 @@ The `test` environment uses a fake provider and needs no certificate. `live` req
 
 ## 🤖 MCP server
 
-`POST /mcp` (also served as `/v1/mcp`) is a JSON-RPC server for AI agents with the tools `company_list`, `nfse_issue`, `nfse_cancel`, `nfse_substitute`, `nfse_query`, `nfse_list`, `nfse_download_pdf`, `nfse_repeat`, `nfse_email_resend`, `company_update`, `accountant_package_send`, `service_favorite_list`, `service_favorite_create`, `service_favorite_delete`, `invoices_overview`, `credits_balance`, `nfse_get`, `company_fiscal_status`, `company_numbering_check`, `cnpj_lookup`, `customer_list`, `customer_update` and `customer_delete` (the full list is in `llms.txt`). Discovery is published at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, clients register at `/mcp/register`, and login and approval happen on the dashboard (`DASHBOARD_URL/mcp/authorize`). Each connection stays in the test or live environment chosen at approval. See `FRONTEND_API.md` for the dashboard calls.
+`POST /mcp` (also served as `/v1/mcp`) is a JSON-RPC server for AI agents. The tools are in `src/modules/mcp/tools`: companies and certificates (`cnpj_lookup`, `company_create`, `company_get`, `company_list`, `company_update`, `company_fiscal_status`, `company_numbering_check`, `certificate_upload`), invoices (`nfse_issue`, `nfse_issue_batch`, `nfse_calculate`, `nfse_get`, `nfse_list`, `nfse_query`, `nfse_cancel`, `nfse_substitute`, `nfse_repeat`, `nfse_review`, `nfse_download_pdf`, `nfse_get_download_url`, `nfse_get_package_url`, `nfse_email_resend`, `invoices_overview`, `accountant_package_send`), spreadsheet imports (`import_*`), schedules (`schedule_*`), customers (`customer_*`), service favorites (`service_favorite_*`), webhooks (`webhook_deliveries_list`, `webhook_delivery_retry`) and billing (`credits_balance`, `credits_purchase`, `payment_status`, `billing_usage`; the purchase steps are left out in self-hosted mode). The NF-e and NFC-e tools take `type`. Discovery is published at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`, clients register at `/mcp/register`, and login and approval happen on the dashboard (`DASHBOARD_URL/mcp/authorize`). Each connection stays in the test or live environment chosen at approval. See `FRONTEND_API.md` for the dashboard calls.
 
 ## 🗄️ Database
 
@@ -143,8 +150,8 @@ yarn migration:run
 
 ## 🧪 Testing
 
-- Unit tests: `yarn test` (about 1,600 tests; PostgreSQL integration specs are skipped unless configured).
-- PostgreSQL integration tests need `MIGRATION_TEST_DATABASE_URL` pointing at a local database whose name ends in `_test`.
+- Unit tests: `yarn test` (PostgreSQL integration specs are skipped unless configured; CI fails on any skipped test).
+- PostgreSQL integration tests need `MIGRATION_TEST_DATABASE_URL` pointing at a local database whose name ends in `_test` (for example `postgresql://corvo:changeme@localhost:5434/corvo_test` with `yarn infra:up`); run them with `NODE_ENV=test yarn jest --runInBand <path>`.
 - End-to-end tests need `E2E_DATABASE_URL` (a local database with `test` in its name; the suite recreates its schema).
 > [!NOTE]
 > Unit tests do not verify real fiscal issuance, email delivery or Stripe checkout. Nothing here is a homologation against the national system; see [fiscal limitations](../docs/fiscal/limitations.md).

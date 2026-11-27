@@ -7,6 +7,7 @@ Run Corvo on your own infrastructure with Docker Compose. Use the local stack to
 | Environment | Compose files | Env file | Document storage |
 | --- | --- | --- | --- |
 | Production | `deploy/docker-compose.yml` | `deploy/.env` | External S3 bucket |
+| Production on Dokploy | `deploy/docker-compose.dokploy.yml` | `deploy/.env` (pasted in Dokploy) | External S3 bucket |
 | Local testing | Main file + `deploy/docker-compose.local.yml` | `deploy/.env.local` | LocalStack |
 
 Production and local stacks use separate project names and volumes: `corvo-nfse` and `corvo-nfse-local`. Both publish web and API on the same default host ports, so run one at a time or change the ports for one stack.
@@ -96,11 +97,17 @@ The redirect URL goes through the dashboard, so the session cookie belongs to th
 
 Only a verified provider email signs a user in or links an existing account.
 
+### NF-e and NFC-e
+
 NF-e and NFC-e are open to every workspace in test (homologação), with nothing to release. `NFE_PRODUCTION_ENABLED=false` (the default) keeps production blocked; turn it on only when you are ready for live notes. `NFE_ENABLED` no longer exists. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` tune the homologation transport. Compose passes `NFE_PRODUCTION_ENABLED` to the api, the worker and the web (the web reads it at runtime, no rebuild).
 
-Worker settings are optional and already have defaults, all listed in `deploy/.env.example`: `DATA_RETENTION_ENABLED` (daily purge of old outbox rows; `false` only counts and logs), `TEST_QUEUE_CONCURRENCY`, `GOV_RATE_LIMIT_*` and `OUTBOX_*`/`WEBHOOK_RETRY_INTERVAL_MS`. After updating an existing server, clean old Redis jobs once with the commands in [deploy/README.md](deploy/README.md#data-cleanup).
+### Worker settings
 
-Optional settings include `STRIPE_PORTAL_CONFIGURATION_ID`, Turnstile credentials for endpoints that use it, Sentry, and OpenTelemetry. Keep `TURNSTILE_DEVELOPMENT_BYPASS_ENABLED=false` in production. The current email-code login does not use Turnstile.
+Worker settings are optional and already have defaults, all listed in `deploy/.env.example`: `DATA_RETENTION_ENABLED` (daily purge of old outbox rows, webhook deliveries and platform notices; `false` only counts and logs), `TEST_QUEUE_CONCURRENCY`, `GOV_RATE_LIMIT_*` and `OUTBOX_*`/`WEBHOOK_RETRY_INTERVAL_MS`. After updating an existing server, clean old Redis jobs once with the commands in [deploy/README.md](deploy/README.md#data-cleanup).
+
+### Other optional settings
+
+Optional settings include `STRIPE_PORTAL_CONFIGURATION_ID` (cloud mode only), Turnstile credentials for endpoints that use it, Sentry, and OpenTelemetry. Keep `TURNSTILE_DEVELOPMENT_BYPASS_ENABLED=false` in production. The current email-code login does not use Turnstile.
 
 ```bash
 node scripts/check-deploy-env.mjs
@@ -153,7 +160,7 @@ The web app sends the visitor's IP to the API together with `PROXY_SHARED_SECRET
 
 ### External integrations
 
-Email login codes and invoice attachments use your email provider. Billing uses your Stripe account; its webhook endpoint is `/v1/webhooks/stripe` on your public API domain. WhatsApp/Meta credentials are not required to start the NFS-e application.
+Email login codes and invoice attachments use your email provider. Billing exists only in `cloud` mode: it uses your Stripe account and its webhook endpoint is `/v1/webhooks/stripe` on your public API domain; in `self_hosted` mode they answer `404 BILLING_DISABLED`. Sales and payment platforms (Stripe, AbacatePay, Woovi, PushinPay, Hotmart, Kiwify) are connected by each user in the dashboard and send their webhooks to your public API domain. WhatsApp/Meta credentials are not required to start the NFS-e application.
 
 ## Migrations and updates
 

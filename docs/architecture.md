@@ -2,7 +2,7 @@
 
 Como uma NFS-e anda pelo sistema: do pedido na API até a autorização no portal nacional, passando pela outbox, pelos créditos e pelas filas. Para cada passo, diz o que é gravado **junto** na mesma transação e o que acontece se algo falhar no meio.
 
-Este documento descreve a `main`. Os nomes de arquivo apontam para `api/src`.
+Este documento descreve a `main`. Os nomes de arquivo apontam para `api/src`. Ele conta o caminho da NFS-e; a NF-e e a NFC-e (modelos 55 e 65) usam as mesmas rotas `/v1/invoices`, mas têm módulos próprios (`modules/nfe`, `modules/nfce`) e falam com a SEFAZ em vez do portal nacional. Veja [docs/fiscal](fiscal/runbooks/nfe-homologacao.md).
 
 ## Sumário
 
@@ -255,21 +255,24 @@ stateDiagram-v2
   rejected --> [*]
   cancelled --> [*]
   failed --> [*]
-  manual_review --> [*]
+  manual_review --> reconciliation_required: tentar de novo (nfse_review retry)
+  manual_review --> authorized: o portal confirma a nota
+  manual_review --> rejected: descartar ou o portal confirma que não existe
 ```
 
-`retry_pending` e `failed` existem no modelo, mas o fluxo atual não leva nenhuma nota para eles. `manual_review` hoje não tem saída: a nota fica parada até alguém agir no banco.
+`retry_pending` e `failed` existem no modelo, mas o fluxo atual não leva nenhuma nota para eles. `manual_review` tem saída: tentar de novo (a nota volta para a reconciliação) ou descartar, pelo painel, pela API ou pela ferramenta MCP `nfse_review`.
 
 ## Filas e rotinas do worker
 
 | Fila ou rotina | Quem coloca | O que faz | Tentativas |
 | --- | --- | --- | --- |
 | `OutboxRelay` (a cada 1 s) | — | Entrega as mensagens da outbox aos handlers | 10, espera até 5 min |
-| `nfse-emission` | `invoice.emit` | Monta, assina e envia a DPS (1 por vez por worker; o PR #175 sobe para 3) | 5, espera de 5 s; esgotou: `queued` vira `rejected` e `processing` vai para reconciliação |
+| `nfse-emission` | `invoice.emit` | Monta, assina e envia a DPS (até 3 por vez por worker, `NFSE_EMISSION_CONCURRENCY`) | 5, espera de 5 s; esgotou: `queued` vira `rejected` e `processing` vai para reconciliação |
 | `nfse-reconciliation` | o próprio workflow | Pergunta de novo ao portal pela mesma DPS | 5 por job; espera de 1 min dobrando até 30 min |
 | `nfse-doc-prep` | depois da autorização | Gera o PDF e envia o e-mail | 5, espera de 10 s |
 | `nfse-fiscal-reconcile` | depois da autorização | Compara o snapshot calculado com a NFS-e autorizada e registra divergências | 5, espera de 10 s |
 | `nfse-cancellation` | `invoice.cancel` | Envia o evento de cancelamento 101101 | — |
+| filas `*-test` | as mesmas rotinas, para notas de teste (homologação) | Cada fila de produção tem uma gêmea de teste, para um lote grande de teste nunca atrasar a produção (`TEST_QUEUE_CONCURRENCY`, padrão 2) | como a fila de produção |
 | `import-read`, `import-emit` | importação de planilha | Lê as linhas e cria as notas em blocos de 50 | — |
 | `docs-recovery` (a cada 5 min) | — | Rede de segurança: reenfileira a reconciliação de notas paradas há mais de 5 min em `processing` ou `reconciliation_required`, e o PDF de notas autorizadas sem documento (até 50 de cada por cliente) | 5 por job |
 | Webhooks (a cada 10 s) | `InvoiceWebhookPublisher` grava a entrega como `pending` | Entrega os webhooks assinados (`X-Corvo-Signature: sha256=…`) com timeout de 10 s. A primeira tentativa sai no próximo ciclo, até 10 s depois | 5: 0 s, 60 s, 160 s, 15 min, 30 min |
@@ -298,9 +301,8 @@ O que hoje **não** é atômico (vale revisar):
 
 - **Webhooks e e-mail são colocados na fila depois do commit, em melhor esforço.** Se o processo cair entre a troca de status e o `enqueue` do webhook, a nota fica com o status certo, mas o webhook daquela mudança não é enviado. Não há rotina que reenvie. Para documentos (PDF e e-mail) existe a `docs-recovery`.
 - **Os jobs pós-autorização (`nfse-doc-prep`, `nfse-fiscal-reconcile`) também são colocados depois do commit.** A falha é só registrada no log. Para o PDF, a `docs-recovery` cobre; para a reconciliação fiscal, não há rotina de recuperação.
-- **`manual_review` não tem saída.** A nota segura a reserva de crédito até alguém resolver no banco. O PR #176 adiciona as ações de tentar de novo e descartar.
-- **Um erro de rede na emissão agenda a reconciliação e também relança o erro.** Com isso, o job de emissão é repetido e cada repetição agenda outra reconciliação. Os locks evitam emissão em dobro, mas as filas crescem durante uma queda longa. O PR #176 corrige.
-- **A `docs-recovery` coloca mais um job de reconciliação a cada 5 min para toda nota parada em `processing` ou `reconciliation_required`, sem chave de deduplicação.** É ela que retoma uma nota cujo agendamento se perdeu, mas, numa queda longa, cada nota acumula um job novo a cada 5 min além dos que já estão esperando. O lock por nota evita processamento simultâneo; os jobs a mais rodam, não emitem nada novo e somam chamadas ao portal. Um `jobId` fixo por nota resolveria. Isso **não** está no PR #176.
+- **`manual_review` segura a reserva de crédito** até alguém decidir (tentar de novo ou descartar).
+- **A `docs-recovery` coloca mais um job de reconciliação a cada 5 min para toda nota parada em `processing` ou `reconciliation_required`, sem chave de deduplicação.** É ela que retoma uma nota cujo agendamento se perdeu, mas, numa queda longa, cada nota acumula um job novo a cada 5 min além dos que já estão esperando. O lock por nota evita processamento simultâneo; os jobs a mais rodam, não emitem nada novo e somam chamadas ao portal. Um `jobId` fixo por nota resolveria. Isso ainda não foi corrigido.
 
 ## Onde está no código
 
