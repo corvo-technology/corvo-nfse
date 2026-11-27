@@ -117,11 +117,23 @@ PostgreSQL and Redis stay inside the Compose network. The API and worker use a r
 
 Production uses an external S3 bucket. The endpoint must also be reachable by clients receiving signed download URLs. LocalStack is only defined in the local override.
 
-### HTTPS with Dokploy or another hosting proxy
+### HTTPS with another hosting proxy
 
 Route the frontend domain to service `web`, internal port `3000`, and the API domain to service `api`, internal port `3000`. Enable HTTPS in your hosting platform. The worker does not need a public domain.
 
 The frontend reaches the backend internally through `http://api:3000`. Browser requests go through the frontend's same-origin API proxy. `APP_ORIGIN` must match the public browser origin exactly so mutations pass the origin check and secure session cookies work.
+
+### Dokploy
+
+Dokploy already uses ports 80, 443 and 3000, so use `deploy/docker-compose.dokploy.yml`: it has no Caddy and publishes no ports. `WEB_DOMAIN`, `API_DOMAIN` and the `*_PORT` / `*_BIND_ADDRESS` variables are not needed.
+
+1. Create a Docker Compose application from this repository (provider Git, Compose type Docker Compose).
+2. Set Compose Path to `./deploy/docker-compose.dokploy.yml`.
+3. In Environment, paste the contents of your `deploy/.env` (`node scripts/setup-env.mjs`). Set `APP_ORIGIN=https://<web domain>` and `PUBLIC_API_URL=https://<api domain>`.
+4. In Domains, add the web domain with service `web`, port `3000`, HTTPS on (Let's Encrypt), and the API domain with service `api`, port `3000`, HTTPS on.
+5. Point both DNS records at the server and click Deploy.
+
+Dokploy writes the Environment tab to a `.env` next to the compose file, and the compose file reads it for both `${VAR}` substitution and the containers. If the deploy fails with "Configure APP_ORIGIN" (or similar), that `.env` was not found: check the deploy log for the folder Dokploy used.
 
 ### HTTPS on a VPS with Caddy
 

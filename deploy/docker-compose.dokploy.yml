@@ -1,0 +1,169 @@
+# Dokploy variant of docker-compose.yml: no Caddy `proxy` and no published ports (Dokploy's
+# Traefik already owns 80/443 and the panel owns 3000). Keep in sync with docker-compose.yml.
+# Routing: add the domains in the Dokploy "Domains" tab (service + port 3000); Dokploy adds the
+# Traefik labels. Only api and web join dokploy-network; everything else stays private.
+name: corvo-nfse
+
+x-backend: &backend
+  image: corvo-api:local
+  env_file: ${CORVO_ENV_FILE:-.env}
+  environment: &backend-environment
+    NODE_ENV: ${NODE_ENV:-production}
+    PORT: 3000
+    WORKER_PORT: 3002
+    API_PREFIX: v1
+    DATABASE_URL: postgresql://corvo_backend_runtime:${POSTGRES_RUNTIME_PASSWORD:?Execute node scripts/setup-env.mjs}@postgres:5432/corvo_dev
+    REDIS_URL: redis://redis:6379
+    DB_SCHEMA: corvo
+    DB_POOL_MIN: 0
+    DB_POOL_MAX: 10
+    DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-15000}
+    NODE_OPTIONS: --max-old-space-size=768
+    RTC_CALCULATOR_URL: http://rtc-calculator:8080/api
+    STORAGE_PROVIDER: s3
+    CORS_ORIGINS: ${APP_ORIGIN:?Configure APP_ORIGIN}
+    DASHBOARD_URL: ${APP_ORIGIN:?Configure APP_ORIGIN}
+    APP_URL: ${APP_ORIGIN:?Configure APP_ORIGIN}/app
+    PUBLIC_API_URL: ${PUBLIC_API_URL:?Configure PUBLIC_API_URL}
+    # Everything else the API and the worker read (NFE_*, DATA_RETENTION_ENABLED, TEST_QUEUE_CONCURRENCY,
+    # OUTBOX_*, GOV_RATE_LIMIT_*, ...) comes from the env file above; see deploy/.env.example.
+    STRIPE_CHECKOUT_SUCCESS_URL: ${APP_ORIGIN}/app/billing/success
+    STRIPE_CHECKOUT_CANCEL_URL: ${APP_ORIGIN}/app/billing/cancel
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 30s
+  mem_limit: 1g
+  depends_on:
+    migrations:
+      condition: service_completed_successfully
+    redis:
+      condition: service_healthy
+    rtc-calculator:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: corvo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Execute node scripts/setup-env.mjs}
+      POSTGRES_DB: corvo_dev
+    # Sized for a 2 vCPU / 8 GB host shared with api, worker, web and the RTC calculator.
+    command: ['postgres', '-c', 'shared_buffers=1GB', '-c', 'effective_cache_size=3GB', '-c', 'max_connections=60', '-c', 'work_mem=8MB']
+    mem_limit: 2g
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U corvo -d corvo_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory', '384mb', '--maxmemory-policy', 'noeviction']
+    mem_limit: 512m
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrations:
+    # Reuses the image built by the `api` service (built once, not three times).
+    image: corvo-api:local
+    pull_policy: never
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DB_SCHEMA: corvo
+      MIGRATION_DATABASE_URL: postgresql://corvo:${POSTGRES_PASSWORD:?Execute node scripts/setup-env.mjs}@postgres:5432/corvo_dev
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?Execute node scripts/setup-env.mjs}
+    command: ['node', 'scripts/deploy-migrate.mjs']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  rtc-calculator:
+    image: ${RTC_IMAGE:-corvo-rtc:local}
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.rtc
+    init: true
+    restart: unless-stopped
+    mem_limit: 1536m
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/api/calculadora/dados-abertos/versao || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 420s
+
+  api:
+    <<: *backend
+    # The only service that builds the backend image; `worker` and `migrations` reuse it.
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.api
+    networks: [default, dokploy-network]
+
+  worker:
+    <<: *backend
+    # Same image as the API; CORVO_RUNTIME_ROLE picks the worker process.
+    image: corvo-api:local
+    pull_policy: never
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://127.0.0.1:$${WORKER_PORT:-3002}/v1/health/live || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    environment:
+      <<: *backend-environment
+      CORVO_RUNTIME_ROLE: worker
+      DB_APPLICATION_NAME: corvo-worker
+    # Worker health is reachable on port 3002 within the Compose network.
+
+  web:
+    image: corvo-web:local
+    build:
+      context: ../
+      dockerfile: deploy/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: /api/proxy/v1
+        NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+    environment:
+      API_BASE_URL: http://api:3000
+      APP_ORIGIN: ${APP_ORIGIN:?Configure APP_ORIGIN}
+      SITE_ACCESS_MODE: open
+      NFE_PRODUCTION_ENABLED: ${NFE_PRODUCTION_ENABLED:-false}
+      SUPPORT_WHATSAPP_NUMBER: ${SUPPORT_WHATSAPP_NUMBER:-}
+      SUPPORT_WHATSAPP_MESSAGE: ${SUPPORT_WHATSAPP_MESSAGE:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      COMMUNITY_WHATSAPP_URL: ${COMMUNITY_WHATSAPP_URL:-}
+      SUPPORT_AVATAR_URL: ${SUPPORT_AVATAR_URL:-}
+      PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET:-}
+      TRUST_CF_CONNECTING_IP: ${TRUST_CF_CONNECTING_IP:-false}
+    networks: [default, dokploy-network]
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+volumes:
+  pgdata:
+  redisdata:
+
+# Dokploy's Traefik reaches api and web through this network (already created by Dokploy).
+networks:
+  dokploy-network:
+    external: true
