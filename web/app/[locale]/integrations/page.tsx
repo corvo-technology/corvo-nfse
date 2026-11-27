@@ -4,11 +4,14 @@ import { CtaLink, MarketingShell, PageHero, SECONDARY_LINK } from "@/components/
 import { IntegrationsCatalog, type CatalogGroup } from "@/components/marketing/integrations-catalog";
 import { INTEGRATION_GROUPS, INTEGRATION_PLATFORMS } from "@/lib/integrations-catalog";
 import { SITE_NAME, pageMetadata, pageUrl, seoLocale } from "@/lib/seo";
+import { REPO_URL } from "@/lib/repo";
 import { CONTACT_EMAIL, breadcrumbList } from "@/lib/structured-data";
 
 type Props = { params: Promise<{ locale: string }> };
 
 const INTEGRATIONS_PATH = "/integrations";
+
+const CONTRIBUTE_STEPS = ["copy", "test", "pr"] as const;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = seoLocale((await params).locale);
@@ -103,6 +106,31 @@ export default async function IntegrationsPage({ params }: Props) {
               </div>
             ))}
           </dl>
+        </div>
+      </section>
+
+      <section aria-labelledby="contribua" className="border-t border-border-soft px-6 py-16 sm:px-10">
+        <div className="mx-auto grid max-w-[1120px] gap-10 md:grid-cols-2 md:items-start">
+          <div className="max-w-[520px]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-4">{t("contribute.eyebrow")}</p>
+            <h2 id="contribua" className="mt-3 text-[clamp(26px,3.4vw,36px)] font-semibold tracking-[-0.03em] text-text">{t("contribute.title")}</h2>
+            <p className="mt-3 text-[16px] leading-relaxed text-text-2">{t("contribute.body")}</p>
+            <div className="mt-6 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <CtaLink href={`${REPO_URL}/tree/main/api/src/modules/integrations/connectors`} variant="primary">{t("contribute.example")}</CtaLink>
+              <a href={`${REPO_URL}/blob/main/CONTRIBUTING.md`} className={SECONDARY_LINK}>{t("contribute.guide")}</a>
+            </div>
+          </div>
+          <ol className="flex flex-col gap-4">
+            {CONTRIBUTE_STEPS.map((step, index) => (
+              <li key={step} className="flex items-start gap-3.5">
+                <span aria-hidden className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-border-strong text-[12px] text-text-2">{index + 1}</span>
+                <div>
+                  <p className="text-[15.5px] font-medium text-text">{t(`contribute.steps.${step}.title`)}</p>
+                  <p className="mt-0.5 max-w-[420px] text-[14.5px] leading-snug text-text-2">{t(`contribute.steps.${step}.body`)}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 

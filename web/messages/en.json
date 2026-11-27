@@ -4485,6 +4485,27 @@
         }
       }
     },
+    "contribute": {
+      "eyebrow": "Open source",
+      "title": "Missing your platform? Build the integration with us.",
+      "body": "Corvo is open source (AGPL-3.0). Each integration is a small connector with the same shape: it receives the platform notice and says whether it is a sale, a refund or a dispute. Corvo already does the rest, from issuing to cancelling. Send the PR and it ships for everyone.",
+      "example": "See the connectors on GitHub",
+      "guide": "How to contribute",
+      "steps": {
+        "copy": {
+          "title": "Copy a similar connector",
+          "body": "Hotmart and Kiwify for digital products; Stripe and Mercado Pago for payments."
+        },
+        "test": {
+          "title": "Test with the documentation examples",
+          "body": "The platform's sample notices become the connector tests."
+        },
+        "pr": {
+          "title": "Open a pull request",
+          "body": "We review, merge, and the integration shows up on this page."
+        }
+      }
+    },
     "missing": {
       "title": "Your platform is not here?",
       "body": "Issue through the API with one call, or tell us which integration you want next.",
