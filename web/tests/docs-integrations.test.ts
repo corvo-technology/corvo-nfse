@@ -59,6 +59,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text).toContain(term);
   });
 
+  it("documents how to connect Eduzz", () => {
+    for (const term of ["secretKey", "x-signature", "HMAC-SHA256", "myeduzz.invoice_paid", "myeduzz.invoice_refunded", "myeduzz.invoice_chargeback", "myeduzz.invoice_canceled", "eduzz:<", "invoiceValue", "data.gains.producer"])
+      expect(text).toContain(term);
+  });
+
   it("authenticates the examples with X-API-Key, like the rest of the API", () => {
     expect(text).toContain("X-API-Key");
     expect(text).not.toContain("Authorization: Bearer");

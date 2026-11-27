@@ -132,7 +132,7 @@ describe('invoice request without a buyer e-mail', () => {
     if (result.kind === 'issue') expect(result.request.email).toBe(false);
   });
 
-  it.each(['abacatepay', 'hotmart', 'kiwify'])(
+  it.each(['abacatepay', 'hotmart', 'kiwify', 'eduzz'])(
     '%s: a buyer with a document and no e-mail is issued without sending',
     (provider) => {
       const op: NormalizedOperation = {
