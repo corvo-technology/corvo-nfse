@@ -328,7 +328,13 @@ export const envSchema = z
     // Calls to the portal that failed to connect in 10 minutes before the alert opens even when the
     // tests pass. 0 turns this signal off.
     OPS_ALERT_EMISSION_FAILURES: z.coerce.number().int().min(0).default(10),
-    OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+    OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
+    // How often the worker looks for webhook deliveries that are due (retries and anything the immediate send missed).
+    WEBHOOK_RETRY_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
@@ -383,6 +389,13 @@ export const envSchema = z
     SENTRY_RELEASE: z.string().min(1).optional(),
     SENTRY_ERROR_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
     SENTRY_DEBUG: booleanFromEnv.default(false),
+    /** Lifecycle e-mails to the workspace owners. The master switch turns all off; each kind has its own. */
+    LIFECYCLE_EMAILS_ENABLED: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_FIRST_INVOICE: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_MONTHLY_SUMMARY: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_CREDITS_FORECAST: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_PENDING_PAYMENT: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_REJECTION_HELP: booleanFromEnv.default(true),
     SENTRY_FLUSH_TIMEOUT_MS: z.coerce
       .number()
       .int()

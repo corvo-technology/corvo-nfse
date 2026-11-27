@@ -5,6 +5,8 @@ import { BillingUsageModule } from '@/modules/billing/billing-usage.module';
 import { EmailModule } from '@/modules/email/email.module';
 import { AccountNoticeListener } from './account-notice.listener';
 import { CreditsLowNotifier } from './credits-low.notifier';
+import { CreditsPace } from './credits-pace.service';
+import { LifecycleEmailSettings } from './lifecycle-email.settings';
 import { IS_SELF_HOSTED } from '@/shared/deployment-mode';
 import { TenantRecipientsService } from './tenant-recipients.service';
 
@@ -15,7 +17,9 @@ import { TenantRecipientsService } from './tenant-recipients.service';
     ...(IS_SELF_HOSTED ? [] : [CreditsLowNotifier]),
     AccountNoticeListener,
     TenantRecipientsService,
+    CreditsPace,
+    LifecycleEmailSettings,
   ],
-  exports: [TenantRecipientsService],
+  exports: [TenantRecipientsService, LifecycleEmailSettings],
 })
 export class CreditsAlertsModule {}

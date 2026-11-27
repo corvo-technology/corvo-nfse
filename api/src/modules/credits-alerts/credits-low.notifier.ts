@@ -9,6 +9,8 @@ import {
   type CreditsUsageChangedEvent,
 } from '@/modules/billing/application/credits-usage.events';
 import { EmailService } from '@/modules/email/application/email.service';
+import { CreditsPace } from './credits-pace.service';
+import { LifecycleEmailSettings } from './lifecycle-email.settings';
 import { TenantRecipientsService } from './tenant-recipients.service';
 
 /** Share of the period's included credits that triggers the warning. */
@@ -29,6 +31,8 @@ export class CreditsLowNotifier {
     private readonly recipientsOf: TenantRecipientsService,
     private readonly email: EmailService,
     @Inject(LOCK_PORT) private readonly locks: LockPort,
+    private readonly pace: CreditsPace,
+    private readonly settings: LifecycleEmailSettings,
   ) {}
 
   @OnEvent(CREDITS_USAGE_CHANGED)
@@ -60,12 +64,18 @@ export class CreditsLowNotifier {
       return;
     }
     const remaining = Math.max(included - used, 0);
+    const daysLeft = await this.forecast(
+      tenantId,
+      remaining,
+      status.period.periodEnd,
+    );
     for (const to of recipients)
       await this.email.enqueueCreditsLow({
         to,
         planName: status.plan.name,
         remaining,
         total: included,
+        daysLeft,
       });
     this.logger.log({
       event: 'credits_low_notified',
@@ -74,5 +84,33 @@ export class CreditsLowNotifier {
       included,
       recipients: recipients.length,
     });
+  }
+
+  /**
+   * Days until the credits run out at the pace of the last 30 days. Null (the sentence is left out)
+   * when there is not enough history or when the plan renews before they would run out.
+   */
+  private async forecast(
+    tenantId: string,
+    remaining: number,
+    periodEnd: Date,
+  ): Promise<number | null> {
+    if (!this.settings.isOn('creditsForecast') || remaining <= 0) return null;
+    try {
+      const perDay = await this.pace.perDay(tenantId);
+      if (!perDay) return null;
+      const days = Math.max(1, Math.ceil(remaining / perDay));
+      const untilRenewal = Math.ceil(
+        (periodEnd.getTime() - Date.now()) / DAY_MS,
+      );
+      return days <= untilRenewal ? days : null;
+    } catch (error) {
+      this.logger.warn({
+        event: 'credits_forecast_failed',
+        tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 }
