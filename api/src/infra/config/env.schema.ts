@@ -328,7 +328,13 @@ export const envSchema = z
     // Calls to the portal that failed to connect in 10 minutes before the alert opens even when the
     // tests pass. 0 turns this signal off.
     OPS_ALERT_EMISSION_FAILURES: z.coerce.number().int().min(0).default(10),
-    OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+    OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
+    // How often the worker looks for webhook deliveries that are due (retries and anything the immediate send missed).
+    WEBHOOK_RETRY_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10000),
     OUTBOX_BATCH_SIZE: z.coerce.number().int().positive().default(50),
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),

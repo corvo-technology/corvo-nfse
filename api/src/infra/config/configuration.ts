@@ -105,6 +105,7 @@ export default function configuration(): AppConfiguration {
       breakerCooldownMs: env.NFSE_PORTAL_BREAKER_COOLDOWN_MS,
       uncertainMaxHours: env.NFSE_UNCERTAIN_MAX_HOURS,
     },
+    webhooks: { retryIntervalMs: env.WEBHOOK_RETRY_INTERVAL_MS },
     govRateLimit: {
       perSecond: env.GOV_RATE_LIMIT_PER_SECOND,
       burst: env.GOV_RATE_LIMIT_BURST,
