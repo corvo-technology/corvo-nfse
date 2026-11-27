@@ -214,6 +214,7 @@ export function createNfeStack(
   // The real preconditions: only the list of released UFs is a stub (everything is released).
   const preconditions = new NfeEmissionPreconditions(config, {
     isEnabled: () => Promise.resolve(true),
+    listEnabled: () => Promise.resolve([]),
   });
   const preparation = new NfePreparation(
     companies,

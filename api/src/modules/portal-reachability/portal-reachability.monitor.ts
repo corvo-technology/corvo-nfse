@@ -2,12 +2,20 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import * as Sentry from '@sentry/nestjs';
+import { ENDPOINTS, ENDPOINTS_65 } from '@/infra/external/nfe/sefaz/endpoints';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
+import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
+import {
+  NFE_ENABLED_AUTHORITIES,
+  type NfeEnabledAuthorities,
+} from '@/modules/fiscal-core/domain/nfe-enabled-authorities';
 import type { LockPort } from '@/infra/redis/lock.port';
 import { EmailService } from '@/modules/email/application/email.service';
 import { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
 import { observeScheduledTask } from '@/shared/observability/scheduled-task-telemetry';
 import { PortalAlertContext } from './portal-alert-context';
+import { AuthorityReachabilityStore } from './authority-reachability.store';
+import { authorityHosts } from './authority-hosts';
 import {
   classifyProbes,
   type PortalHealth,
@@ -59,6 +67,9 @@ export class PortalReachabilityMonitor {
     private readonly email: EmailService,
     private readonly context: PortalAlertContext,
     @Inject(LOCK_PORT) private readonly locks: LockPort,
+    @Inject(NFE_ENABLED_AUTHORITIES)
+    private readonly enabled: NfeEnabledAuthorities,
+    private readonly authorityStore: AuthorityReachabilityStore,
   ) {}
 
   @Cron('* * * * *')
@@ -80,13 +91,45 @@ export class PortalReachabilityMonitor {
     const control =
       this.config.get<string>('PORTAL_PROBE_CONTROL_HOST') ??
       DEFAULT_CONTROL_HOST;
-    const [sefin, adn, govControl, externalControl] = await Promise.all([
-      probeTcp('sefin.nfse.gov.br'),
-      probeTcp('adn.nfse.gov.br'),
-      probeTcp('www.gov.br'),
-      probeTcp(control),
-    ]);
-    return { sefin, adn, govControl, externalControl };
+    const [sefin, adn, govControl, externalControl, authorities] =
+      await Promise.all([
+        probeTcp('sefin.nfse.gov.br'),
+        probeTcp('adn.nfse.gov.br'),
+        probeTcp('www.gov.br'),
+        probeTcp(control),
+        this.probeAuthorities(),
+      ]);
+    return { sefin, adn, govControl, externalControl, authorities };
+  }
+
+  /**
+   * One TCP probe per host of the enabled SEFAZ authorities (a host shared by two authorities is
+   * probed once). Never throws: with no enabled UF, or if the list cannot be read, it is empty and
+   * the NFS-e checks work as before.
+   */
+  private async probeAuthorities(): Promise<Record<string, boolean>> {
+    try {
+      const enabled = await this.enabled.listEnabled();
+      const targets = authorityHosts(
+        [...ENDPOINTS, ...ENDPOINTS_65],
+        enabled.map((row) => ({ ...row, uf: row.uf as Uf })),
+      );
+      const hosts = [...new Set(targets.map((target) => target.host))];
+      const answers = new Map(
+        await Promise.all(
+          hosts.map(async (host) => [host, await probeTcp(host)] as const),
+        ),
+      );
+      return Object.fromEntries(
+        targets.map((target) => [target.authority, answers.get(target.host)!]),
+      );
+    } catch (error: unknown) {
+      this.logger.warn(
+        { err: error },
+        'Could not probe the SEFAZ authorities this round',
+      );
+      return {};
+    }
   }
 
   /** The health the emissions themselves report: ok unless too many calls failed to connect. */
@@ -107,6 +150,7 @@ export class PortalReachabilityMonitor {
     probes: ProbeResults,
     now: Date,
   ): Promise<{ health: PortalHealth; event: ReachabilityEvent }> {
+    if (probes.authorities) await this.saveAuthorities(probes.authorities, now);
     const probed = classifyProbes(probes);
     const health = probed !== 'ok' ? probed : await this.emissionHealth();
     const { state, event } = advance(await this.store.load(), health, now);
@@ -114,6 +158,17 @@ export class PortalReachabilityMonitor {
     if (event?.type === 'opened') await this.alertDown(event, probes);
     if (event?.type === 'closed') await this.alertRecovered(event);
     return { health, event };
+  }
+
+  private async saveAuthorities(
+    results: Record<string, boolean>,
+    now: Date,
+  ): Promise<void> {
+    try {
+      await this.authorityStore.save(results, now);
+    } catch (error: unknown) {
+      this.logger.warn({ err: error }, 'Could not save the SEFAZ reachability');
+    }
   }
 
   private async alertDown(
@@ -130,6 +185,10 @@ export class PortalReachabilityMonitor {
     )
       .filter((name) => !probes[name])
       .map((name) => PROBE_LABELS[name]);
+    for (const [authority, answered] of Object.entries(
+      probes.authorities ?? {},
+    ))
+      if (!answered) failedProbes.push(authority);
     this.logger.error(
       { event: 'portal_unreachable', health, since: event.since, waitingNotes },
       'The Corvo servers cannot reach the government portal',

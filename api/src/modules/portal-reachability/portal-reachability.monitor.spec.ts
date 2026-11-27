@@ -3,7 +3,10 @@ import * as Sentry from '@sentry/nestjs';
 import type { LockPort } from '@/infra/redis/lock.port';
 import type { EmailService } from '@/modules/email/application/email.service';
 import type { FiscalPortalBreaker } from '@/modules/invoice/application/fiscal-portal-breaker';
+import type { NfeEnabledAuthorities } from '@/modules/fiscal-core/domain/nfe-enabled-authorities';
+import type { AuthorityReachabilityStore } from './authority-reachability.store';
 import type { PortalAlertContext } from './portal-alert-context';
+import { probeTcp } from './reachability.probe';
 import {
   opsAlertEmails,
   PortalReachabilityMonitor,
@@ -17,6 +20,7 @@ import type {
 } from './reachability.store';
 
 jest.mock('@sentry/nestjs', () => ({ captureMessage: jest.fn() }));
+jest.mock('./reachability.probe', () => ({ probeTcp: jest.fn() }));
 
 const up: ProbeResults = {
   sefin: true,
@@ -36,6 +40,8 @@ describe('PortalReachabilityMonitor', () => {
   let incidents: PortalIncident[];
   let failures: number;
   let settings: Record<string, unknown>;
+  let enabled: { uf: string; model: 55 | 65; tpAmb: 1 | 2 }[];
+  const saveAuthorities = jest.fn();
   const enqueueNotice = jest.fn();
   let clock: number;
 
@@ -61,6 +67,10 @@ describe('PortalReachabilityMonitor', () => {
         egressIp: async () => '203.0.113.9',
       } as unknown as PortalAlertContext,
       {} as LockPort,
+      {
+        listEnabled: async () => enabled,
+      } as unknown as NfeEnabledAuthorities,
+      { save: saveAuthorities } as unknown as AuthorityReachabilityStore,
     );
 
   const tick = (monitor: PortalReachabilityMonitor, probes: ProbeResults) => {
@@ -72,9 +82,11 @@ describe('PortalReachabilityMonitor', () => {
     state = INITIAL_STATE;
     incidents = [];
     failures = 0;
+    enabled = [];
     clock = Date.UTC(2026, 10, 26, 12);
     settings = { OPS_ALERT_EMAILS: 'dono@corvo.tech, Socio@corvo.tech' };
     jest.clearAllMocks();
+    saveAuthorities.mockResolvedValue(undefined);
   });
 
   it('sends nothing while everything answers', async () => {
@@ -176,6 +188,81 @@ describe('PortalReachabilityMonitor', () => {
       'b@x.com',
     ]);
     expect(opsAlertEmails(undefined)).toEqual([]);
+  });
+
+  describe('SEFAZ probes', () => {
+    const probe = probeTcp as jest.Mock;
+
+    it('probes only the enabled authorities and the SVC target, once per host', async () => {
+      enabled = [
+        { uf: 'SP', model: 55, tpAmb: 2 },
+        { uf: 'SP', model: 65, tpAmb: 2 },
+      ];
+      probe.mockImplementation((host: string) =>
+        Promise.resolve(host !== 'homologacao.nfce.fazenda.sp.gov.br'),
+      );
+      const results = await build().probe();
+      expect(results.authorities).toEqual({
+        'nfe-sp-2': true,
+        'nfce-sp-2': false,
+        'nfe-svcrs-2': true,
+      });
+      const hosts = probe.mock.calls.map((call: unknown[]) => call[0]);
+      expect(hosts).toEqual(
+        expect.arrayContaining(['sefin.nfse.gov.br', 'adn.nfse.gov.br']),
+      );
+      expect(new Set(hosts).size).toBe(hosts.length);
+    });
+
+    it('probes nothing extra when no UF is enabled', async () => {
+      probe.mockResolvedValue(true);
+      const results = await build().probe();
+      expect(results.authorities).toEqual({});
+      expect(probe).toHaveBeenCalledTimes(4);
+    });
+
+    it('still probes the NFS-e hosts when the enabled list cannot be read', async () => {
+      probe.mockResolvedValue(true);
+      const monitor = build();
+      (monitor as unknown as { enabled: NfeEnabledAuthorities }).enabled = {
+        isEnabled: jest.fn(),
+        listEnabled: () => Promise.reject(new Error('db down')),
+      };
+      const results = await monitor.probe();
+      expect(results).toMatchObject({ sefin: true, authorities: {} });
+    });
+
+    it('saves what each SEFAZ answered on every round', async () => {
+      const monitor = build();
+      await tick(monitor, { ...up, authorities: { 'nfe-sp-2': false } });
+      expect(saveAuthorities).toHaveBeenCalledWith(
+        { 'nfe-sp-2': false },
+        new Date(clock),
+      );
+    });
+
+    it('does not break the check when saving fails', async () => {
+      saveAuthorities.mockRejectedValueOnce(new Error('redis down'));
+      const monitor = build();
+      const { health } = await tick(monitor, {
+        ...up,
+        authorities: { 'nfe-sp-2': true },
+      });
+      expect(health).toBe('ok');
+    });
+
+    it('says portal_down, not our network, when a SEFAZ answers but the NFS-e hosts do not', async () => {
+      const monitor = build();
+      for (let i = 0; i < 3; i += 1)
+        await tick(monitor, {
+          ...govBlocked,
+          authorities: { 'nfe-sp-2': true },
+        });
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        'portal portal_down',
+        expect.anything(),
+      );
+    });
   });
 });
 

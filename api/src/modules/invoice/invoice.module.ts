@@ -80,7 +80,7 @@ import { EmailModule } from '@/modules/email/email.module';
 import { InvoiceReviewController } from './http/invoice-review.controller';
 import { InvoiceReviewService } from './application/invoice-review.service';
 import { FiscalPortalBreaker } from './application/fiscal-portal-breaker';
-import { PortalReachabilityStore } from '@/modules/portal-reachability/reachability.store';
+import { PortalReachabilityReadModule } from '@/modules/portal-reachability/portal-reachability-read.module';
 import { InvoicePackageService } from './application/package/invoice-package.service';
 import { PackageLinkService } from './application/package/package-link.service';
 import { PackageContributorRegistry } from './application/package/package-contributor.registry';
@@ -122,6 +122,7 @@ const ACCOUNTANT_PACKAGE = {
 @Module({
   imports: [
     forwardRef(() => InvoiceScheduleModule),
+    PortalReachabilityReadModule,
     BillingUsageModule,
     CreditsModule,
     BullModule.registerQueue(
@@ -174,8 +175,6 @@ const ACCOUNTANT_PACKAGE = {
     ...ACCOUNTANT_PACKAGE.providers,
     InvoiceOverviewService,
     InvoiceReviewService,
-    FiscalPortalBreaker,
-    PortalReachabilityStore,
     DpsNumberingService,
     {
       provide: INVOICE_OVERVIEW_REPOSITORY,
@@ -240,8 +239,7 @@ const ACCOUNTANT_PACKAGE = {
   ],
   exports: [
     ...ACCOUNTANT_PACKAGE.providers,
-    FiscalPortalBreaker,
-    PortalReachabilityStore,
+    PortalReachabilityReadModule,
     DpsNumberingService,
     OutboxHandlerRegistry,
     OUTBOX_REPOSITORY,
