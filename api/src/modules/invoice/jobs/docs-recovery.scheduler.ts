@@ -1,5 +1,6 @@
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import {
   INVOICE_REPOSITORY,
@@ -16,6 +17,8 @@ const QUEUE_NAME = 'nfse-doc-prep';
 const JOB_NAME = 'prepare';
 const RECONCILE_QUEUE_NAME = 'nfse-fiscal-reconcile';
 const RECONCILE_JOB_NAME = 'reconcile';
+const DEFAULT_MAX_PER_RUN = 50;
+const JITTER_MAX_MS = 200;
 
 @Injectable()
 export class DocsRecoveryScheduler {
@@ -28,7 +31,22 @@ export class DocsRecoveryScheduler {
     private readonly queueService: BullmqQueueService,
     @Inject(FISCAL_RECONCILIATION_REPOSITORY)
     private readonly reconciliations: IFiscalReconciliationRepository,
+    @Optional() private readonly config?: ConfigService,
   ) {}
+
+  /** Most items re-queued per run, so a backlog never turns into a burst to the government. */
+  private get maxPerRun(): number {
+    return (
+      this.config?.get<number>('docsRecovery.maxPerRun') ?? DEFAULT_MAX_PER_RUN
+    );
+  }
+
+  /** A small random pause between items spreads the jobs over time. */
+  private async jitter(): Promise<void> {
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.floor(Math.random() * JITTER_MAX_MS)),
+    );
+  }
 
   @Cron('*/5 * * * *')
   async handle(): Promise<void> {
@@ -36,15 +54,22 @@ export class DocsRecoveryScheduler {
   }
 
   private async recover(): Promise<void> {
+    // One budget for the whole run (all tenants, all three kinds of work).
+    let budget = this.maxPerRun;
     await this.discovery.visit('invoice-recovery', async (tenantId) => {
+      if (budget <= 0) return;
       const cutoff = new Date(Date.now() - 5 * 60 * 1000);
       // queued invoices are owned by the outbox (also protects SCHEDULE invoices from early emission).
-      const fiscal = await this.invoiceRepo.findPendingReconciliation(
-        tenantId,
-        cutoff,
-        50,
-      );
-      for (const i of fiscal)
+      const fiscal = (
+        await this.invoiceRepo.findPendingReconciliation(
+          tenantId,
+          cutoff,
+          budget,
+        )
+      ).slice(0, budget);
+      for (const i of fiscal) {
+        budget--;
+        await this.jitter();
         await this.queueService.add(
           'nfse-reconciliation',
           'recover',
@@ -56,13 +81,21 @@ export class DocsRecoveryScheduler {
             removeOnFail: 1000,
           },
         );
-      const pending = await this.invoiceRepo.findAuthorizedWithoutDocuments(
-        tenantId,
-        cutoff,
-        50,
-      );
+      }
+      const pending =
+        budget > 0
+          ? (
+              await this.invoiceRepo.findAuthorizedWithoutDocuments(
+                tenantId,
+                cutoff,
+                budget,
+              )
+            ).slice(0, budget)
+          : [];
 
       for (const { id, tenantId, companyId } of pending) {
+        budget--;
+        await this.jitter();
         try {
           await this.queueService.add(
             QUEUE_NAME,
@@ -93,13 +126,19 @@ export class DocsRecoveryScheduler {
       // Only authorized invoices carrying a fiscal snapshot and no
       // reconciliation row come back here (the repository filters queued work).
       const withoutReconciliation =
-        await this.reconciliations.findAuthorizedWithoutReconciliation(
-          tenantId,
-          cutoff,
-          50,
-        );
+        budget > 0
+          ? (
+              await this.reconciliations.findAuthorizedWithoutReconciliation(
+                tenantId,
+                cutoff,
+                budget,
+              )
+            ).slice(0, budget)
+          : [];
 
       for (const { id, tenantId, companyId } of withoutReconciliation) {
+        budget--;
+        await this.jitter();
         try {
           await this.queueService.add(
             RECONCILE_QUEUE_NAME,

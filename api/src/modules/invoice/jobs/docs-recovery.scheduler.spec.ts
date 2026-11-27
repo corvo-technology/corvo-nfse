@@ -286,4 +286,36 @@ describe('DocsRecoveryScheduler', () => {
     );
     expect(reconcileCalls).toHaveLength(0);
   });
+
+  it('re-queues at most the per-run cap across all tenants and kinds of work', async () => {
+    const capped = new DocsRecoveryScheduler(
+      discovery,
+      mockInvoiceRepo,
+      mockQueueService,
+      mockReconciliationRepo,
+      { get: () => 3 } as never,
+    );
+    const rows = (tenantId: string) =>
+      Array.from({ length: 5 }, (_, n) => ({
+        id: `${tenantId}-${n}`,
+        tenantId,
+        companyId: 'comp',
+      }));
+    findPendingReconciliation.mockImplementation(async (t: string) =>
+      rows(t).slice(0, 2),
+    );
+    findAuthorizedWithoutDocuments.mockImplementation(
+      async (t: string, _c: Date, limit: number) => rows(t).slice(0, limit),
+    );
+    await capped.handle();
+    expect(addMock).toHaveBeenCalledTimes(3);
+    // tenant-b is not even asked once the budget is spent
+    expect(findPendingReconciliation).toHaveBeenCalledTimes(1);
+    expect(findAuthorizedWithoutDocuments).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.any(Date),
+      1,
+    );
+    expect(findAuthorizedWithoutReconciliation).not.toHaveBeenCalled();
+  });
 });
