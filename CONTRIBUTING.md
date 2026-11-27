@@ -30,6 +30,12 @@ yarn build
 
 Each application owns its `yarn.lock`. Install dependencies in the appropriate directory and update its lockfile. Keep a single Git repository at the root.
 
+## Build an integration (connector)
+
+A connector connects Corvo to a sales or payment platform: it checks that a webhook is genuine, then turns the event into a common sale model. Everything else (rules, issuing, cancelling, retries) is shared code. Copy the closest existing connector from [`api/src/modules/integrations/connectors`](api/src/modules/integrations/connectors), build your fixtures from the platform's official documentation, and open a pull request.
+
+Read the [connector guide](docs/integrations/new-connector.md) first. It has the checklist of files to touch, a step-by-step walkthrough, the security rules (never log tokens or personal data, constant-time comparison, verify signatures), how to run the Postgres flow spec, the CI rules, and what to put in the pull request.
+
 ## Submit a pull request
 
 Describe the problem, resulting behavior, and checks you ran. Include migration, configuration, and HTTP contract changes where relevant. Workflows belong in the root `.github/workflows/` directory.
