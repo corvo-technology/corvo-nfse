@@ -44,7 +44,7 @@
     "local:down": "docker compose --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml down",
     "local:logs": "docker compose --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml logs -f",
     "local:config": "docker compose --env-file deploy/.env.local -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml config --quiet",
-    "docker:build:api": "docker build -f deploy/Dockerfile.api -t corvo-api:local api",
+    "docker:build:api": "docker build -f deploy/Dockerfile.api -t corvo-api:local .",
     "docker:build:web": "docker build -f deploy/Dockerfile.web -t corvo-web:local ."
   }
 }

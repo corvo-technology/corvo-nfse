@@ -46,6 +46,15 @@ if (Buffer.from(config.SECRETS_ENCRYPTION_KEY ?? '', 'base64').length !== 32) {
 for (const key of ['POSTGRES_PASSWORD', 'POSTGRES_RUNTIME_PASSWORD']) {
   if (!/^[A-Za-z0-9_-]+$/.test(config[key] ?? '')) errors.push(`${key} must use URL-safe characters (setup generates hexadecimal).`);
 }
+// Stale or malformed settings that would otherwise be ignored silently.
+if ('NFE_ENABLED' in config) errors.push('Remove NFE_ENABLED: it no longer exists (use NFE_PRODUCTION_ENABLED).');
+for (const key of ['NFE_PRODUCTION_ENABLED', 'DATA_RETENTION_ENABLED']) {
+  if (config[key] && !/^(true|false|1|0|yes|no|y|n)$/i.test(config[key].trim())) errors.push(`${key} must be true or false.`);
+}
+const respTec = ['NFE_RESP_TEC_CNPJ', 'NFE_RESP_TEC_CONTACT', 'NFE_RESP_TEC_EMAIL', 'NFE_RESP_TEC_PHONE'];
+if (respTec.some((key) => config[key]) && !respTec.every((key) => config[key])) {
+  errors.push('Set all four NFE_RESP_TEC_* values or none.');
+}
 if (config.TURNSTILE_DEVELOPMENT_BYPASS_ENABLED !== 'false') errors.push('Set TURNSTILE_DEVELOPMENT_BYPASS_ENABLED=false in production.');
 if (errors.length) {
   console.error('Update deploy/.env before starting production:\n' + [...new Set(errors)].map((message) => `- ${message}`).join('\n'));

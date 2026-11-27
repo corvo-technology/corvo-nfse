@@ -20,6 +20,17 @@ From the repository root, run `node scripts/setup-env.mjs` to generate the env f
 
 `PLATFORM_ADMIN_EMAILS` (in `.env`, comma-separated, lowercase, no spaces) lists who can open `/app/admin`. Empty or missing means nobody is admin. The e-mail must be verified, and only a cookie session counts (API keys and MCP never are admin). The list is read at startup: restart the API after changing it. In self-hosted mode the credit grant does not exist.
 
+## Data cleanup
+
+The worker runs a daily purge (04:00, São Paulo) of finished outbox rows. It starts as a dry run: with `DATA_RETENTION_ENABLED=false` (the default) it only counts and logs what it would delete (log lines with `event=data_retention`, fields `rule`, `matched`, `deleted`). After a week of logs, set `DATA_RETENTION_ENABLED=true` on the worker to delete. Rules: `api/src/modules/invoice/infra/typeorm-outbox-retention.ts`.
+
+New Redis jobs expire by themselves. Jobs created before that change stay forever; clean them once after updating (inside the running container, from the repository root). The first command is a dry run that only counts; the second deletes old finished jobs:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec worker node scripts/queue-clean.mjs
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec worker node scripts/queue-clean.mjs --apply
+```
+
 ## NF-e
 
 NF-e and NFC-e are open to every workspace in test (homologação), with nothing to release. Production stays blocked (`422 NFE_PRODUCTION_DISABLED`) until `NFE_PRODUCTION_ENABLED=true`, the only switch. To go live set it to `true` on the api, the worker and the web: the web only uses it to swap the "test, production soon" notes on `/nf-e`, `/nfc-e` and the home FAQ for the production text (read at runtime, no rebuild; the pages refresh within a minute). `NFE_ENABLED` no longer exists: remove it from your environment. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` are optional.
@@ -28,11 +39,10 @@ NF-e and NFC-e are open to every workspace in test (homologação), with nothing
 
 Next.js inlines `NEXT_PUBLIC_*` values into the browser bundle at build time. Supply them as build variables or Docker build args (`docker build -f deploy/Dockerfile.web --build-arg NEXT_PUBLIC_META_PIXEL_ID=... .`), or through Compose `web.build.args`. Setting runtime environment variables does not update these values; rebuild the image after changing them.
 
-The web Docker build logs `NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GA_ID`, and `NEXT_PUBLIC_API_URL` and fails if `NEXT_PUBLIC_META_PIXEL_ID` is empty. To intentionally build without Meta Pixel, pass `--build-arg ALLOW_MISSING_PIXEL=1`, or set `ALLOW_MISSING_PIXEL=1` in the Compose build environment (passed through by `web.build.args`). Next.js also warns about a missing pixel in production without failing the build.
+The web Docker build logs `NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GA_ID`, and `NEXT_PUBLIC_API_URL`. Both the Meta Pixel and Google Analytics are optional: an empty id means the script never loads, and the build never fails because of it.
 
 ## RTC calculator (Calculadora de Tributos)
 
-The worker runs a daily purge (04:00, São Paulo) of finished outbox rows. It starts as a dry run: with `DATA_RETENTION_ENABLED=false` (the default) it only counts and logs what it would delete (log lines with `event=data_retention`, fields `rule`, `matched`, `deleted`). After a week of logs, set `DATA_RETENTION_ENABLED=true` on the worker to delete. Rules: `api/src/modules/invoice/infra/typeorm-outbox-retention.ts`.
 The stack includes an internal `rtc-calculator` service (`Dockerfile.rtc`, Java 25). It is reachable only inside the Compose network, with no published ports. The image is built from the official open-source repository ([ReceitaFederal/calculadora-rtc-regime-regular](https://github.com/ReceitaFederal/calculadora-rtc-regime-regular), MIT license), so it does not depend on the government website. Nothing needs to be filled in: the version is pinned inside `Dockerfile.rtc` by two build arguments, `RTC_TAG` (the release tag) and `RTC_COMMIT` (its full commit). The build stops on purpose if the tag ever points to a different commit. The image keeps a copy of the project's license at `/app/LICENSE-calculadora-rtc.txt`.
 
 The first build downloads Maven dependencies and creates the database from the repository's SQL files, so it takes a few minutes and needs about 3 GB of free disk. The pinned version (`app/db`, e.g. `1.7.2/V0073`) is also recorded in `rtc-pinned-version.txt`. To reproduce deploys exactly, publish the built image in your registry with the tag `rtc-<versaoApp>-<versaoDb>` and set `RTC_IMAGE` to it. After an update, run the smoke test: `RTC_URL=http://localhost:18080/api sh api/scripts/rtc-smoke.sh`.

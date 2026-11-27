@@ -96,7 +96,9 @@ The redirect URL goes through the dashboard, so the session cookie belongs to th
 
 Only a verified provider email signs a user in or links an existing account.
 
-NF-e and NFC-e are open to every workspace in test (homologação), with nothing to release. `NFE_PRODUCTION_ENABLED=false` (the default) keeps production blocked; turn it on only when you are ready for live notes. `NFE_ENABLED` no longer exists. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` tune the homologation transport.
+NF-e and NFC-e are open to every workspace in test (homologação), with nothing to release. `NFE_PRODUCTION_ENABLED=false` (the default) keeps production blocked; turn it on only when you are ready for live notes. `NFE_ENABLED` no longer exists. `NFE_TEST_PROVIDER` (`sefaz` or `fake`) and `NFE_SEFAZ_TIMEOUT_MS` tune the homologation transport. Compose passes `NFE_PRODUCTION_ENABLED` to the api, the worker and the web (the web reads it at runtime, no rebuild).
+
+Worker settings are optional and already have defaults, all listed in `deploy/.env.example`: `DATA_RETENTION_ENABLED` (daily purge of old outbox rows; `false` only counts and logs), `TEST_QUEUE_CONCURRENCY`, `GOV_RATE_LIMIT_*` and `OUTBOX_*`/`WEBHOOK_RETRY_INTERVAL_MS`. After updating an existing server, clean old Redis jobs once with the commands in [deploy/README.md](deploy/README.md#data-cleanup).
 
 Optional settings include `STRIPE_PORTAL_CONFIGURATION_ID`, Turnstile credentials for endpoints that use it, Sentry, and OpenTelemetry. Keep `TURNSTILE_DEVELOPMENT_BYPASS_ENABLED=false` in production. The current email-code login does not use Turnstile.
 
