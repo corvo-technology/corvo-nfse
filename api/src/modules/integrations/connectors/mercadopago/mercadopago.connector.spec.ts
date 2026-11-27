@@ -225,7 +225,10 @@ describe('MercadoPagoConnector.normalize', () => {
     await expect(run()).resolves.toEqual({
       operationKey: 'mercadopago:999999999',
       commercialState: 'paid',
-      externalRefs: { paymentId: '999999999', externalReference: 'PEDIDO-0001' },
+      externalRefs: {
+        paymentId: '999999999',
+        externalReference: 'PEDIDO-0001',
+      },
       occurredAt: new Date('2026-11-20T10:05:10.000-03:00'),
       paidAt: new Date('2026-11-20T10:05:10.000-03:00'),
       currency: 'BRL',
@@ -239,8 +242,16 @@ describe('MercadoPagoConnector.normalize', () => {
         address: { street: 'Avenida Paulista, 1000', zip: '01310100' },
       },
       items: [
-        { externalProductId: 'curso-01', description: 'Curso de Excel', quantity: 1 },
-        { externalProductId: 'ebook-02', description: 'E-book bonus', quantity: 2 },
+        {
+          externalProductId: 'curso-01',
+          description: 'Curso de Excel',
+          quantity: 1,
+        },
+        {
+          externalProductId: 'ebook-02',
+          description: 'E-book bonus',
+          quantity: 2,
+        },
       ],
       description: 'Curso de Excel, E-book bonus',
       sellerIssuesInvoice: true,
@@ -254,7 +265,9 @@ describe('MercadoPagoConnector.normalize', () => {
     expect(refunded.operationKey).toBe(paid.operationKey);
     expect(back.operationKey).toBe(paid.operationKey);
     expect(refunded.commercialState).toBe('refunded');
-    expect(refunded.occurredAt).toEqual(new Date('2026-11-22T09:00:00.000-03:00'));
+    expect(refunded.occurredAt).toEqual(
+      new Date('2026-11-22T09:00:00.000-03:00'),
+    );
     expect(back.commercialState).toBe('disputed');
     expect(refunded.customer?.taxId).toBe('52998224725');
   });
@@ -305,7 +318,10 @@ describe('MercadoPagoConnector.normalize', () => {
     'refuses an amount that is not positive (%s)',
     async (amount) => {
       await expect(
-        make({ ...payment('payment-approved'), transaction_amount: amount }).run(),
+        make({
+          ...payment('payment-approved'),
+          transaction_amount: amount,
+        }).run(),
       ).rejects.toThrow(ConnectorDataError);
     },
   );
@@ -355,7 +371,10 @@ describe('MercadoPagoConnector.validateConnection', () => {
       getUserId,
     } as unknown as MercadoPagoClient);
     await expect(
-      connector.validateConnection({ accessToken: 'APP_USR-fake-token' }, 'live'),
+      connector.validateConnection(
+        { accessToken: 'APP_USR-fake-token' },
+        'live',
+      ),
     ).resolves.toEqual({ externalAccountId: '44444' });
     expect(getUserId).toHaveBeenCalledWith('APP_USR-fake-token');
   });

@@ -83,9 +83,8 @@ const obj = (value: unknown): Obj =>
 function customerOf(payment: Obj): NormalizedCustomer | null {
   const payer = obj(payment.payer);
   const name =
-    [text(payer.first_name), text(payer.last_name)]
-      .filter(Boolean)
-      .join(' ') || null;
+    [text(payer.first_name), text(payer.last_name)].filter(Boolean).join(' ') ||
+    null;
   const email = text(payer.email);
   const identification = obj(payer.identification);
   const type = text(identification.type)?.toUpperCase();
@@ -264,9 +263,7 @@ export class MercadoPagoConnector implements Connector {
     payload: unknown,
     accessToken: string | undefined,
   ): Promise<NormalizedOperation> {
-    const notification = readNotification(
-      Buffer.from(String(payload), 'utf8'),
-    );
+    const notification = readNotification(Buffer.from(String(payload), 'utf8'));
     const paymentId = idText(notification.data?.id);
     if (!paymentId)
       throw new ConnectorDataError('Mercado Pago webhook has no payment id');
@@ -297,7 +294,9 @@ export class MercadoPagoConnector implements Connector {
       discountCents: 0,
       customer: customerOf(payment),
       items,
-      description: titles.length ? titles.join(', ') : text(payment.description),
+      description: titles.length
+        ? titles.join(', ')
+        : text(payment.description),
       sellerIssuesInvoice: true,
     };
   }

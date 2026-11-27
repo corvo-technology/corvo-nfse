@@ -335,12 +335,18 @@ describePostgres('Mercado Pago connector through the real pipeline', () => {
   it('a pending payment does not issue, and paying it later does', async () => {
     payment = paymentFixture('payment-pending');
     const { publicId, webhookSecret } = await activeConnection();
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(1) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(1) }),
+    );
     await drain();
     expect(issuance.commands).toHaveLength(0);
     expect(await blockReason()).toBe('not_paid');
     payment = { ...paymentFixture('payment-approved'), id: 999999999 };
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(2) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(2) }),
+    );
     await drain();
     expect(issuance.commands).toHaveLength(1);
   });
@@ -362,7 +368,10 @@ describePostgres('Mercado Pago connector through the real pipeline', () => {
       receiver.receive(publicId, notice(webhookSecret, { body })),
     ]);
     await receiver.receive(publicId, notice(webhookSecret, { body }));
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(2) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(2) }),
+    );
     await drain();
     expect(issuance.invoices.size).toBe(1);
   });
@@ -373,11 +382,20 @@ describePostgres('Mercado Pago connector through the real pipeline', () => {
       true,
       true,
     );
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(1) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(1) }),
+    );
     await drain();
     payment = paymentFixture('payment-refunded');
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(2) }));
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(3) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(2) }),
+    );
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(3) }),
+    );
     await drain();
     const [invoiceId] = [...issuance.invoices.values()];
     expect(cancellation.calls).toEqual([
@@ -393,10 +411,16 @@ describePostgres('Mercado Pago connector through the real pipeline', () => {
 
   it('without the option, a refund after the invoice leaves the invoice alone and flags it', async () => {
     const { publicId, webhookSecret } = await activeConnection();
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(1) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(1) }),
+    );
     await drain();
     payment = paymentFixture('payment-refunded');
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(2) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(2) }),
+    );
     await drain();
     expect(issuance.invoices.size).toBe(1);
     expect(cancellation.calls).toHaveLength(0);
@@ -415,10 +439,16 @@ describePostgres('Mercado Pago connector through the real pipeline', () => {
       true,
       true,
     );
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(1) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(1) }),
+    );
     await drain();
     payment = paymentFixture('payment-charged-back');
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(2) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(2) }),
+    );
     await drain();
     expect(cancellation.calls).toHaveLength(0);
     const rows: Array<{ commercial_state: string }> = await db.query(
@@ -430,19 +460,25 @@ describePostgres('Mercado Pago connector through the real pipeline', () => {
   it('a refund that arrives first blocks the later paid notice', async () => {
     const { publicId, webhookSecret } = await activeConnection();
     payment = paymentFixture('payment-refunded');
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(1) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(1) }),
+    );
     await drain();
     payment = paymentFixture('payment-approved');
-    await receiver.receive(publicId, notice(webhookSecret, { body: update(2) }));
+    await receiver.receive(
+      publicId,
+      notice(webhookSecret, { body: update(2) }),
+    );
     await drain();
     expect(issuance.commands).toHaveLength(0);
   });
 
   it('a wrong URL secret or a wrong signature is rejected and nothing is stored', async () => {
     const { publicId, webhookSecret } = await activeConnection();
-    await expect(
-      receiver.receive(publicId, notice('wrong')),
-    ).rejects.toThrow(UnauthorizedException);
+    await expect(receiver.receive(publicId, notice('wrong'))).rejects.toThrow(
+      UnauthorizedException,
+    );
     await expect(
       receiver.receive(
         publicId,

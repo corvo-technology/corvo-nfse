@@ -12,8 +12,7 @@ const answer = (status: number, body: unknown = {}) =>
       headers: { 'content-type': 'application/json' },
     }),
   );
-const clientWith = (fetchFn: jest.Mock) =>
-  new MercadoPagoClient(fetchFn as unknown as typeof fetch);
+const clientWith = (fetchFn: jest.Mock) => new MercadoPagoClient(fetchFn);
 
 describe('MercadoPagoClient', () => {
   it('reads a payment with the token in the Authorization header only', async () => {
@@ -41,14 +40,14 @@ describe('MercadoPagoClient', () => {
     );
   });
   it.each([[401], [403]])('%s is an auth error', async (status) => {
-    await expect(clientWith(answer(status)).getPayment('t', '1')).rejects.toThrow(
-      ConnectorAuthError,
-    );
+    await expect(
+      clientWith(answer(status)).getPayment('t', '1'),
+    ).rejects.toThrow(ConnectorAuthError);
   });
   it.each([[429], [500], [503]])('%s is transient', async (status) => {
-    await expect(clientWith(answer(status)).getPayment('t', '1')).rejects.toThrow(
-      ConnectorTransientError,
-    );
+    await expect(
+      clientWith(answer(status)).getPayment('t', '1'),
+    ).rejects.toThrow(ConnectorTransientError);
   });
   it('a payment not found yet is transient, other 4xx is a data error', async () => {
     await expect(clientWith(answer(404)).getPayment('t', '1')).rejects.toThrow(
