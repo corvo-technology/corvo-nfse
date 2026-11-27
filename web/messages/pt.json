@@ -2359,6 +2359,7 @@
     "inbound_invalid": "Requisição de webhook inválida.",
     "webhook_not_found": "Webhook não encontrado.",
     "webhook_delivery_not_found": "Entrega não encontrada.",
+    "webhook_delivery_content_erased": "O conteúdo desta entrega foi apagado após 30 dias e não pode ser reenviado.",
     "database_unique_constraint": "Já existe um registro igual a este.",
     "database_constraint_violation": "Os dados violam uma regra do sistema. Confira e tente de novo.",
     "customer_required": "Assine um plano ou compre notas antes de gerenciar a cobrança.",

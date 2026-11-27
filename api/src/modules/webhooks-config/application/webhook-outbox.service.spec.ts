@@ -318,7 +318,11 @@ describe('WebhookOutboxService', () => {
     expect(adapter.send).not.toHaveBeenCalled();
   });
   describe('manualRetry environment', () => {
-    const liveDelivery = { ...baseDelivery, environment: 'live' as const };
+    const liveDelivery = {
+      ...baseDelivery,
+      environment: 'live' as const,
+      payload: event,
+    };
     const build = () => {
       const repo = {
         update: jest.fn(),
@@ -340,6 +344,26 @@ describe('WebhookOutboxService', () => {
       await service.manualRetry('tenant-1', 'delivery-1', 'live');
       await service.manualRetry('tenant-1', 'delivery-1');
       expect(repo.update).toHaveBeenCalledTimes(2);
+    });
+
+    it('refuses a delivery whose content was erased by the retention job, and changes nothing', async () => {
+      const repo = {
+        update: jest.fn(),
+        findByIdAndTenantId: jest.fn().mockResolvedValue({
+          ...liveDelivery,
+          status: 'sent' as const,
+          payload: undefined,
+          responseBody: undefined,
+        }),
+      };
+      const { service } = buildService({ repo });
+      await expect(
+        service.manualRetry('tenant-1', 'delivery-1'),
+      ).rejects.toMatchObject({
+        code: 'WEBHOOK_DELIVERY_CONTENT_ERASED',
+        kind: 'conflict',
+      });
+      expect(repo.update).not.toHaveBeenCalled();
     });
   });
 });

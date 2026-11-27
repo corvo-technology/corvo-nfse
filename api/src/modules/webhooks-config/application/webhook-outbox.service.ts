@@ -9,7 +9,10 @@ import {
 } from '../infra/webhook-dispatcher.adapter';
 import { WebhookDelivery } from '../domain/webhook-delivery';
 import { WebhookEvent } from '../domain/webhook-event';
-import { WebhookDeliveryNotFoundError } from '../domain/errors';
+import {
+  WebhookDeliveryContentErasedError,
+  WebhookDeliveryNotFoundError,
+} from '../domain/errors';
 import {
   WEBHOOK_SECRETS,
   WebhookSecrets,
@@ -247,6 +250,10 @@ export class WebhookOutboxService {
       (keyEnvironment && delivery.environment !== keyEnvironment)
     )
       throw new WebhookDeliveryNotFoundError(deliveryId);
+    // A sent delivery loses its body after 30 days (see infra/retention/notice-retention.ts); with no
+    // body there is nothing to send, and queueing it would only leave it stuck.
+    if (!delivery.payload)
+      throw new WebhookDeliveryContentErasedError(deliveryId);
 
     await this.deliveryRepo.update(deliveryId, tenantId, {
       status: 'manual_retry',

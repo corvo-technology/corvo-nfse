@@ -5,6 +5,7 @@ import {
   runRetentionRule,
   type RetentionRule,
 } from '@/infra/retention/data-retention';
+import { noticeRetentionRules } from '@/infra/retention/notice-retention';
 import { runAsSystem } from '@/infra/persistence/typeorm/tenant-context.storage';
 import type { IOutboxRetention } from '../domain/outbox-retention';
 
@@ -73,7 +74,13 @@ export class TypeOrmOutboxRetention implements IOutboxRetention {
     const schema = this.dataSource.driver.escape(
       'schema' in options ? (options.schema ?? 'corvo') : 'corvo',
     );
-    for (const rule of outboxRetentionRules(schema, now)) {
+    // The nightly job is one: the outbox rules, then the notice rules (webhook deliveries and the
+    // platform inboxes, in notice-retention.ts). Same dry run switch, same caps.
+    const rules = [
+      ...outboxRetentionRules(schema, now),
+      ...noticeRetentionRules(schema, now),
+    ];
+    for (const rule of rules) {
       try {
         await runAsSystem('data_retention', () =>
           runRetentionRule(this.dataSource, rule, enabled, (outcome) =>

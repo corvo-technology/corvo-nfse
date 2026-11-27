@@ -54,7 +54,7 @@ export const WEBHOOK_DELIVERIES_LIST_TOOL = {
 export const WEBHOOK_DELIVERY_RETRY_TOOL = {
   name: 'webhook_delivery_retry',
   description:
-    'Send one notice (webhook) again to the customer\'s system, with the exact same event. Use it for a delivery that is "failed" or "delayed" after the customer says their system is working again. It is queued and sent within about a minute; call webhook_deliveries_list later to see the result.',
+    'Send one notice (webhook) again to the customer\'s system, with the exact same event. Use it for a delivery that is "failed" or "delayed" after the customer says their system is working again. A delivery sent more than 30 days ago has its content erased and answers WEBHOOK_DELIVERY_CONTENT_ERASED. It is queued and sent within about a minute; call webhook_deliveries_list later to see the result.',
   inputSchema: {
     type: 'object',
     properties: {

@@ -8,7 +8,7 @@ import {
 } from '../domain/outbox-retention';
 
 /**
- * Daily 04:00 (São Paulo) purge of the finished outbox messages (rules in typeorm-outbox-retention.ts).
+ * Daily 04:00 (São Paulo) purge of finished outbox messages (typeorm-outbox-retention.ts) and old notice content (infra/retention/notice-retention.ts).
  * A dry run (only counts and logs) unless DATA_RETENTION_ENABLED=true. Worker only.
  */
 @Injectable()
