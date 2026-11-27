@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { loadCertificate } from '@/infra/external/nfe/sefaz/certificate-loader';
 import { TableAuthorityEndpointResolver } from '@/infra/external/nfe/sefaz/endpoints';
 import { UF_TABLE } from '@/infra/external/nfe/sefaz/uf';
+import { QrPayloadSigner } from '@/infra/external/nfe/sefaz/qr-signer';
 import {
   SefazXmlSigner,
   withStructuralSignature,
@@ -38,6 +39,7 @@ const SIMULATED_CERTIFICATE: LoadedCertificate = {
 @Injectable()
 export class NfeSefazAccess {
   private readonly signer = new SefazXmlSigner();
+  private readonly qrSigner = new QrPayloadSigner();
   private readonly resolver = new TableAuthorityEndpointResolver();
 
   constructor(
@@ -101,6 +103,20 @@ export class NfeSefazAccess {
     return this.isSimulated(environment)
       ? withStructuralSignature(xml, referenceTag)
       : this.signer.sign(xml, referenceTag, certificate);
+  }
+
+  /**
+   * The signature of the off-line QR Code (RSA SHA-1, base64) with the A1 key. The simulator has no
+   * key: it returns a base64 stand-in of the right shape, never a real signature.
+   */
+  signQr(
+    payload: string,
+    certificate: LoadedCertificate,
+    environment: ExecutionEnvironment,
+  ): string {
+    return this.isSimulated(environment)
+      ? Buffer.from(`simulated:${payload}`, 'utf8').toString('base64')
+      : this.qrSigner.sign(payload, certificate);
   }
 
   context(

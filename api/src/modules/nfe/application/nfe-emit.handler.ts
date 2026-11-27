@@ -108,7 +108,12 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
       return;
     }
     if (doc.status === 'processing') return this.afterLostWorker(doc);
-    if (doc.status !== 'queued' && doc.status !== 'retry_pending') return;
+    if (
+      doc.status !== 'queued' &&
+      doc.status !== 'retry_pending' &&
+      doc.status !== 'contingency_pending'
+    )
+      return;
 
     const company = await this.companies.findById(
       doc.companyId,
@@ -134,9 +139,11 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
       return this.failConfiguration(doc, error);
     }
 
-    const reuse = doc.status === 'retry_pending';
+    // A retry and an off-line NFC-e (already numbered, keyed and signed) send the very same XML.
+    const reuse =
+      doc.status === 'retry_pending' || doc.status === 'contingency_pending';
     const started = await this.transitions.apply(keyOf(doc), 'processing', {
-      from: ['queued', 'retry_pending'],
+      from: ['queued', 'retry_pending', 'contingency_pending'],
       change: async (locked) => {
         locked.setAuthority(this.access.authorityOf(uf, model));
         // A retry sends the very same signed XML: nothing new is numbered, keyed or signed.
@@ -209,6 +216,11 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
         return this.waitFor(doc, error.retryAt);
       throw error;
     }
+    // Proof that this attempt may have reached the SEFAZ, committed before the call (decision 14).
+    if (snapshot.tpEmis === 9)
+      await this.transitions.touch(keyOf(doc), {
+        change: (d) => d.markTransmitted(new Date()),
+      });
     const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
     const ctx = this.access.context(uf, environment, certificate, model);
     const signed: SignedNfe = {
@@ -237,18 +249,25 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
 
   /** Nothing was sent: the same attempt waits for the authority and goes out again. */
   private async waitFor(doc: NfeDocument, retryAt: Date): Promise<void> {
-    await this.transitions.apply(keyOf(doc), 'retry_pending', {
-      from: ['processing'],
-      change: (d) => {
-        d.scheduleCheck(retryAt);
-        d.recordError({
-          type: 'communication',
-          code: UNAVAILABLE_CODE,
-          message: 'A SEFAZ está fora do ar; a nota será enviada quando voltar',
-        });
+    // An off-line NFC-e goes back to the state it came from: it is with the consumer already.
+    const offline = doc.toSnapshot().tpEmis === 9;
+    await this.transitions.apply(
+      keyOf(doc),
+      offline ? 'contingency_pending' : 'retry_pending',
+      {
+        from: ['processing'],
+        change: (d) => {
+          d.scheduleCheck(retryAt);
+          d.recordError({
+            type: 'communication',
+            code: UNAVAILABLE_CODE,
+            message:
+              'A SEFAZ está fora do ar; a nota será enviada quando voltar',
+          });
+        },
+        messages: [emitRetryMessage(doc, retryAt)],
       },
-      messages: [emitRetryMessage(doc, retryAt)],
-    });
+    );
   }
 
   /** The send may have reached the SEFAZ: from now on only a consultation by key can tell. */
@@ -296,7 +315,7 @@ export class NfeEmitHandler implements OutboxHandler, OnModuleInit {
         ? 'Cadastre o certificado digital da empresa neste ambiente para emitir'
         : 'O certificado digital da empresa está vencido ou inválido; envie outro';
     await this.transitions.apply(keyOf(doc), 'processing', {
-      from: ['queued', 'retry_pending'],
+      from: ['queued', 'retry_pending', 'contingency_pending'],
     });
     await this.transitions.apply(keyOf(doc), 'rejected', {
       change: (d) => d.recordError({ type: 'configuration', code, message }),

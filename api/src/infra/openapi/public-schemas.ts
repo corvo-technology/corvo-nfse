@@ -393,6 +393,35 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     },
     ['replayed'],
   ),
+  NfceOfflineAccepted: obj(
+    {
+      type: str({ enum: ['nfce'] }),
+      id: uuid(),
+      status: str({ enum: NFE_STATUS_VALUES }),
+      replayed: bool({
+        enum: [true],
+        description:
+          'Present (and true) on the `200` answer to a repeated `Idempotency-Key`: nothing new was issued.',
+      }),
+      accessKey: str({
+        description:
+          'The 44-character key of the NFC-e (`tpEmis` 9 at position 35).',
+      }),
+      qrCode: str({
+        description:
+          'The QR Code v3 text of the off-line NFC-e, with the signature of the issuer. It is printed on the DANFCE.',
+      }),
+      xmlUrl: str({
+        description:
+          'Path to download the signed XML (`GET /invoices/{id}/xml`).',
+      }),
+      pdfUrl: str({
+        description:
+          'Path to download the DANFCE with the notice "EMITIDA EM CONTINGÊNCIA" (`GET /invoices/{id}/pdf`).',
+      }),
+    },
+    ['replayed'],
+  ),
   NfeError: obj(
     {
       type: str({
@@ -518,7 +547,8 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       ),
       contingencyReason: nullable(
         str({
-          description: 'NFC-e only: the reason of the off-line emission (`xJust`).',
+          description:
+            'NFC-e only: the reason of the off-line emission (`xJust`).',
         }),
       ),
       contingencyDeadlineAt: nullable(

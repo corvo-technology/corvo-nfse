@@ -9,6 +9,7 @@ import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal
 import { CompanyModule } from '@/modules/company/company.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { NfeModule } from '@/modules/nfe/nfe.module';
+import { NfceOfflineService } from './application/nfce-offline.service';
 import { NfceIntakeService } from './application/nfce-intake.service';
 import { NfcePreparation } from './application/nfce-preparation.service';
 import { NfceResubmitService } from './application/nfce-resubmit.service';
@@ -27,6 +28,7 @@ import { NfceInvoiceRoutes } from './http/nfce-invoice.routes';
     NfcePreparation,
     NfceValidateService,
     NfceIntakeService,
+    NfceOfflineService,
     NfceResubmitService,
     NfceInvoiceRoutes,
   ],

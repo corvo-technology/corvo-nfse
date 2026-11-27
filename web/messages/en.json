@@ -2200,6 +2200,8 @@
     "out_of_phase1_scope": "This invoice is not accepted yet: for now only normal NF-e from Simples Nacional or MEI companies.",
     "nfce_ind_pres_invalid": "On a NFC-e the buyer presence must be 1 (in person), 4 (delivery) or 5 (in person outside the establishment).",
     "nfce_delivery_address_required": "For a delivery sale give the consumer's CPF or CNPJ, name and address.",
+    "nfce_offline_not_available": "The off-line contingency NFC-e is not available yet for the state of this company.",
+    "nfce_contingency_field_locked": "This NFC-e was issued in contingency and is already with the consumer: only the description, barcode, NCM, CEST, unit and additional information can change. The rest (amounts, quantities, payment, consumer) cannot.",
     "nfce_consumer_id_required": "For this sale total the NFC-e needs the consumer's CPF or CNPJ.",
     "nfce_card_data_required": "For an integrated payment give the acquirer CNPJ and the authorization number.",
     "nfce_card_brand_invalid": "The card brand is not in the official table.",

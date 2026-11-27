@@ -2200,6 +2200,8 @@
     "out_of_phase1_scope": "Esta nota ainda não é aceita: por enquanto só NF-e normal de empresas do Simples Nacional ou MEI.",
     "nfce_ind_pres_invalid": "Na NFC-e a presença do comprador só pode ser 1 (presencial), 4 (entrega) ou 5 (presencial fora do estabelecimento).",
     "nfce_delivery_address_required": "Na venda com entrega informe o CPF ou CNPJ, o nome e o endereço do consumidor.",
+    "nfce_offline_not_available": "A NFC-e em contingência off-line ainda não está disponível para o estado desta empresa.",
+    "nfce_contingency_field_locked": "Esta NFC-e foi emitida em contingência e já está com o consumidor: só a descrição, o código de barras, o NCM, o CEST, a unidade e as informações adicionais podem mudar. O resto (valores, quantidades, pagamento, consumidor) não.",
     "nfce_consumer_id_required": "Para este valor de venda, a NFC-e precisa do CPF ou CNPJ do consumidor.",
     "nfce_card_data_required": "No pagamento integrado, informe o CNPJ da credenciadora e o número de autorização.",
     "nfce_card_brand_invalid": "A bandeira do cartão não existe na tabela oficial.",

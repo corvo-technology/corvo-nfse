@@ -139,6 +139,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     INfeDocumentRepository,
     INfeNumberPreview,
     TypeormNfeNumbering,
+    NfeSefazAccess,
     NFE_SCHEMA_VALIDATOR,
     // What the NFC-e routes (`NfceModule`) reuse: the NFC-e runs on the same machinery.
     NfeIntakeService,

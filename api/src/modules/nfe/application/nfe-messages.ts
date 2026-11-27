@@ -57,6 +57,14 @@ export function emitMessage(doc: NfeDocument): NewOutboxMessage {
   return base(doc, NFE_EMIT, `emit:${doc.id}:${doc.attempt + 1}`);
 }
 
+/**
+ * The first transmission of an off-line NFC-e (`tpEmis` 9): it was numbered, keyed and signed when it
+ * was issued, so this only sends that very XML (the emit handler reuses it, like a retry).
+ */
+export function transmitMessage(doc: NfeDocument): NewOutboxMessage {
+  return base(doc, NFE_EMIT, `emit:${doc.id}:${doc.attempt}:offline`);
+}
+
 /** The same attempt again, once the authority answers (never a new key: nothing was sent). */
 export function emitRetryMessage(
   doc: NfeDocument,
