@@ -105,6 +105,7 @@ export default function configuration(): AppConfiguration {
       breakerCooldownMs: env.NFSE_PORTAL_BREAKER_COOLDOWN_MS,
       uncertainMaxHours: env.NFSE_UNCERTAIN_MAX_HOURS,
     },
+    webhooks: { retryIntervalMs: env.WEBHOOK_RETRY_INTERVAL_MS },
     govRateLimit: {
       perSecond: env.GOV_RATE_LIMIT_PER_SECOND,
       burst: env.GOV_RATE_LIMIT_BURST,
@@ -150,6 +151,14 @@ export default function configuration(): AppConfiguration {
       debug: env.SENTRY_DEBUG,
       flushTimeoutMs: env.SENTRY_FLUSH_TIMEOUT_MS,
       captureDisconnects: env.SENTRY_CAPTURE_DISCONNECTS,
+    },
+    lifecycleEmails: {
+      enabled: env.LIFECYCLE_EMAILS_ENABLED,
+      firstInvoice: env.LIFECYCLE_EMAIL_FIRST_INVOICE,
+      monthlySummary: env.LIFECYCLE_EMAIL_MONTHLY_SUMMARY,
+      creditsForecast: env.LIFECYCLE_EMAIL_CREDITS_FORECAST,
+      pendingPayment: env.LIFECYCLE_EMAIL_PENDING_PAYMENT,
+      rejectionHelp: env.LIFECYCLE_EMAIL_REJECTION_HELP,
     },
     payments: {
       allowedProviders: env.PAYMENT_ALLOWED_PROVIDERS.split(',')

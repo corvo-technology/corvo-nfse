@@ -6,7 +6,12 @@ import {
 import { accountNotice } from '@/shared/events/account-notice.events';
 
 function build(
-  opts: { first?: boolean; admins?: string[]; all?: string[] } = {},
+  opts: {
+    first?: boolean;
+    admins?: string[];
+    all?: string[];
+    rejectionHelp?: boolean;
+  } = {},
 ) {
   const recipients = {
     emailsFor: jest.fn().mockResolvedValue(opts.all ?? ['a@x.com', 'b@x.com']),
@@ -23,6 +28,7 @@ function build(
     email as never,
     config as never,
     locks as never,
+    { isOn: jest.fn().mockReturnValue(opts.rejectionHelp ?? true) } as never,
   );
   return { listener, recipients, email };
 }
@@ -86,6 +92,48 @@ describe('AccountNoticeListener', () => {
       }),
     );
     expect(again.email.enqueueNotice).not.toHaveBeenCalled();
+  });
+
+  it('explains a rejection in plain words and links back to the invoice', async () => {
+    const f = build();
+    await f.listener.handle(
+      accountNotice('t1', {
+        kind: 'invoice-rejected',
+        invoiceId: 'i1',
+        reason:
+          'Rejeição da Receita [E0120]: IM do prestador não deve ser informado',
+        errorCode: 'E0120',
+      }),
+    );
+    const [, message] = (
+      f.email.enqueueNotice.mock.calls as unknown as Array<
+        [string, { subject: string; html: string; text: string }]
+      >
+    )[0];
+    expect(message.subject).toBe('Uma nota foi rejeitada');
+    expect(message.text).toContain('Inscrição Municipal');
+    expect(message.text).not.toContain('IM do prestador');
+    expect(message.html).toContain('Corrigir e emitir de novo');
+    expect(message.html).toContain('https://corvo.tech/app/invoices/i1');
+  });
+
+  it('keeps the old rejection e-mail when its switch is off', async () => {
+    const f = build({ rejectionHelp: false });
+    await f.listener.handle(
+      accountNotice('t1', {
+        kind: 'invoice-rejected',
+        invoiceId: 'i1',
+        reason: 'CNPJ inválido',
+        errorCode: 'E0120',
+      }),
+    );
+    const [, message] = (
+      f.email.enqueueNotice.mock.calls as unknown as Array<
+        [string, { html: string }]
+      >
+    )[0];
+    expect(message.html).toContain('Motivo: CNPJ inválido');
+    expect(message.html).toContain('Revisar nota');
   });
 
   it('tells the workspace what the portal registered about an invoice, once per invoice', async () => {

@@ -13,6 +13,9 @@ import { CertificateOrmEntity } from '@/modules/certificate/infra/certificate.or
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import { WebhookDeliveryOrmEntity } from '@/modules/webhooks-config/infra/webhook-delivery.orm-entity';
 import { AccountAuditEventOrmEntity } from '@/modules/account-audit/infra/account-audit-event.orm-entity';
+import { PaymentIntentOrmEntity } from '@/modules/billing/infra/payment-intent.orm-entity';
+import { previousMonth } from '@/modules/invoice/application/package/package-month';
+import { brtMonthWindow } from '@/modules/lifecycle-emails/brt-time';
 import { TenantBillingOrmEntity } from './entities/tenant-billing.orm-entity';
 
 export type TenantWork =
@@ -24,7 +27,9 @@ export type TenantWork =
   | 'plan-expiry'
   | 'billing-reconciliation'
   | 'accountant-package'
-  | 'account-audit-retention';
+  | 'account-audit-retention'
+  | 'lifecycle-monthly-summary'
+  | 'lifecycle-payment-pending';
 
 /** Worker orchestration only: discover owner IDs, then enter a scoped operation. */
 @Injectable()
@@ -80,6 +85,28 @@ export class TenantWorkDiscovery {
           .createQueryBuilder('work')
           .where(
             "work.accountant_email IS NOT NULL AND work.environment = 'live' AND work.deleted_at IS NULL",
+          );
+      } else if (kind === 'lifecycle-monthly-summary') {
+        // Workspaces that issued a live invoice in the month that ended.
+        const { start, end } = brtMonthWindow(previousMonth(now));
+        query = this.database
+          .getRepository(InvoiceOrmEntity)
+          .createQueryBuilder('work')
+          .where(
+            "work.environment = 'live' AND work.status = 'authorized' AND work.authorized_at >= :start AND work.authorized_at < :end",
+            { start, end },
+          );
+      } else if (kind === 'lifecycle-payment-pending') {
+        // Checkouts started 1 to 3 days ago that are still unpaid.
+        query = this.database
+          .getRepository(PaymentIntentOrmEntity)
+          .createQueryBuilder('work')
+          .where(
+            "work.status IN ('pending', 'expired') AND work.created_at <= :from AND work.created_at >= :until",
+            {
+              from: new Date(now.getTime() - 24 * 3_600_000),
+              until: new Date(now.getTime() - 72 * 3_600_000),
+            },
           );
       } else if (kind === 'account-audit-retention') {
         query = this.database

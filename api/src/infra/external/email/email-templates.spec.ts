@@ -1,5 +1,9 @@
 import {
   creditsLowEmail,
+  firstInvoiceEmail,
+  invoiceRejectedHelpEmail,
+  monthlySummaryEmail,
+  paymentPendingEmail,
   emailLayout,
   formatFromHeader,
   nfseDocumentsReadyEmail,
@@ -66,6 +70,110 @@ describe('email templates', () => {
     });
     expect(email.html).toContain('href="https://corvo.tech/app/billing"');
     expect(email.text).toContain('https://corvo.tech/app/billing');
+    expect(email.html).toContain('Comprar créditos');
+  });
+
+  it('says in how many days the credits end, only when it is known', () => {
+    const base = {
+      planName: 'Pro',
+      remaining: 3,
+      total: 100,
+      billingUrl: 'https://corvo.tech/app/billing',
+    };
+    expect(creditsLowEmail({ ...base, daysLeft: 4 }).text).toContain(
+      'No ritmo atual, seus créditos acabam em ~4 dias.',
+    );
+    expect(creditsLowEmail({ ...base, daysLeft: 1 }).text).toContain('~1 dia.');
+    expect(creditsLowEmail(base).text).not.toContain('No ritmo atual');
+    expect(creditsLowEmail({ ...base, daysLeft: null }).text).not.toContain(
+      'No ritmo atual',
+    );
+  });
+
+  it('explains a rejected invoice and links to the fix', () => {
+    const email = invoiceRejectedHelpEmail({
+      reason: 'Tire o número do cadastro.',
+      invoiceUrl: 'https://corvo.tech/app/invoices/i1',
+    });
+    expect(email.subject).toBe('Uma nota foi rejeitada');
+    expect(email.text).toContain('O que aconteceu: Tire o número do cadastro.');
+    expect(email.html).toContain('href="https://corvo.tech/app/invoices/i1"');
+    expect(email.html).toContain('Corrigir e emitir de novo');
+    expect(email.text).not.toContain('!');
+  });
+
+  it('congratulates on the first invoice and points to the billing integration', () => {
+    const sent = firstInvoiceEmail({
+      customerEmailed: true,
+      integrationsUrl: 'https://corvo.tech/app/integrations',
+    });
+    expect(sent.subject).toBe('Sua primeira nota fiscal saiu');
+    expect(sent.text).toContain('enviada por e-mail ao seu cliente');
+    expect(sent.text).toContain('agende as notas que se repetem');
+    expect(sent.text).toContain('cadastre o seu contador');
+    expect(sent.html).toContain('href="https://corvo.tech/app/integrations"');
+    expect(sent.html).toContain('Conectar minha cobrança');
+    expect(sent.text).not.toContain('!');
+    expect(
+      firstInvoiceEmail({
+        customerEmailed: false,
+        integrationsUrl: 'https://x/i',
+      }).text,
+    ).toContain('baixar o PDF e o XML');
+  });
+
+  it('summarizes the month with the accountant button that fits', () => {
+    const input = {
+      monthLabel: 'outubro de 2026',
+      count: 12,
+      total: 'R$ 3.450,00',
+      topCustomers: ['Ana Silva', 'Beta Ltda', 'Casa Verde'],
+      rejected: 2,
+      creditsRemaining: 38,
+      accountantUrl: 'https://corvo.tech/app/companies/c1',
+    };
+    const withAccountant = monthlySummaryEmail({
+      ...input,
+      hasAccountant: true,
+    });
+    expect(withAccountant.subject).toBe(
+      'Resumo de outubro de 2026: 12 notas emitidas',
+    );
+    expect(withAccountant.text).toContain('12 notas, somando R$ 3.450,00');
+    expect(withAccountant.text).toContain(
+      'Clientes de maior valor: Ana Silva, Beta Ltda, Casa Verde.',
+    );
+    expect(withAccountant.text).toContain('2 notas foram rejeitadas');
+    expect(withAccountant.text).toContain('Ainda restam 38 notas');
+    expect(withAccountant.html).toContain('Enviar ao contador');
+    expect(withAccountant.html).toContain(
+      'href="https://corvo.tech/app/companies/c1"',
+    );
+    const without = monthlySummaryEmail({
+      ...input,
+      count: 1,
+      rejected: 0,
+      topCustomers: ['Ana Silva'],
+      hasAccountant: false,
+    });
+    expect(without.subject).toBe('Resumo de outubro de 2026: 1 nota emitida');
+    expect(without.html).toContain('Cadastrar contador');
+    expect(without.text).toContain('Cliente de maior valor: Ana Silva.');
+    expect(without.text).not.toContain('rejeitada');
+    expect(without.text).not.toContain('!');
+  });
+
+  it('reminds about an unpaid purchase and says nothing was charged', () => {
+    const email = paymentPendingEmail({
+      what: '50 notas',
+      billingUrl: 'https://corvo.tech/app/billing',
+    });
+    expect(email.subject).toBe('Seu pagamento ficou pendente');
+    expect(email.text).toContain('comprar 50 notas');
+    expect(email.text).toContain('Nada foi cobrado');
+    expect(email.html).toContain('href="https://corvo.tech/app/billing"');
+    expect(email.html).toContain('Tentar de novo');
+    expect(email.text).not.toContain('!');
   });
 
   it('builds the schedule emails', () => {
