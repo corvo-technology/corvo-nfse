@@ -366,6 +366,8 @@ export const envSchema = z
     OUTBOX_LEASE_MS: z.coerce.number().int().positive().default(120000),
     OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
     OUTBOX_SCHEDULE_MAX_DAYS: z.coerce.number().int().positive().default(15),
+    // Daily purge of old finished rows (docs/operations/retencao-de-dados.md). false = dry run: only counts and logs.
+    DATA_RETENTION_ENABLED: booleanFromEnv.default(false),
     FISCAL_IBSCBS_UNAVAILABLE_MODE: z.enum(['block', 'warn']).default('block'),
     // An empty value (RTC_CALCULATOR_URL=) means "not configured".
     RTC_CALCULATOR_URL: z.preprocess(

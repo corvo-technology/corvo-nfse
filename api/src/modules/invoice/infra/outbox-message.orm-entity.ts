@@ -24,6 +24,9 @@ import {
   where: "status = 'claimed'",
 })
 @Index('idx_outbox_tenant_aggregate', ['tenantId', 'aggregateId'])
+@Index('idx_outbox_finished_updated', ['updatedAt'], {
+  where: "status IN ('completed','dead')",
+})
 @Index('uq_outbox_tenant_dedupe', ['tenantId', 'dedupeKey'], { unique: true })
 export class OutboxMessageOrmEntity {
   @PrimaryGeneratedColumn('uuid') declare id: string;
