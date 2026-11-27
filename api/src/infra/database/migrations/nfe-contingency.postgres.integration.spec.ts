@@ -74,7 +74,8 @@ describePostgres('off-line NFC-e migrations', () => {
   });
 
   it('down of the contingency columns fails while a contingency_pending row exists; then up again', async () => {
-    // Newest first: the release gates, the SVC state table, then the off-line option.
+    // Newest first: the IE check, the release gates, the SVC state table, then the off-line option.
+    await db.undoLastMigration();
     await db.undoLastMigration();
     await db.undoLastMigration();
     await db.undoLastMigration();
