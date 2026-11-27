@@ -101,7 +101,9 @@ export function planEmission(input: PlanInput): EmissionPlan {
       ? { discount: toReais(snap.discountCents) }
       : {}),
     competenceDate: saoPauloDate(paidAt),
-    email: rule.sendEmail,
+    // A paid sale is never held back for a missing e-mail: without an address, no e-mail goes out.
+    email:
+      (snap.sendEmailOverride ?? rule.sendEmail) && Boolean(customer?.email),
     externalId: snap.operationKey.slice(0, 100),
   };
   return {
@@ -129,8 +131,15 @@ function serviceFor(
   snap: NormalizedOperation,
 ): CreateInvoiceDto['service'] {
   const sold = snap.description?.trim().slice(0, MAX_DESCRIPTION);
-  if (rule.service.description || !sold) return rule.service;
-  return { ...rule.service, description: sold };
+  const override = snap.serviceOverride;
+  const base = {
+    ...rule.service,
+    ...(override?.code ? { code: override.code } : {}),
+  };
+  if (override?.description)
+    return { ...base, description: override.description };
+  if (rule.service.description || !sold) return base;
+  return { ...base, description: sold };
 }
 
 function usableCustomer(
@@ -147,6 +156,9 @@ function usableCustomer(
     ...(customer.name ? { name: customer.name } : {}),
     taxId: customer.taxId,
     ...(customer.email ? { email: customer.email } : {}),
+    ...(customer.address && Object.keys(customer.address).length > 0
+      ? { address: customer.address }
+      : {}),
   };
 }
 

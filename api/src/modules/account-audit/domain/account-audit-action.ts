@@ -34,6 +34,8 @@ export const ACCOUNT_AUDIT_ACTIONS = [
   'agent.disconnected',
   'accountant.package_sent',
   'accountant.email_changed',
+  'integration.sale_resolved',
+  'integration.sale_ignored',
 ] as const;
 
 export type AccountAuditAction = (typeof ACCOUNT_AUDIT_ACTIONS)[number];

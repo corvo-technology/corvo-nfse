@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { IntegrationConnection, IntegrationSale } from "@/lib/api";
-import { ConnectError, connectProvider, connectionStatus, pendingCount, saleStatus } from "@/lib/integrations";
+import { ConnectError, connectProvider, connectionStatus, explainError, BLOCK_REASONS, pendingCount, saleStatus } from "@/lib/integrations";
 
 const connection = (over: Partial<IntegrationConnection> = {}): IntegrationConnection => ({
   id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null,
@@ -23,10 +23,10 @@ describe("connectionStatus", () => {
 describe("saleStatus", () => {
   it("an issued sale", () => expect(saleStatus(sale())).toMatchObject({ key: "issued", tone: "accent", canFixCustomer: false, canRetry: false }));
   it("a sale waiting for the customer document can be fixed", () => {
-    expect(saleStatus(sale({ fiscalStatus: "needs_attention", blockReason: "customer_tax_id_missing", invoiceId: null }))).toMatchObject({ key: "waitingCustomer", tone: "warn", canFixCustomer: true, canRetry: false });
+    expect(saleStatus(sale({ fiscalStatus: "needs_attention", blockReason: "customer_tax_id_missing", invoiceId: null }))).toMatchObject({ key: "waitingCustomer", tone: "warn", canFixCustomer: true, canResolve: true, canRetry: true });
   });
   it.each(["invoice_rejected", "quota_exceeded", "company_not_ready", "no_rule", "ambiguous_rule"])("%s needs attention and can be retried", (blockReason) => {
-    expect(saleStatus(sale({ fiscalStatus: "needs_attention", blockReason, invoiceId: null }))).toMatchObject({ key: "needsAttention", tone: "danger", canFixCustomer: false, canRetry: true });
+    expect(saleStatus(sale({ fiscalStatus: "needs_attention", blockReason, invoiceId: null }))).toMatchObject({ key: "needsAttention", tone: "danger", canFixCustomer: false, canResolve: true, canRetry: true });
   });
   it("a refund after the invoice is flagged but stays issued", () => {
     expect(saleStatus(sale({ commercialState: "refunded", blockReason: "refund_after_invoice" }))).toMatchObject({ key: "refundedAfterInvoice", tone: "warn" });
@@ -74,6 +74,15 @@ describe("connectProvider", () => {
     expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
     expect(a.disconnect).not.toHaveBeenCalled();
   });
+  it("with awaitSecret it validates and sets the rule but leaves the connection as a draft, keeping the address", async () => {
+    const a = api();
+    const result = await connectProvider({ ...input, awaitSecret: true }, a);
+    expect(a.validate).toHaveBeenCalled();
+    expect(a.putRules).toHaveBeenCalled();
+    expect(a.activate).not.toHaveBeenCalled();
+    expect(result.connection.state).toBe("draft");
+    expect(result.webhookUrl).toContain("webhookSecret=s");
+  });
   it("a failure while creating leaves nothing to clean up", async () => {
     const a = api();
     a.create.mockRejectedValue(new Error("company not found"));
@@ -98,5 +107,23 @@ describe("connectProvider", () => {
     const a = api();
     await connectProvider(input, a);
     expect(a.putRules).toHaveBeenCalledWith("c1", [{ service: {}, sendEmail: true }]);
+  });
+});
+
+describe("explainError", () => {
+  it("knows every block reason", () => {
+    for (const code of BLOCK_REASONS) expect(explainError(code)).toEqual({ kind: "reason", code });
+  });
+  it("turns known technical messages into a text key", () => {
+    expect(explainError("Woovi charge has no correlationID")).toEqual({ kind: "known", key: "noCorrelationId" });
+    expect(explainError("customer.email: customer.email is required when email notification is enabled")).toEqual({ kind: "known", key: "emailRequired" });
+    expect(explainError("refund_sale_not_found")).toEqual({ kind: "known", key: "refundNotFound" });
+  });
+  it("keeps what it does not know and says nothing for an empty text", () => {
+    expect(explainError("boom")).toEqual({ kind: "unknown", raw: "boom" });
+    expect(explainError(null)).toBeNull();
+  });
+  it("an ignored sale is not pending", () => {
+    expect(saleStatus(sale({ fiscalStatus: "blocked", blockReason: "ignored_by_user", invoiceId: null }))).toMatchObject({ key: "ignored", canResolve: false });
   });
 });

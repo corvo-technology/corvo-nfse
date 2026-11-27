@@ -249,3 +249,14 @@ it("forwards the platform admin NF-e release with PUT only", async () => {
   const post = await POST(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method: "POST", headers, body: "{}" }), context(route));
   expect(post.status).toBe(404);
 });
+it("answers an unlisted route with a code the dashboard can show, and lets the manual-review routes through", async () => {
+  fetchMock.mockResolvedValue(new Response("{}", { status: 202 }));
+  const headers = { origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "content-type": "application/json" };
+  const review = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/review", { method: "POST", headers, body: "{}" }), context("invoices/review"));
+  expect(review.status).toBe(202);
+  fetchMock.mockClear();
+  const blocked = await POST(new NextRequest("http://localhost:4000/api/proxy/v1/invoices/unknown/nope", { method: "POST", headers, body: "{}" }), context("invoices/unknown/nope"));
+  expect(blocked.status).toBe(404);
+  expect(await blocked.json()).toEqual({ statusCode: 404, message: "Route unavailable", code: "proxy_route_unavailable" });
+  expect(fetchMock).not.toHaveBeenCalled();
+});

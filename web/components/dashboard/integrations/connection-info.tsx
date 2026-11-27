@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Check, Copy } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { integrations, type IntegrationConnection, type IntegrationEvent, type IntegrationProvider, type IntegrationSale } from "@/lib/api";
 import { formatDate } from "@/lib/i18n-helpers";
 import { saleStatus } from "@/lib/integrations";
+import { useIntegrationErrorText } from "@/lib/use-integration-error";
 
 type Tone = "accent" | "gray" | "warn" | "danger";
 const EVENT_STATE: Record<IntegrationEvent["state"], { key: "processed" | "ignored" | "working" | "attention" | "dead" | "resolved"; tone: Tone }> = {
@@ -30,6 +32,7 @@ export function ConnectionInfo({ connection, provider, companyName }: Connection
   const t = useTranslations("Integrations");
   const tc = useTranslations("Common");
   const locale = useLocale();
+  const errorText = useIntegrationErrorText();
   const [copied, setCopied] = useState(false);
   const money = new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" });
   const [events, setEvents] = useState<IntegrationEvent[] | null>(null);
@@ -86,7 +89,9 @@ export function ConnectionInfo({ connection, provider, companyName }: Connection
               const saleState = sale ? saleStatus(sale) : null;
               // An old notice that failed is not a problem once its sale was issued by another one.
               const resolved = event.state === "needs_attention" && saleState?.key === "issued";
-              const s = resolved ? EVENT_STATE.processed : EVENT_STATE[event.state];
+              // A notice that could not even be read has no sale to complete: nothing can be done with it, so it is shown as set aside.
+              const unusable = event.externalType === "unparseable";
+              const s = resolved ? EVENT_STATE.processed : unusable ? EVENT_STATE.ignored : EVENT_STATE[event.state];
               const repeated = Boolean(event.operationId) && events.some((other) => other.operationId === event.operationId && new Date(other.createdAt) < new Date(event.createdAt));
               return (
                 <li key={event.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
@@ -97,9 +102,12 @@ export function ConnectionInfo({ connection, provider, companyName }: Connection
                       <p className="text-[12.5px] text-text-3">{sale.customer?.name || t("detail.sales.anonymous")} · {money.format(sale.amountCents / 100)} · {t(`detail.sale.${saleState.key}`)}</p>
                     )}
                     {repeated && <p className="text-[12.5px] text-text-4">{t("detail.info.eventRepeated")}</p>}
-                    {event.lastError && !resolved && !saleState && <p className="mt-0.5 text-[12.5px] text-warn">{event.lastError === "refund_sale_not_found" ? t("detail.info.refundNotFound") : event.lastError}</p>}
+                    {event.lastError && !resolved && <p className="mt-0.5 text-[12.5px] text-warn">{errorText(event.lastError)}</p>}
                   </div>
-                  <Badge variant={s.tone}>{t(`detail.info.event.${resolved ? "resolved" : s.key}`)}</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={s.tone}>{t(`detail.info.event.${resolved ? "resolved" : s.key}`)}</Badge>
+                    {event.operationId && saleState?.canResolve && <Link href={`/app/integrations/sales/${event.operationId}`} className="btn btn-accent btn-sm">{t("resolveAction")}</Link>}
+                  </div>
                 </li>
               );
             })}

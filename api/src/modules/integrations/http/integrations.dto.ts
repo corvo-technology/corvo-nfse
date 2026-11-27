@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   Validate,
   ValidateNested,
@@ -66,4 +67,45 @@ export class CompleteCustomerDto {
   @IsOptional() @IsString() @MaxLength(200) name?: string;
   @IsString() @IsNotEmpty() taxId!: string;
   @IsOptional() @IsEmail() email?: string;
+}
+
+export class SaleAddressDto {
+  @IsOptional() @IsString() @MaxLength(255) street?: string;
+  @IsOptional() @IsString() @MaxLength(60) city?: string;
+  @IsOptional() @IsString() @Matches(/^[A-Za-z]{2}$/) state?: string;
+  @IsOptional() @IsString() @Matches(/^\d{8}$/) zip?: string;
+  @IsOptional() @IsString() @Matches(/^[A-Za-z]{2}$/) country?: string;
+  @IsOptional() @IsString() @Matches(/^\d{7}$/) municipalityCode?: string;
+}
+
+export class SaleCustomerDto {
+  @IsOptional() @IsString() @MaxLength(200) name?: string;
+  @IsString() @IsNotEmpty() @MaxLength(30) taxId!: string;
+  @IsOptional() @IsEmail() email?: string;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SaleAddressDto)
+  address?: SaleAddressDto;
+}
+
+export class SaleServiceDto {
+  @IsOptional() @IsString() @Matches(/^\d{6}$/) code?: string;
+  @IsOptional() @IsString() @MaxLength(200) description?: string;
+}
+
+/** Everything is optional: with nothing, the sale is simply tried again. */
+export class ResolveOperationDto {
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SaleCustomerDto)
+  customer?: SaleCustomerDto;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SaleServiceDto)
+  service?: SaleServiceDto;
+  @IsOptional() @IsBoolean() sendEmail?: boolean;
+}
+
+export class IgnoreOperationDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) reason!: string;
 }

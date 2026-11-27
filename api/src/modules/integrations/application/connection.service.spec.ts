@@ -6,7 +6,11 @@ import {
 import { ConnectionService } from './connection.service';
 import { CredentialsService } from './credentials.service';
 import { ConnectorRegistry } from '../domain/connector-registry';
-import { ConnectorAuthError, type Connector } from '../domain/connector';
+import {
+  ConnectorAuthError,
+  ConnectorCredentialRejected,
+  type Connector,
+} from '../domain/connector';
 import { UnprocessableEntityException } from '@nestjs/common';
 import type { IntegrationConnection } from '../domain/integration-connection';
 import { IIntegrationConnectionRepository } from '../domain/integration-connection.repository';
@@ -107,6 +111,78 @@ const input = {
   environment: 'test' as const,
   credentials: { appId: 'abc' },
 };
+
+const secretAfterUrl: Connector = {
+  ...connector,
+  accountIdOptional: true,
+  manifest: {
+    ...connector.manifest,
+    credentialFields: [
+      { key: 'apiKey', label: 'Key', secret: true, optional: true },
+      {
+        key: 'signing',
+        label: 'Signing',
+        secret: true,
+        optional: true,
+        afterUrl: true,
+      },
+      { key: 'hook', label: 'Hook', secret: true, generate: true },
+    ],
+  },
+  checkCredentials: (credentials) => {
+    if (credentials.apiKey?.startsWith('sk_'))
+      throw new ConnectorCredentialRejected('KEY_REJECTED', 'no sk_');
+  },
+  validateConnection: (credentials) =>
+    Promise.resolve({ externalAccountId: credentials.apiKey ? 'acc-1' : null }),
+};
+
+describe('ConnectionService with a secret issued after the URL', () => {
+  const base = { ...input, credentials: {} };
+
+  it('creates the connection with no key and no signing secret', async () => {
+    const { service } = setup(secretAfterUrl);
+    const c = await service.create(TENANT, base);
+    expect(service.toView(c).credentials.signing).toBeUndefined();
+    expect(service.toView(c).credentials.hook).toBeTruthy();
+  });
+
+  it('refuses a rejected key on create and on update, with its own code', async () => {
+    const { service } = setup(secretAfterUrl);
+    await expect(
+      service.create(TENANT, { ...base, credentials: { apiKey: 'sk_x' } }),
+    ).rejects.toMatchObject({ response: { code: 'KEY_REJECTED' } });
+    const c = await service.create(TENANT, base);
+    await expect(
+      service.updateCredentials(TENANT, c.id, { apiKey: 'sk_x' }),
+    ).rejects.toMatchObject({ response: { code: 'KEY_REJECTED' } });
+  });
+
+  it('activate() asks for the signing secret, then works once it is pasted (no key needed)', async () => {
+    const { service, rules } = setup(secretAfterUrl);
+    rules.count = 1;
+    const c = await service.create(TENANT, base);
+    const checked = await service.validate(TENANT, c.id);
+    expect(checked.externalAccountId).toBeNull();
+    await expect(service.activate(TENANT, c.id)).rejects.toMatchObject({
+      response: { code: 'CONNECTION_WEBHOOK_SECRET_MISSING' },
+    });
+    await service.updateCredentials(TENANT, c.id, { signing: 'whsec_1' });
+    expect((await service.activate(TENANT, c.id)).state).toBe('active');
+  });
+
+  it('activate() still needs validation once a key was typed', async () => {
+    const { service, rules } = setup(secretAfterUrl);
+    rules.count = 1;
+    const c = await service.create(TENANT, {
+      ...base,
+      credentials: { apiKey: 'rk_x', signing: 'whsec_1' },
+    });
+    await expect(service.activate(TENANT, c.id)).rejects.toMatchObject({
+      response: { code: 'CONNECTION_NOT_VALIDATED' },
+    });
+  });
+});
 
 describe('ConnectionService', () => {
   it('create() generates a 24-char base64url publicId, generates declared fields and keeps credentials sealed', async () => {

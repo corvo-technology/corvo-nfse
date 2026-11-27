@@ -7,7 +7,7 @@ import { invoices, billing } from "@/lib/api";
 import messages from "@/messages/en.json";
 
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ tenantId: "tenant-a", fiscalEnvironment: "live", can: () => true }) }));
-vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() } }));
+vi.mock("@/lib/api", () => ({ invoices: { overview: vi.fn() }, billing: { plan: vi.fn() }, integrations: { pending: vi.fn().mockResolvedValue([]) } }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("@/components/dashboard/getting-started-banner", () => ({ GettingStartedBanner: () => <div data-testid="getting-started" /> }));
 

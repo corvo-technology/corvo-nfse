@@ -117,19 +117,20 @@ export class NfseEmailProcessor extends WorkerHost {
         invoice.environment,
       );
       if (!company) throw new Error('Invoice company not found');
+      const senderName = company.tradeName?.trim() || company.legalName;
       const { subject, html, text } = nfseDocumentsReadyEmail({
-        companyName: company?.tradeName ?? company?.legalName ?? 'Corvo',
+        companyName: senderName,
         customerName: snapshot.customerSnapshot?.name ?? 'Consumidor',
         amount: formatBrl(Number(snapshot.amount)),
         number: String(nfseNumber),
         issueDate: formatDateBr(snapshot.issuedAt ?? new Date()),
         description: snapshot.serviceSnapshot.description,
-        accessKey: snapshot.accessKey ?? '—',
         isTest: invoice.environment === 'test',
       });
 
       await this.emailProvider.send({
         to: [customerEmail],
+        fromName: senderName,
         subject,
         html,
         text,
