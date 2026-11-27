@@ -6354,11 +6354,11 @@
             "schema": {
               "enum": [
                 "failed",
-                "processing",
-                "manual_review",
                 "authorized",
                 "rejected",
                 "cancelled",
+                "processing",
+                "manual_review",
                 "retry_pending",
                 "queued",
                 "reconciliation_required",
