@@ -147,7 +147,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
 
     if (isApplicationError(exception)) {
       const statusCode = statusForApplicationError(exception);
-      if (statusCode < 500) {
+      if (statusCode < 500 || exception.expected) {
         this.logBusinessError(exception, request, statusCode);
         response
           .status(statusCode)
@@ -225,7 +225,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
         route: requestRouteTemplate(request),
       },
     };
-    if (exception.kind === 'conflict' || exception.kind === 'forbidden') {
+    if (
+      exception.kind === 'conflict' ||
+      exception.kind === 'forbidden' ||
+      exception.kind === 'dependency'
+    ) {
       this.logger.warn(entry);
     } else {
       this.logger.log(entry);
@@ -390,6 +394,8 @@ function httpErrorLabel(statusCode: number): string {
       return 'Forbidden';
     case 422:
       return 'Unprocessable Entity';
+    case 503:
+      return 'Service Unavailable';
     default:
       return 'Error';
   }

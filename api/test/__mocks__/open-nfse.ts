@@ -108,6 +108,7 @@ export const RegimeEspecialTributacao = sdk.RegimeEspecialTributacao;
 export const TipoAmbienteDps = sdk.TipoAmbienteDps;
 export const ValidationError = sdk.ValidationError;
 export const NotFoundError = sdk.NotFoundError;
+export const fetchDpsStatus = sdk.fetchDpsStatus;
 export const pendingEmissionId = sdk.pendingEmissionId;
 export const JustificativaCancelamento = sdk.JustificativaCancelamento;
 export const JustificativaSubstituicao = sdk.JustificativaSubstituicao;

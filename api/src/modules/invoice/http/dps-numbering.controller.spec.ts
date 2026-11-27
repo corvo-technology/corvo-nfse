@@ -34,7 +34,10 @@ describe('DpsNumberingController', () => {
   it('answers 503 with a code when the portal does not answer', async () => {
     numbering.check.mockRejectedValue(new NumberingCheckUnavailableError());
     await expect(controller.check('c1', req)).rejects.toMatchObject({
-      response: { code: 'DPS_NUMBERING_CHECK_UNAVAILABLE' },
+      code: 'DPS_NUMBERING_CHECK_UNAVAILABLE',
+      kind: 'dependency',
+      retryable: true,
+      expected: true,
     });
   });
 
