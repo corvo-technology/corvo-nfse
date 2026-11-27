@@ -220,6 +220,10 @@ jobs:
         run: >-
           docker compose --env-file deploy/.env
           -f deploy/docker-compose.yml config --quiet
+      - name: Validate Dokploy Compose
+        run: >-
+          docker compose --env-file deploy/.env
+          -f deploy/docker-compose.dokploy.yml config --quiet
       # The tax calculator image builds with the official Maven image, not the
       # repository's ./mvnw (see deploy/Dockerfile.rtc).
       - name: Build images
