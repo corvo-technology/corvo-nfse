@@ -2066,6 +2066,7 @@
     "clear": "Clear selected code"
   },
   "ApiErrors": {
+    "proxy_route_unavailable": "This action is not available right now. Please tell Corvo support.",
     "invoice_note_environment_mismatch": "This note cannot be cancelled or replaced: the stored file is from a different environment (test or production) than the note. Contact support.",
     "portal_nfse_wrong_environment": "This note was found on the portal in a different environment (test or production) than the company's. Check the environment and try again.",
     "reconciliation_uncertain": "The fiscal portal gave no conclusive answer for a long time. Retry with the same number or discard the invoice.",
