@@ -9,6 +9,7 @@ import { useApiErrorText } from "@/lib/use-api-error";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 
 const currentMonth = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`; };
 
@@ -51,7 +52,7 @@ export function InvoicePackageButton() {
     <Modal open={open} onClose={() => { if (!busy) setOpen(false); }} title={t("title")}>
       <form className="flex flex-col gap-4" onSubmit={(event) => { event.preventDefault(); void download(); }}>
         <p className="text-sm text-text-3">{t("hint")}</p>
-        {list.length > 1 && <Field label={t("company")}>{(control) => <select {...control} className="field" value={companyId} onChange={(event) => setCompanyId(event.target.value)}>{list.map((item) => <option key={item.id} value={item.id}>{item.tradeName || item.legalName}</option>)}</select>}</Field>}
+        {list.length > 1 && <Field label={t("company")}>{(control) => <Select {...control} value={companyId} onChange={(event) => setCompanyId(event.target.value)}>{list.map((item) => <option key={item.id} value={item.id}>{item.tradeName || item.legalName}</option>)}</Select>}</Field>}
         <Field label={t("month")}>{(control) => <Input {...control} type="month" required value={month} onChange={(event) => setMonth(event.target.value)} />}</Field>
         {message && <p role="alert" className="text-sm text-danger">{message}</p>}
         <Button type="submit" loading={busy} disabled={!companyId}>{t("download")}</Button>

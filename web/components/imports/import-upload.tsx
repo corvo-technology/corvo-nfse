@@ -9,6 +9,7 @@ import { ApiError, companies, imports } from "@/lib/api";
 import { saveBlob } from "@/lib/download";
 import type { Company, ImportStart } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -125,10 +126,10 @@ export function ImportUpload({ onStarted }: { onStarted: (start: ImportStart) =>
 
       <Field label={t("upload.companyLabel")} hint={t("upload.companyHint")}>
         {(control) => (
-          <select {...control} className="field" value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
+          <Select {...control} value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
             <option value="">{t("upload.companyAuto")}</option>
             {options.map((company) => <option key={company.id} value={company.id}>{company.legalName}</option>)}
-          </select>
+          </Select>
         )}
       </Field>
 

@@ -18,6 +18,7 @@ import { ApiError, billing, cnpj as cnpjApi, companies as companiesApi, isCompan
 import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { Select } from "@/components/ui/select";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -379,8 +380,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
 
     {showFiscal && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
       {section(t("sectionFiscal"), wizard ? t("stepHint.fiscal") : undefined)}
-      {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <select {...props} className="field" value={values.taxRegime} onChange={(event) => { set("taxRegime", event.target.value); if (!allowsSpecialTaxRegime(event.target.value as TaxRegime)) set("specialRegime", "0"); }}><option value="">{t("selectTaxRegime")}</option>{SUPPORTED_TAX_REGIMES.map((regime) => <option key={regime}>{regime}</option>)}</select>}</Field>
-      {allowsSpecialTaxRegime(values.taxRegime as TaxRegime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={fieldErrors.specialRegime}>{(props) => <select {...props} className="field" value={values.specialRegime} onChange={(event) => set("specialRegime", event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map((code) => <option key={code} value={code}>{t(`specialRegimes.${code}`)}</option>)}</select>}</Field>}
+      {wizard && <><Field label={t("taxRegime")} required error={fieldErrors.taxRegime}>{(props) => <Select {...props} value={values.taxRegime} onChange={(event) => { set("taxRegime", event.target.value); if (!allowsSpecialTaxRegime(event.target.value as TaxRegime)) set("specialRegime", "0"); }}><option value="">{t("selectTaxRegime")}</option>{SUPPORTED_TAX_REGIMES.map((regime) => <option key={regime}>{regime}</option>)}</Select>}</Field>
+      {allowsSpecialTaxRegime(values.taxRegime as TaxRegime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={fieldErrors.specialRegime}>{(props) => <Select {...props} value={values.specialRegime} onChange={(event) => set("specialRegime", event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map((code) => <option key={code} value={code}>{t(`specialRegimes.${code}`)}</option>)}</Select>}</Field>}
       <p className="text-sm text-text-3 sm:col-span-2">{t("regimeDerived")}</p></>}
       {isSimples && <>
         {field("simplesRate", { required: true, maxLength: 6, mono: true, inputMode: "text", hint: t("hints.simplesRate") })}

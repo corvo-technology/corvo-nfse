@@ -20,6 +20,7 @@ import { WEBHOOK_EVENT_OPTIONS, type WebhookEvent } from "@/lib/types";
 import { timeAgo } from "@/lib/i18n-helpers";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { useDeliveryLabels } from "@/components/invoices/invoice-webhook-deliveries";
+import { Select } from "@/components/ui/select";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -407,23 +408,23 @@ export default function WebhooksPage() {
         <div className="flex flex-wrap items-end gap-3 border-t border-border px-4 py-3 sm:px-5">
           <label className="flex flex-col gap-1 text-[12px] text-text-3">
             <span>{t("filters.period")}</span>
-            <select value={period} onChange={(e) => setPeriod(e.target.value as (typeof PERIODS)[number])} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+            <Select value={period} onChange={(e) => setPeriod(e.target.value as (typeof PERIODS)[number])} className="w-auto">
               {PERIODS.map((p) => <option key={p} value={p}>{t(`periods.${p}`)}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="flex flex-col gap-1 text-[12px] text-text-3">
             <span>{t("filters.status")}</span>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
               <option value="">{t("filters.all")}</option>
               {STATUSES.map((s) => <option key={s} value={s}>{labels.status(s)}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="flex flex-col gap-1 text-[12px] text-text-3">
             <span>{t("filters.event")}</span>
-            <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+            <Select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)} className="w-auto">
               <option value="">{t("filters.all")}</option>
               {WEBHOOK_EVENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{labels.event(o.value)}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-[12px] text-text-3">
             <span>{t("filters.invoice")}</span>

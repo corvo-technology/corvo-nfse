@@ -10,6 +10,7 @@ import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
 import { FISCAL_REGIMES } from "./company-fiscal-profile-form";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { Select } from "@/components/ui/select";
 
 const RATE_KEYS: WithholdingTax[] = ["irrf", "pis", "cofins", "csll", "inss"];
 const TEXT_FIELDS = ["name", "municipalServiceCode", "nbsCode", "cst", "classCode", "operationIndicator", "incidenceMunicipalityCode", "issRate", "effectiveFrom", "effectiveUntil", "classificationSource", "catalogVersion"] as const;
@@ -35,7 +36,7 @@ export function CompanyServiceProfileForm({ company, profile, date, onSaved, onC
   const [issues, setIssues] = useState<Record<string, string>>({});
   const busy = useRef(false);
   const set = (key: TextField, value: string) => setValues(previous => ({ ...previous, [key]: value }));
-  const field = (key: TextField, options: { type?: string; maxLength?: number; required?: boolean; inputMode?: "numeric" | "decimal" } = {}) => <Field key={key} label={t(key)} error={issues[key]} required={options.required}>{props => <input {...props} className="field" value={values[key]} {...options} onChange={event => set(key, event.target.value)} />}</Field>;
+  const field = (key: TextField, options: { type?: string; maxLength?: number; required?: boolean; inputMode?: "numeric" | "decimal" } = {}) => <Field key={key} label={t(key)} error={issues[key]} required={options.required}>{props => <input {...props} value={values[key]} {...options} onChange={event => set(key, event.target.value)} />}</Field>;
   async function submit(event: React.FormEvent) {
     event.preventDefault(); if (busy.current) return;
     if (!values.name.trim() || !values.effectiveFrom) { setError(t("required")); return; }
@@ -69,17 +70,17 @@ export function CompanyServiceProfileForm({ company, profile, date, onSaved, onC
       {field("name", { required: true, maxLength: 120 })}
       <Field label={t("serviceCode")} required error={issues.serviceCode}>{props => <ServiceCodeCombobox {...props} value={code} onChange={setCode} />}</Field>
       {field("effectiveFrom", { required: true, type: "date" })}{field("effectiveUntil", { type: "date" })}
-      <Field label={t("operationNature")}>{props => <select {...props} className="field" value={operationNature} onChange={event => setOperationNature(event.target.value as CompanyServiceTaxProfile["operationNature"])}>{(["SERVICE", "GOODS", "MIXED", "PARTNER_SALON"] as const).map(value => <option key={value} value={value}>{t(`operations.${value}`)}</option>)}</select>}</Field>
+      <Field label={t("operationNature")}>{props => <Select {...props} value={operationNature} onChange={event => setOperationNature(event.target.value as CompanyServiceTaxProfile["operationNature"])}>{(["SERVICE", "GOODS", "MIXED", "PARTNER_SALON"] as const).map(value => <option key={value} value={value}>{t(`operations.${value}`)}</option>)}</Select>}</Field>
       {field("municipalServiceCode", { maxLength: 20 })}
       {field("nbsCode", { maxLength: 9, inputMode: "numeric" })}{field("cst", { maxLength: 3, inputMode: "numeric" })}
       {field("classCode", { maxLength: 6, inputMode: "numeric" })}{field("operationIndicator", { maxLength: 6, inputMode: "numeric" })}
-      <Field label={t("issTaxation")} error={issues.issTaxation}>{props => <select {...props} className="field" value={issTaxation ?? ""} onChange={event => setIssTaxation((event.target.value || null) as CompanyServiceTaxProfile["issTaxation"])}><option value="">{t("missing")}</option>{(["NORMAL", "FIXED", "EXEMPT"] as const).map(value => <option key={value} value={value}>{t(`iss.${value}`)}</option>)}</select>}</Field>
+      <Field label={t("issTaxation")} error={issues.issTaxation}>{props => <Select {...props} value={issTaxation ?? ""} onChange={event => setIssTaxation((event.target.value || null) as CompanyServiceTaxProfile["issTaxation"])}><option value="">{t("missing")}</option>{(["NORMAL", "FIXED", "EXEMPT"] as const).map(value => <option key={value} value={value}>{t(`iss.${value}`)}</option>)}</Select>}</Field>
       {field("issRate", { maxLength: 10, inputMode: "decimal" })}
       {field("incidenceMunicipalityCode", { maxLength: 7, inputMode: "numeric" })}
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={issWithholding} onChange={event => setIssWithholding(event.target.checked)} />{t("issWithholdingDefault")}</label>
-      <Field label={t("withholdingPolicy")} error={issues.withholdingPolicy}>{props => <select {...props} className="field" value={withholdingPolicy} onChange={event => setWithholdingPolicy(event.target.value as CompanyServiceTaxProfile["withholdingPolicy"])}>{(["UNKNOWN", "NONE_CONFIRMED", "CONFIGURED"] as const).map(value => <option key={value} value={value}>{t(`withholding.${value}`)}</option>)}</select>}</Field>
-      {withholdingPolicy === "CONFIGURED" && <fieldset className="grid gap-3 sm:col-span-2 sm:grid-cols-3"><legend className="mb-3 text-sm">{t("withholdingRates")}</legend>{RATE_KEYS.map(key => <Field key={key} label={`${key.toUpperCase()} (%)`} error={issues[`withholdingRates.${key}`]}>{props => <input {...props} className="field" inputMode="decimal" maxLength={10} value={rates[key] ?? ""} onChange={event => setRates(previous => ({ ...previous, [key]: event.target.value }))} />}</Field>)}</fieldset>}
-      <Field label={t("regimeApplicability")} hint={t("allRegimes")}>{props => <select {...props} className="field min-h-28" multiple value={regimes} onChange={event => setRegimes(Array.from(event.target.selectedOptions, option => option.value as CompanyServiceTaxProfile["regimeApplicability"][number]))}>{FISCAL_REGIMES.map(value => <option key={value} value={value}>{t(`regimes.${value}`)}</option>)}</select>}</Field>
+      <Field label={t("withholdingPolicy")} error={issues.withholdingPolicy}>{props => <Select {...props} value={withholdingPolicy} onChange={event => setWithholdingPolicy(event.target.value as CompanyServiceTaxProfile["withholdingPolicy"])}>{(["UNKNOWN", "NONE_CONFIRMED", "CONFIGURED"] as const).map(value => <option key={value} value={value}>{t(`withholding.${value}`)}</option>)}</Select>}</Field>
+      {withholdingPolicy === "CONFIGURED" && <fieldset className="grid gap-3 sm:col-span-2 sm:grid-cols-3"><legend className="mb-3 text-sm">{t("withholdingRates")}</legend>{RATE_KEYS.map(key => <Field key={key} label={`${key.toUpperCase()} (%)`} error={issues[`withholdingRates.${key}`]}>{props => <input {...props} inputMode="decimal" maxLength={10} value={rates[key] ?? ""} onChange={event => setRates(previous => ({ ...previous, [key]: event.target.value }))} />}</Field>)}</fieldset>}
+      <Field label={t("regimeApplicability")} hint={t("allRegimes")}>{props => <Select {...props} className="min-h-28" multiple value={regimes} onChange={event => setRegimes(Array.from(event.target.selectedOptions, option => option.value as CompanyServiceTaxProfile["regimeApplicability"][number]))}>{FISCAL_REGIMES.map(value => <option key={value} value={value}>{t(`regimes.${value}`)}</option>)}</Select>}</Field>
     </fieldset>
     <details><summary className="cursor-pointer py-2 text-sm underline">{t("advanced")}</summary><fieldset disabled={saving} className="mt-3 grid gap-4 sm:grid-cols-2">{field("classificationSource", { maxLength: 30 })}{field("catalogVersion", { maxLength: 40 })}</fieldset></details>
     {error && <p role="alert" className="fiscal-notice">{error}</p>}

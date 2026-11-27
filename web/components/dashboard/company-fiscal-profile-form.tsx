@@ -9,6 +9,7 @@ import type { Company, CompanyFiscalProfile, TaxRegimeKind } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { Select } from "@/components/ui/select";
 
 export const FISCAL_REGIMES: TaxRegimeKind[] = ["MEI", "SIMPLES_NACIONAL"];
 function nextDate(date: string): string {
@@ -56,11 +57,11 @@ export function CompanyFiscalProfileForm({ company, profile, onSaved, onCancel }
   return <form onSubmit={submit} className="flex flex-col gap-4 border-t border-border pt-5" aria-label={t("profileTitle")} aria-busy={saving}>
     {approved && <p className="fiscal-notice">{t("immutableProfile")}</p>}
     <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
-      <Field label={t("regime")} required error={issues.taxRegime}>{props => <select {...props} className="field" value={regime} onChange={event => { const next = event.target.value as TaxRegimeKind; setRegime(next); if (!allowsSpecialTaxRegime(next)) setSpecialTaxRegime("0"); }}><option value="" disabled>{t("missing")}</option>{(regime && !FISCAL_REGIMES.includes(regime) ? [...FISCAL_REGIMES, regime] : FISCAL_REGIMES).map(value => <option key={value} value={value}>{t(`regimes.${value}`)}</option>)}</select>}</Field>
-      <Field label={t("validFrom")} required error={issues.validFrom}>{props => <input {...props} className="field" type="date" required min={minDate} value={validFrom} onChange={event => setValidFrom(event.target.value)} />}</Field>
-      {allowsSpecialTaxRegime(regime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={issues.specialTaxRegime}>{props => <select {...props} className="field" value={specialTaxRegime} onChange={event => setSpecialTaxRegime(event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map(value => <option key={value} value={value}>{t(`specialRegimes.${value}`)}</option>)}</select>}</Field>}
+      <Field label={t("regime")} required error={issues.taxRegime}>{props => <Select {...props} value={regime} onChange={event => { const next = event.target.value as TaxRegimeKind; setRegime(next); if (!allowsSpecialTaxRegime(next)) setSpecialTaxRegime("0"); }}><option value="" disabled>{t("missing")}</option>{(regime && !FISCAL_REGIMES.includes(regime) ? [...FISCAL_REGIMES, regime] : FISCAL_REGIMES).map(value => <option key={value} value={value}>{t(`regimes.${value}`)}</option>)}</Select>}</Field>
+      <Field label={t("validFrom")} required error={issues.validFrom}>{props => <input {...props} type="date" required min={minDate} value={validFrom} onChange={event => setValidFrom(event.target.value)} />}</Field>
+      {allowsSpecialTaxRegime(regime) && <Field label={t("specialRegime")} hint={t("specialRegimeHint")} error={issues.specialTaxRegime}>{props => <Select {...props} value={specialTaxRegime} onChange={event => setSpecialTaxRegime(event.target.value)}>{SPECIAL_TAX_REGIME_CODES.map(value => <option key={value} value={value}>{t(`specialRegimes.${value}`)}</option>)}</Select>}</Field>}
       <p className="self-end py-2 text-sm">{t("simpleNational")}: {t(simple ? "yes" : "no")}</p>
-      {simple && <><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ibsOption} onChange={event => setIbsOption(event.target.checked)} />{t("ibsOption")}</label>{ibsOption && <Field label={t("ibsFrom")} required error={issues.ibsCbsRegularFrom}>{props => <input {...props} type="date" required className="field" value={ibsFrom} onChange={event => setIbsFrom(event.target.value)} />}</Field>}</>}
+      {simple && <><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={ibsOption} onChange={event => setIbsOption(event.target.checked)} />{t("ibsOption")}</label>{ibsOption && <Field label={t("ibsFrom")} required error={issues.ibsCbsRegularFrom}>{props => <input {...props} type="date" required value={ibsFrom} onChange={event => setIbsFrom(event.target.value)} />}</Field>}</>}
     </fieldset>
     {error && <p role="alert" className="fiscal-notice">{error}</p>}
     <div className="flex flex-wrap justify-end gap-3"><Button disabled={saving} onClick={onCancel}>{t("cancel")}</Button><Button type="submit" variant="accent" loading={saving}>{t("saveProfile")}</Button></div>
