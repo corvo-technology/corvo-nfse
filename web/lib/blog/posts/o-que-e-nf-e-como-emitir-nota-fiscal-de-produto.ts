@@ -143,7 +143,7 @@ export const post: BlogPost = {
     },
     {
       q: "Para quais empresas a NF-e da Corvo serve?",
-      a: "Para empresas do Simples Nacional e MEI. Outros regimes ainda não são aceitos. Segundo a página da NF-e, ela funciona em todos os estados, sem configuração extra por estado.",
+      a: "Para empresas do Simples Nacional e MEI. Outros regimes ainda não são aceitos. Funciona em todos os estados, sem configuração extra por estado.",
     },
     {
       q: "Posso conferir a nota antes de enviar?",

@@ -86,8 +86,8 @@ function overview(locale: DocsLocale): DocSection {
   return {
     title: l("NF-e (products)", "NF-e (produtos)"),
     description: l(
-      "Issue NF-e (model 55) through the same /v1/invoices routes, in test mode (homologação), for Simples Nacional companies in SP and SVRS states.",
-      "Emita NF-e (modelo 55) pelas mesmas rotas /v1/invoices, em teste (homologação), para empresas do Simples Nacional em SP e nos estados da SVRS.",
+      "Issue NF-e (model 55) through the same /v1/invoices routes, in test mode (homologação), for Simples Nacional companies in every state.",
+      "Emita NF-e (modelo 55) pelas mesmas rotas /v1/invoices, em teste (homologação), para empresas do Simples Nacional de todos os estados.",
     ),
     blocks: [
       text(l(
