@@ -1,17 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
-import { TenantOrmEntity } from '@/infra/persistence/typeorm/entities/tenant.orm-entity';
-import {
-  runAsSystem,
-  runWithTenant,
-} from '@/infra/persistence/typeorm/tenant-context.storage';
-import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
+import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { EmailService } from '@/modules/email/application/email.service';
 import { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
 import { FiscalWebhookPublisher } from '@/modules/fiscal-core/application/fiscal-webhook.publisher';
 import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
 import { opsAlertEmails } from '@/modules/portal-reachability/portal-reachability.monitor';
+import { TypeormNfeSvcAudience } from '../infra/typeorm-nfe-svc-audience';
 import {
   svcEnteredEmail,
   svcExitedEmail,
@@ -38,7 +33,7 @@ export class NfeSvcAnnouncer {
   private readonly logger = new Logger(NfeSvcAnnouncer.name);
 
   constructor(
-    private readonly database: DataSource,
+    private readonly audience: TypeormNfeSvcAudience,
     private readonly policy: NfeAccessPolicy,
     private readonly webhooks: FiscalWebhookPublisher,
     private readonly email: EmailService,
@@ -68,31 +63,16 @@ export class NfeSvcAnnouncer {
     };
   }
 
-  /** Workspaces with NF-e released and a company in the UF, in the environment of `tpAmb`. */
-  async audience(uf: Uf, tpAmb: 1 | 2): Promise<string[]> {
-    const rows = await runAsSystem('worker-discovery', () =>
-      this.database
-        .getRepository(CompanyOrmEntity)
-        .createQueryBuilder('company')
-        .innerJoin(TenantOrmEntity, 'tenant', 'tenant.id = company.tenant_id')
-        .select('company.tenant_id', 'tenantId')
-        .distinct(true)
-        .where(
-          'company.address_state = :uf AND company.environment = :environment AND company.deleted_at IS NULL AND tenant.nfe_enabled_at IS NOT NULL',
-          { uf, environment: tpAmb === 1 ? 'live' : 'test' },
-        )
-        .getRawMany<{ tenantId: string }>(),
-    );
-    return rows.map((row) => row.tenantId);
-  }
-
   private async publish(
     type: 'nfe.contingency.entered' | 'nfe.contingency.exited',
     change: SvcTransition,
   ): Promise<void> {
     try {
       const environment = change.tpAmb === 1 ? 'live' : 'test';
-      for (const tenantId of await this.audience(change.uf, change.tpAmb)) {
+      for (const tenantId of await this.audience.tenants(
+        change.uf,
+        change.tpAmb,
+      )) {
         if (!(await this.policy.isEnabled(tenantId))) continue;
         await runWithTenant(tenantId, () =>
           this.webhooks.publishTenantEvent(tenantId, environment, type, {

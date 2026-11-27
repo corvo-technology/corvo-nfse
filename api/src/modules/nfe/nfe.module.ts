@@ -60,6 +60,7 @@ import { NfeDocumentItemOrmEntity } from './infra/nfe-document-item.orm-entity';
 import { NfeDocumentOrmEntity } from './infra/nfe-document.orm-entity';
 import { NfeContingencyStateOrmEntity } from './infra/nfe-contingency-state.orm-entity';
 import { TypeormNfeContingencyStates } from './infra/typeorm-nfe-contingency-states';
+import { TypeormNfeSvcAudience } from './infra/typeorm-nfe-svc-audience';
 import { NfeInutilizationOrmEntity } from './infra/nfe-inutilization.orm-entity';
 import { NfeNumberSequenceOrmEntity } from './infra/nfe-number-sequence.orm-entity';
 import { TypeOrmNfeDocumentRepository } from './infra/typeorm-nfe-document.repository';
@@ -132,6 +133,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfeSvcSwitchScheduler,
     NfeSvcSwitchService,
     NfeSvcAnnouncer,
+    TypeormNfeSvcAudience,
     TypeormNfeContingencyStates,
     { provide: SEFAZ_STATUS, useClass: ReachabilitySefazStatus },
     TypeormNfeEvents,
