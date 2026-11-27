@@ -156,6 +156,15 @@ export type StripeConfig = {
   connectRefreshUrl: string;
 };
 
+export type LifecycleEmailsConfig = {
+  enabled: boolean;
+  firstInvoice: boolean;
+  monthlySummary: boolean;
+  creditsForecast: boolean;
+  pendingPayment: boolean;
+  rejectionHelp: boolean;
+};
+
 export type PaymentsConfig = {
   allowedProviders: Array<'stripe' | 'woovi'>;
   defaultProvider: 'stripe' | 'woovi';
@@ -239,6 +248,7 @@ export type AppConfiguration = {
   sentry: SentryConfig;
   stripe: StripeConfig;
   woovi: WooviConfig;
+  lifecycleEmails: LifecycleEmailsConfig;
   payments: PaymentsConfig;
   turnstile: TurnstileConfig;
   storage: StorageConfig;
