@@ -1,0 +1,15 @@
+{
+  "id": 999999999,
+  "date_created": "2026-11-20T10:04:58.000-03:00",
+  "date_approved": "2026-11-20T10:05:10.000-03:00",
+  "date_last_updated": "2026-11-20T10:05:10.000-03:00",
+  "payer": { "id": null, "identification": {} },
+  "additional_info": {},
+  "transaction_amount": 24.5,
+  "currency_id": "BRL",
+  "description": "Pago Pizza",
+  "status": "approved",
+  "status_detail": "accredited",
+  "live_mode": true,
+  "collector_id": 44444
+}

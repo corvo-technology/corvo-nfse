@@ -56,6 +56,7 @@ const PLATFORM_NAMES: Record<string, string> = {
   kiwify: 'Kiwify',
   abacatepay: 'AbacatePay',
   pushinpay: 'PushinPay',
+  mercadopago: 'Mercado Pago',
 };
 
 /** Turns account events into e-mails for the workspace admins. A failure never affects the action that caused it. */

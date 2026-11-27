@@ -26,6 +26,7 @@ const abacate = { id: "abacatepay", name: "AbacatePay", version: "1", credential
 const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credentialFields: [{ key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "webhookToken", label: "Webhook token (x-corvo-token header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Pass the address as webhook_url and set the x-corvo-token header." }, supportedFlows: [] };
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true, optional: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true, optional: true, afterUrl: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, webhookEvents: ["charge.succeeded", "charge.refunded"], supportedFlows: ["charge"] };
 const kiwify = { id: "kiwify", name: "Kiwify", version: "1", credentialFields: [{ key: "token", label: "Webhook token", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Create a webhook on Kiwify without affiliations or co-productions." }, supportedFlows: ["order"] };
+const mercadopago = { id: "mercadopago", name: "Mercado Pago", version: "1", credentialFields: [{ key: "accessToken", label: "Mercado Pago production Access Token", secret: true }, { key: "webhookSigningSecret", label: "Webhook secret signature", secret: true, afterUrl: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add the webhook on Mercado Pago and tick payment." }, supportedFlows: ["payment"] };
 const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
@@ -388,6 +389,27 @@ describe("Connect page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
     await screen.findByText("Connected!");
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { token: "tok_fake", invoiceValue: "total" } }));
+  });
+
+  it("Mercado Pago asks for the Access Token first, the signing secret only after the address, and shows the guide", async () => {
+    mocks.providers.mockResolvedValue([mercadopago]);
+    mocks.create.mockResolvedValue(connection({ provider: "mercadopago", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S5", secrets: { webhookSecret: "S5" } }));
+    mocks.search = "provider=mercadopago";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Access Token/);
+    expect(screen.queryByLabelText(/signature/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.change(screen.getByLabelText(/Access Token/), { target: { value: "APP_USR-fake" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText(/webhookSecret=S5/);
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "mercadopago", credentials: { accessToken: "APP_USR-fake" } }));
+    expect(screen.getByText("Add the webhook on Mercado Pago and tick payment.")).toBeTruthy();
+  });
+
+  it("lists Mercado Pago among the platforms with its own description", async () => {
+    mocks.providers.mockResolvedValue([woovi, mercadopago]);
+    wrap(<NewIntegrationPage />);
+    expect(await screen.findByText("Approved payments on Mercado Pago (Pix, card and boleto).")).toBeTruthy();
   });
 
   it("lists Kiwify among the platforms with its own description", async () => {

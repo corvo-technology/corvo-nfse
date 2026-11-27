@@ -20,4 +20,5 @@ paths = [
   '''api/src/modules/integrations/connectors/stripe/stripe\.(connector|client|flow\.postgres\.integration)\.spec\.ts''',
   '''api/src/modules/integrations/connectors/kiwify/kiwify\.(connector|payload|flow\.postgres\.integration)\.spec\.ts''',
   '''api/src/modules/integrations/connectors/hotmart/hotmart\.(connector|flow\.postgres\.integration)\.spec\.ts''',
+  '''api/src/modules/integrations/connectors/mercadopago/mercadopago\.(connector|client|flow\.postgres\.integration)\.spec\.ts''',
 ]
