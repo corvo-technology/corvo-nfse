@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { loadCertificate } from '@/infra/external/nfe/sefaz/certificate-loader';
 import { TableAuthorityEndpointResolver } from '@/infra/external/nfe/sefaz/endpoints';
 import { UF_TABLE } from '@/infra/external/nfe/sefaz/uf';
+import { QrPayloadSigner } from '@/infra/external/nfe/sefaz/qr-signer';
 import {
   SefazXmlSigner,
   withStructuralSignature,
@@ -11,6 +12,7 @@ import { ApplicationCertificateDecryptor } from '@/modules/certificate/applicati
 import type {
   AuthorityEndpoint,
   AuthorityId,
+  TpEmis,
   Uf,
 } from '@/modules/fiscal-core/domain/ports/authority.port';
 import type { SigningContext } from '@/modules/fiscal-core/domain/ports/gateway.port';
@@ -38,6 +40,7 @@ const SIMULATED_CERTIFICATE: LoadedCertificate = {
 @Injectable()
 export class NfeSefazAccess {
   private readonly signer = new SefazXmlSigner();
+  private readonly qrSigner = new QrPayloadSigner();
   private readonly resolver = new TableAuthorityEndpointResolver();
 
   constructor(
@@ -61,7 +64,9 @@ export class NfeSefazAccess {
     );
   }
 
-  authorityOf(uf: Uf, model: 55 | 65 = 55): AuthorityId {
+  /** The authority that serves the note: the SVC of the UF for `tpEmis` 6 and 7, the origin otherwise. */
+  authorityOf(uf: Uf, model: 55 | 65 = 55, tpEmis: TpEmis = 1): AuthorityId {
+    if (model === 55 && (tpEmis === 6 || tpEmis === 7)) return UF_TABLE[uf].svc;
     return model === 65 ? UF_TABLE[uf].authorizer65 : UF_TABLE[uf].authorizer55;
   }
 
@@ -69,8 +74,9 @@ export class NfeSefazAccess {
     uf: Uf,
     environment: ExecutionEnvironment,
     model: 55 | 65 = 55,
+    tpEmis: TpEmis = 1,
   ): string {
-    const authority = this.authorityOf(uf, model);
+    const authority = this.authorityOf(uf, model, tpEmis);
     const tpAmb = this.tpAmb(environment);
     return model === 65
       ? nfceBreakerAuthority(authority, tpAmb)
@@ -103,11 +109,26 @@ export class NfeSefazAccess {
       : this.signer.sign(xml, referenceTag, certificate);
   }
 
+  /**
+   * The signature of the off-line QR Code (RSA SHA-1, base64) with the A1 key. The simulator has no
+   * key: it returns a base64 stand-in of the right shape, never a real signature.
+   */
+  signQr(
+    payload: string,
+    certificate: LoadedCertificate,
+    environment: ExecutionEnvironment,
+  ): string {
+    return this.isSimulated(environment)
+      ? Buffer.from(`simulated:${payload}`, 'utf8').toString('base64')
+      : this.qrSigner.sign(payload, certificate);
+  }
+
   context(
     uf: Uf,
     environment: ExecutionEnvironment,
     certificate: LoadedCertificate,
     model: 55 | 65 = 55,
+    tpEmis: TpEmis = 1,
   ): SigningContext {
     const tpAmb = this.tpAmb(environment);
     let target: AuthorityEndpoint;
@@ -116,14 +137,14 @@ export class NfeSefazAccess {
         uf,
         tpAmb,
         model,
-        tpEmis: 1,
+        tpEmis,
         service: 'NfeAutorizacao',
       });
     } catch (error) {
       // Only the simulator may go on without an endpoint table row.
       if (!this.isSimulated(environment)) throw error;
       target = {
-        authority: this.authorityOf(uf, model),
+        authority: this.authorityOf(uf, model, tpEmis),
         url: '',
         soapAction: '',
         version: '4.00',

@@ -18,9 +18,38 @@ import {
   nfeIdempotencyKeyRequired,
   nfeIdempotencyKeyReused,
 } from './nfe-errors';
-import { emitMessage } from './nfe-messages';
-import { NfePreparation } from './nfe-preparation.service';
+import { NFCE_CONTINGENCY_ALERT_AFTER_MS } from '@/modules/nfce/domain/contingency';
+import {
+  contingencyAlertMessage,
+  emitMessage,
+  transmitMessage,
+} from './nfe-messages';
+import { NfePreparation, type PreparedNfe } from './nfe-preparation.service';
 import { isValidIdempotencyKey, nfeRequestHash } from './nfe-request-hash';
+import { documentTypeOf } from './nfe-transition.service';
+
+/** What `submitWith` needs to accept a document of either model. */
+export interface NfeSubmission {
+  tenantId: string;
+  environment: ExecutionEnvironment;
+  companyId: string;
+  idempotencyKey: string;
+  requestHash: string;
+  /** 55 NF-e, 65 NFC-e. */
+  model: 55 | 65;
+  /** The preconditions and the validators of the model; throws when anything is refused. */
+  prepare: () => Promise<PreparedNfe>;
+  /**
+   * NFC-e issued off-line (`tpEmis` 9): the document is born `contingency_pending` and `assemble`
+   * numbers, keys and signs it inside the same transaction, so the note is complete when it commits.
+   */
+  offline?: {
+    contingencyAt: Date;
+    /** `xJust`. */
+    reason: string;
+    assemble: (document: NfeDocument, prepared: PreparedNfe) => Promise<void>;
+  };
+}
 
 export interface NfeSubmitted {
   id: string;
@@ -59,13 +88,38 @@ export class NfeIntakeService {
     return key;
   }
 
-  async submit(
+  /** The NF-e (model 55). */
+  submit(
     tenantId: string,
     environment: ExecutionEnvironment,
     input: NfeInput,
     idempotencyKey: string,
   ): Promise<NfeSubmitted> {
-    const requestHash = nfeRequestHash(input);
+    return this.submitWith({
+      tenantId,
+      environment,
+      companyId: input.companyId,
+      idempotencyKey,
+      requestHash: nfeRequestHash(input),
+      model: 55,
+      prepare: () => this.preparation.prepare(tenantId, environment, input),
+    });
+  }
+
+  /**
+   * The shared path: replay by `Idempotency-Key`, then the checks of the model (`prepare`), then the
+   * single transaction that writes the document, the credit and the message. The NFC-e comes in here
+   * with `model: 65` (see `NfceIntakeService`).
+   */
+  async submitWith(submission: NfeSubmission): Promise<NfeSubmitted> {
+    const {
+      tenantId,
+      environment,
+      companyId,
+      idempotencyKey,
+      requestHash,
+      model,
+    } = submission;
     const earlier = await this.documents.findByIdempotencyKey(
       idempotencyKey,
       tenantId,
@@ -73,19 +127,25 @@ export class NfeIntakeService {
     );
     if (earlier) return this.replayOrConflict(earlier, requestHash);
 
-    const { draft } = await this.preparation.prepare(
+    const prepared = await submission.prepare();
+    const { offline } = submission;
+    const params = {
       tenantId,
-      environment,
-      input,
-    );
-    const document = NfeDocument.create({
-      tenantId,
-      companyId: input.companyId,
+      companyId,
       environment,
       idempotencyKey,
       requestHash,
-      ...contentFromDraft(draft),
-    });
+      ...contentFromDraft(prepared.draft),
+    };
+    const document =
+      offline && model === 65
+        ? NfeDocument.createOffline({
+            ...params,
+            model,
+            contingencyAt: offline.contingencyAt,
+            contingencyReason: offline.reason,
+          })
+        : NfeDocument.create({ ...params, model });
 
     const outcome = await runWithTenant(tenantId, () =>
       this.unitOfWork.execute(() =>
@@ -98,14 +158,27 @@ export class NfeIntakeService {
           );
           if (winner) return this.replayOrConflict(winner, requestHash);
           await this.ledger.reserve({
-            type: 'nfe',
+            type: documentTypeOf(model),
             id: document.id,
             tenantId,
             environment,
           });
+          await offline?.assemble(document, prepared);
           await this.documents.insert(document);
           await this.documents.appendHistory(document.creationEntry());
-          await this.outbox.enqueue(emitMessage(document));
+          await this.outbox.enqueue(
+            offline ? transmitMessage(document) : emitMessage(document),
+          );
+          if (offline)
+            await this.outbox.enqueue(
+              contingencyAlertMessage(
+                document,
+                new Date(
+                  offline.contingencyAt.getTime() +
+                    NFCE_CONTINGENCY_ALERT_AFTER_MS,
+                ),
+              ),
+            );
           return {
             id: document.id,
             status: document.status,

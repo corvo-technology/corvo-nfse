@@ -47,6 +47,8 @@ describe("route permissions of the NF-e pages", () => {
     expect(canOpenPath("/app/nfe", all, { nfe: false })).toBe(false);
     expect(canOpenPath("/app/nfe/new", all, undefined)).toBe(false);
     expect(canOpenPath("/app/nfe", all, { nfe: true })).toBe(true);
+    // NFC-e alone also opens the pages (they are shared).
+    expect(canOpenPath("/app/nfe/new", all, { nfe: false, nfce: true })).toBe(true);
     // The NFS-e pages do not depend on the release.
     expect(canOpenPath("/app/invoices", all, { nfe: false })).toBe(true);
   });

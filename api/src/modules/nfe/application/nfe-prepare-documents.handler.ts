@@ -19,12 +19,16 @@ import {
 } from '../domain/nfe-message-types';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
 import { TypeormNfeInutilizations } from '../infra/typeorm-nfe-inutilizations';
-import { NFE_DANFE_RENDERER } from '../nfe.tokens';
-import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
+import { NFCE_DANFCE_RENDERER, NFE_DANFE_RENDERER } from '../nfe.tokens';
+import { DANFCE_FILE, DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 import { sendEmailMessage } from './nfe-messages';
 import { buildNfeProc } from './nfe-proc';
 import { keyOf } from './nfe-outcome.service';
-import { NfeTransitionService } from './nfe-transition.service';
+import {
+  NfeTransitionService,
+  documentTypeOf,
+  nfeEventName,
+} from './nfe-transition.service';
 
 const XML = 'application/xml';
 const PDF = 'application/pdf';
@@ -37,6 +41,9 @@ const PREPARABLE = new Set(['authorized', 'cancelling', 'cancelled']);
  * documents ready (webhook `documents_ready`, and the e-mail to the customer when asked for), and
  * stores the XML of the events the SEFAZ registered and of the inutilizations it approved. A
  * cancellation redoes the DANFE with the CANCELADA mark.
+ *
+ * A NFC-e (model 65) gets its DANFCE (`danfce.pdf`, the 80 mm cupom) instead of the DANFE, and the
+ * e-mail goes only when the consumer gave an address.
  *
  * Safe to run again: the files are the same bytes, the "ready" mark is first-write-wins and the
  * e-mail has its own dedupe key. The XML never goes to a log.
@@ -56,6 +63,7 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
     private readonly inutilizations: TypeormNfeInutilizations,
     private readonly transitions: NfeTransitionService,
     private readonly webhooks: FiscalWebhookPublisher,
+    @Inject(NFCE_DANFCE_RENDERER) private readonly danfce: DocumentRenderer,
   ) {}
 
   onModuleInit(): void {
@@ -103,7 +111,8 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
       environment: doc.environment,
     };
 
-    if (!(await this.storage.fileExists(ref, NFE_PROC_FILE)))
+    // An off-line NFC-e may have the signed XML (no protocol) stored under this name already.
+    if (s.tpEmis === 9 || !(await this.storage.fileExists(ref, NFE_PROC_FILE)))
       await this.storage.saveFile(
         ref,
         NFE_PROC_FILE,
@@ -126,20 +135,31 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
     if (!s.documentsReadyAt) await this.markReady(doc);
   }
 
-  /** Draws the DANFE when there is none yet, or again when the NF-e is cancelled (the mark). */
+  /**
+   * Draws the DANFE (NF-e) or the DANFCE (NFC-e) when there is none yet, or again when the document
+   * is cancelled (the mark).
+   */
   private async ensureDanfe(
     ref: StorageRef,
     doc: NfeDocument,
     cancelled: boolean,
   ): Promise<void> {
-    if (!cancelled && (await this.storage.fileExists(ref, DANFE_FILE))) return;
     const s = doc.toSnapshot();
+    const file = s.model === 65 ? DANFCE_FILE : DANFE_FILE;
+    // An off-line NFC-e may have the DANFCE of the contingency (no protocol) stored already: redraw it.
+    if (
+      !cancelled &&
+      s.tpEmis !== 9 &&
+      (await this.storage.fileExists(ref, file))
+    )
+      return;
     const xml = buildNfeProc(s.signedXml!, s.protNfeXml!);
-    const pdf = await this.danfe.render(xml, {
+    const renderer = s.model === 65 ? this.danfce : this.danfe;
+    const pdf = await renderer.render(xml, {
       homologation: doc.environment === 'test',
       cancelled,
     });
-    await this.storage.saveFile(ref, DANFE_FILE, pdf, PDF);
+    await this.storage.saveFile(ref, file, pdf, PDF);
   }
 
   /** The XML of each registered event (cancellation, correction letter) goes to its own file. */
@@ -192,13 +212,13 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
     const ready = stored.toSnapshot();
     await this.webhooks.publish(
       {
-        type: 'nfe',
+        type: documentTypeOf(ready.model),
         id: ready.id,
         tenantId: ready.tenantId,
         environment: ready.environment,
         companyId: ready.companyId,
       },
-      'nfe.document.documents_ready',
+      nfeEventName(ready.model, 'document.documents_ready'),
       {
         status: ready.status,
         accessKey: ready.accessKey,

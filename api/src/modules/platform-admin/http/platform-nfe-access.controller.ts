@@ -17,7 +17,7 @@ import {
 import type { NfeAccessResult } from '../platform-admin.contract';
 import { PlatformNfeAccessDto } from './platform-nfe-access.dto';
 
-/** Release of NF-e per workspace. Behind the platform admin guard: everyone else gets 404. */
+/** Release of NF-e and NFC-e per workspace. Behind the platform admin guard: everyone else gets 404. */
 @PlatformAdminRoute()
 @Controller('platform/tenants')
 export class PlatformNfeAccessController {
@@ -44,6 +44,32 @@ export class PlatformNfeAccessController {
       await this.access.set(req.platformAdmin!, tenantId, {
         enabled: body.enabled,
         reason: body.reason,
+      }),
+    );
+  }
+
+  @Put(':tenantId/nfce-access')
+  @HttpCode(200)
+  async setNfce(
+    @Req() req: RequestWithPlatformAdmin,
+    @Param(
+      'tenantId',
+      new ParseUUIDPipe({
+        exceptionFactory: () =>
+          new NotFoundException({
+            code: 'RESOURCE_NOT_FOUND',
+            message: 'Resource not found',
+          }),
+      }),
+    )
+    tenantId: string,
+    @Body() body: PlatformNfeAccessDto,
+  ): Promise<DataEnvelope<NfeAccessResult>> {
+    return data(
+      await this.access.set(req.platformAdmin!, tenantId, {
+        enabled: body.enabled,
+        reason: body.reason,
+        type: 'nfce',
       }),
     );
   }

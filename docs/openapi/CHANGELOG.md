@@ -8,6 +8,18 @@ Built from `git log --since=2026-10-26` and the diff of the controllers and DTOs
 
 - `GET /fiscal-portal/status` answers a new field, `connection` (`state`, `since`, `ourSide`): what the connection tests see (`ok`, `portal_down`, `gov_unreachable_from_us`, `no_internet`, `emission_failures`). Additive; invoices wait in the queue in every state.
 
+## Next: NFC-e in test mode (homologação)
+
+NFC-e (consumer sale, model 65) joins the same `/invoices` routes with `type: "nfce"`. It has its own release per account (until then every NFC-e path answers `404`), runs only against the SEFAZ test environment and starts in SP. Nothing about NFS-e or NF-e changed: the NFC-e only adds values and optional fields.
+
+- `invoices_create`, `invoices_validate` and `invoices_resubmit` accept the NFC-e body (`recipient` optional, `indPres` 1, 4 or 5, `payments[].card`; no `natOp`); the `202` answer is `{ type: "nfce", id, status, replayed? }`. `invoices_list` takes `type=nfce`, and `type=all` also brings the NFC-e.
+- `invoices_get` of an NFC-e adds `qrCode` and `urlChave`. `invoices_downloadPdf` answers the DANFCE (80 mm cupom); `?layout=a4` answers the same note on an A4 page (the NF-e and the NFS-e ignore `layout`).
+- `invoices_correct` on a NFC-e answers `422 INVOICE_OPERATION_NOT_SUPPORTED` (there is no correction letter). `invoices_cancel` is meant for the first 30 minutes. `invoices_createInutilization` and `invoices_numberGaps` take `type=nfce`.
+- Company settings (`companies_getNfeSettings` / `companies_updateNfeSettings`) gain `nfceDefaultSeries` (0 to 999, default 1).
+- New codes (open string): `NFCE_CONSUMER_ID_REQUIRED`, `NFCE_DELIVERY_ADDRESS_REQUIRED`, `NFCE_IND_PRES_INVALID`, `NFCE_CARD_DATA_REQUIRED`, `NFCE_CARD_BRAND_INVALID`, `NFCE_CARD_NOT_ALLOWED`, `NFCE_NO_PAYMENT_AMOUNT`, `NFCE_SCOPE_NOT_SUPPORTED`.
+- New webhook events, with `data.documentType: "nfce"`: `nfce.document.authorized`, `.rejected`, `.denied`, `.failed`, `.reconciliation_required`, `.manual_review`, `.documents_ready`, `.email_sent`, `.email_failed`, `.cancelled`, `.cancellation_rejected`, and `nfce.inutilization.completed` / `nfce.inutilization.rejected`.
+- MCP: `type: "nfce"` in `nfse_issue`, `nfse_list` (and `all`), `nfse_get`, `nfse_cancel`, `nfse_review` and the downloads; `nfe_validate` takes `type`; `nfe_inutilize` and `nfe_number_gaps` take `model` 55 or 65; `nfe_settings_update` takes `nfce_default_series`.
+
 ## Next: NF-e in test mode (homologação)
 
 NF-e (goods, model 55) joins the API **inside the existing `/invoices` routes**, chosen by a `type`. It is released account by account (until then every NF-e path answers `404`), runs only against the SEFAZ test environment, and is for Simples Nacional / MEI companies in SP and the SVRS states Corvo released. Corvo does not calculate NF-e taxes: the caller sends CFOP, NCM and CSOSN.

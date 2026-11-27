@@ -54,4 +54,25 @@ describe('PlatformNfeAccessController', () => {
       pipe.transform('nao-uuid', { type: 'param', data: 'tenantId' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('PUT platform/tenants/:tenantId/nfce-access liga a NFC-e pelo mesmo serviço', async () => {
+    const handler = PlatformNfeAccessController.prototype.setNfce;
+    expect(Reflect.getMetadata('path', handler)).toBe(':tenantId/nfce-access');
+    expect(Reflect.getMetadata('__httpCode__', handler)).toBe(HttpStatus.OK);
+    const result = { tenantId: TENANT, enabled: true, enabledAt: '2026-11-26' };
+    const service = { set: jest.fn().mockResolvedValue(result) };
+    const controller = new PlatformNfeAccessController(service as never);
+
+    const out = await controller.setNfce({ platformAdmin: actor }, TENANT, {
+      enabled: true,
+      reason: 'liberar teste',
+    });
+
+    expect(out).toEqual({ data: result });
+    expect(service.set).toHaveBeenCalledWith(actor, TENANT, {
+      enabled: true,
+      reason: 'liberar teste',
+      type: 'nfce',
+    });
+  });
 });

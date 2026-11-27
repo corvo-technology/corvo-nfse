@@ -16,6 +16,7 @@ function toInutilization(row: NfeInutilizationOrmEntity): NfeInutilization {
     tenantId: row.tenantId,
     companyId: row.companyId,
     environment: row.environment as ExecutionEnvironment,
+    model: row.model === 65 ? 65 : 55,
     series: row.series,
     start: row.startNumber,
     end: row.endNumber,

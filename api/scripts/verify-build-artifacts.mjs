@@ -32,7 +32,8 @@ for (const asset of SEFAZ_ASSETS) {
   }
 }
 
-// The DANFE reads the fonts of the DANFSe (modules/nfe/infra/danfe is a sibling folder of them).
+// The DANFE and the DANFCE (modules/nfce/infra/danfce) read the fonts of the DANFSe; the DANFCE draws its
+// QR Code with rectangles, so it has no other asset.
 const FONT_ASSETS = [
   'modules/invoice/infra/danfse/assets/LiberationSans-Regular.ttf',
   'modules/invoice/infra/danfse/assets/LiberationSans-Bold.ttf',

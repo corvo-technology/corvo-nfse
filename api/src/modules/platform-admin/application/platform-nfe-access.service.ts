@@ -8,10 +8,15 @@ import { PlatformNfeAccessRepository } from '../infra/platform-nfe-access.reposi
 import type { NfeAccessResult } from '../platform-admin.contract';
 import type { PlatformAdminActor } from '../platform-admin.guard';
 
-export type NfeAccessInput = { enabled: boolean; reason: string };
+export type NfeAccessInput = {
+  enabled: boolean;
+  reason: string;
+  /** Which release is changed; NF-e when omitted. */
+  type?: 'nfe' | 'nfce';
+};
 
 /**
- * Turns NF-e on or off for one workspace. The column and the audit row are written in the same
+ * Turns NF-e (or NFC-e) on or off for one workspace. The column and the audit row are written in the same
  * transaction; the cache of `NfeAccessPolicy` is dropped after the commit.
  */
 @Injectable()
@@ -31,7 +36,7 @@ export class PlatformNfeAccessService {
     const result = await runAsPlatformAdminOnTenant(tenantId, () =>
       this.uow.execute(() => this.apply(actor, tenantId, input)),
     );
-    await this.cache.delete(`nfe:enabled:${tenantId}`);
+    await this.cache.delete(`${input.type ?? 'nfe'}:enabled:${tenantId}`);
     return result;
   }
 
@@ -40,7 +45,10 @@ export class PlatformNfeAccessService {
     tenantId: string,
     input: NfeAccessInput,
   ): Promise<NfeAccessResult> {
-    const updated = await this.tenants.setEnabled(tenantId, input.enabled);
+    const updated =
+      input.type === 'nfce'
+        ? await this.tenants.setNfceEnabled(tenantId, input.enabled)
+        : await this.tenants.setEnabled(tenantId, input.enabled);
     if (!updated)
       throw new NotFoundException({
         code: 'RESOURCE_NOT_FOUND',
@@ -49,7 +57,7 @@ export class PlatformNfeAccessService {
     await this.audit.insert({
       actorUserId: actor.authUserId,
       actorEmail: actor.email,
-      action: 'nfe_access_changed',
+      action: input.type === 'nfce' ? 'nfce_access_set' : 'nfe_access_changed',
       targetTenantId: tenantId,
       reason: input.reason,
       payload: { enabled: input.enabled },

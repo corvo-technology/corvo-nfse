@@ -119,7 +119,7 @@ export function toNfeInutilizationResponse(inut: NfeInutilization) {
     id: inut.id,
     companyId: inut.companyId,
     environment: inut.environment,
-    model: 55,
+    model: inut.model,
     series: inut.series,
     start: inut.start,
     end: inut.end,

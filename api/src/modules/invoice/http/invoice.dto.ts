@@ -447,6 +447,18 @@ class IsStatusOfType implements ValidatorConstraintInterface {
   }
 }
 
+export class InvoicePdfQuery {
+  @ApiPropertyOptional({
+    enum: ['80mm', 'a4'],
+    default: '80mm',
+    description:
+      'Paper of the NFC-e cupom (DANFCE): `80mm` (default, thermal-printer width) or `a4`. NFS-e and NF-e ignore it.',
+  })
+  @IsOptional()
+  @IsIn(['80mm', 'a4'])
+  layout?: 'a4' | '80mm';
+}
+
 export class ListInvoicesQuery extends CursorQuery {
   @ApiPropertyOptional({
     enum: INVOICE_LIST_TYPES,

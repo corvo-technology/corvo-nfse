@@ -50,14 +50,32 @@ export interface NfeTransitionResult {
   document: NfeDocument;
 }
 
-/** Webhook sent after the commit, by destination state. */
-const WEBHOOK_BY_STATUS: Partial<Record<NfeStatus, WebhookEvent['type']>> = {
-  authorized: 'nfe.document.authorized',
-  rejected: 'nfe.document.rejected',
-  denied: 'nfe.document.denied',
-  reconciliation_required: 'nfe.document.reconciliation_required',
-  manual_review: 'nfe.document.manual_review',
-  cancelled: 'nfe.document.cancelled',
+/**
+ * The webhook type of a document of this model: `nfe.<suffix>` for the NF-e (55) and `nfce.<suffix>`
+ * for the NFC-e (65). `suffix` is what follows the prefix (`document.authorized`...).
+ */
+export function nfeEventName(
+  model: 55 | 65,
+  suffix: string,
+): WebhookEvent['type'] {
+  return `${model === 65 ? 'nfce' : 'nfe'}.${suffix}` as WebhookEvent['type'];
+}
+
+/** The document type that credits, webhooks and the fiscal gateway registry use for a model. */
+export const documentTypeOf = (model: 55 | 65): 'nfe' | 'nfce' =>
+  model === 65 ? 'nfce' : 'nfe';
+
+/** The gateway of a model in the `FiscalDocumentRegistry`. */
+export const gatewayTypeOf = documentTypeOf;
+
+/** Webhook sent after the commit, by destination state (the suffix after `nfe.` / `nfce.`). */
+const WEBHOOK_BY_STATUS: Partial<Record<NfeStatus, string>> = {
+  authorized: 'document.authorized',
+  rejected: 'document.rejected',
+  denied: 'document.denied',
+  reconciliation_required: 'document.reconciliation_required',
+  manual_review: 'document.manual_review',
+  cancelled: 'document.cancelled',
 };
 
 /**
@@ -148,7 +166,7 @@ export class NfeTransitionService {
       await this.outbox.enqueue(message);
     await this.ledger.settle(
       {
-        type: 'nfe',
+        type: documentTypeOf(document.toSnapshot().model),
         id: document.id,
         tenantId: document.tenantId,
         environment: document.environment,
@@ -176,13 +194,16 @@ export class NfeTransitionService {
       }
       this.eventBus?.publishBestEffort(creditsUsageChanged(tenantId));
     }
-    const type =
-      override === undefined ? WEBHOOK_BY_STATUS[to] : override?.type;
-    if (!type) return;
     const s = document.toSnapshot();
+    const suffix = WEBHOOK_BY_STATUS[to];
+    const type =
+      override === undefined
+        ? suffix && nfeEventName(s.model, suffix)
+        : override?.type;
+    if (!type) return;
     await this.webhooks.publish(
       {
-        type: 'nfe',
+        type: documentTypeOf(s.model),
         id: s.id,
         tenantId: s.tenantId,
         environment: s.environment,

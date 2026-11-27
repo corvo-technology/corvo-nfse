@@ -24,6 +24,8 @@ import { NfeSefazAccess } from './nfe-sefaz-access';
 
 export interface InutilizationInput {
   companyId: string;
+  /** 55 (NF-e, the default) or 65 (NFC-e). */
+  model?: 55 | 65;
   series: number;
   start: number;
   end: number;
@@ -83,6 +85,7 @@ export class NfeInutilizeService {
       throw nfeInutilizationRangeInvalid();
     this.context.assertEnvironment(environment);
 
+    const model = input.model ?? 55;
     const requestHash = nfeRequestHash({ ...input, justification });
     if (idempotencyKey) {
       const existing = await this.inutilizations.findByIdempotencyKey(
@@ -110,7 +113,7 @@ export class NfeInutilizeService {
       // The year of the issuer's civil time, two digits.
       ano: dhEmiFor(issuer.uf, now).slice(2, 4),
       cnpj: issuer.cnpj,
-      model: 55,
+      model,
       series: input.series,
       start: input.start,
       end: input.end,
@@ -128,7 +131,7 @@ export class NfeInutilizeService {
       tenantId,
       companyId: input.companyId,
       environment,
-      model: 55 as const,
+      model,
       series: input.series,
     };
     try {
@@ -143,6 +146,7 @@ export class NfeInutilizeService {
               input.series,
               input.start,
               input.end,
+              model,
             )
           )
             throw nfeInutilizationRangeOverlap();
@@ -153,6 +157,7 @@ export class NfeInutilizeService {
               input.series,
               input.start,
               input.end,
+              model,
             )) > 0
           )
             throw nfeInutilizationRangeInUse();
@@ -161,6 +166,7 @@ export class NfeInutilizeService {
             tenantId,
             companyId: input.companyId,
             environment,
+            model,
             series: input.series,
             start: input.start,
             end: input.end,

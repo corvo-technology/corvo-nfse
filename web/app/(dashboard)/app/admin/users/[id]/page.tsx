@@ -52,6 +52,7 @@ function WorkspaceBlock({ workspace, email, onGranted }: { workspace: PlatformWo
           <div className="flex flex-wrap items-start gap-3">
             {billing && workspace.isOwn && <GrantCreditsButton tenantId={workspace.tenantId} email={email} onGranted={onGranted} />}
             {workspace.isOwn && <NfeAccessButton tenantId={workspace.tenantId} enabledAt={workspace.nfeEnabledAt ?? null} onChanged={onGranted} />}
+            {workspace.isOwn && <NfeAccessButton tenantId={workspace.tenantId} type="nfce" enabledAt={workspace.nfceEnabledAt ?? null} onChanged={onGranted} />}
           </div>
         </div>
 

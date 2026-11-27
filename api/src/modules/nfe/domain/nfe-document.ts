@@ -117,6 +117,17 @@ export interface NfeDocumentProps {
   emailSentAt: Date | null;
   cancelReason: string | null;
   cancelRequestedAt: Date | null;
+  /** NFC-e only: QR Code and `urlChave` of the current attempt (null on an NF-e). */
+  qrCode: string | null;
+  urlChave: string | null;
+  /** NFC-e issued off-line (`tpEmis` 9): when it was issued in contingency (`dhCont`). */
+  contingencyAt: Date | null;
+  /** The reason in `xJust` (15 to 256 characters). */
+  contingencyReason: string | null;
+  /** When the 20 h warning about the 24 h deadline was sent (once). */
+  contingencyAlertedAt: Date | null;
+  /** When the current attempt was handed to the SEFAZ; null while it was never sent. */
+  transmittedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -146,6 +157,13 @@ export interface CreateNfeDocumentParams {
   sendEmail?: boolean;
   idempotencyKey: string;
   requestHash: string;
+}
+
+/** An NF-e attempt issued through the SVC: `tpEmis` 6 (SVC-AN) or 7 (SVC-RS), `dhCont` and `xJust`. */
+export interface SvcEmission {
+  tpEmis: 6 | 7;
+  at: Date;
+  reason: string;
 }
 
 /** One row of `nfe_document_history`. */
@@ -254,9 +272,37 @@ export class NfeDocument {
       emailSentAt: null,
       cancelReason: null,
       cancelRequestedAt: null,
+      qrCode: null,
+      urlChave: null,
+      contingencyAt: null,
+      contingencyReason: null,
+      contingencyAlertedAt: null,
+      transmittedAt: null,
       createdAt: now,
       updatedAt: now,
     });
+  }
+
+  /**
+   * A NFC-e issued off-line (`tpEmis` 9): born `contingency_pending`, to be numbered, signed and
+   * keyed right away by the caller. Only the NFC-e has an off-line emission.
+   */
+  static createOffline(
+    params: CreateNfeDocumentParams & {
+      model: 65;
+      contingencyAt: Date;
+      contingencyReason: string;
+    },
+    now: Date = new Date(),
+  ): NfeDocument {
+    if (params.model !== 65)
+      throw new Error('Only the NFC-e (model 65) is issued off-line');
+    const doc = NfeDocument.create(params, now);
+    doc.props.status = 'contingency_pending';
+    doc.props.tpEmis = 9;
+    doc.props.contingencyAt = params.contingencyAt;
+    doc.props.contingencyReason = params.contingencyReason;
+    return doc;
   }
 
   static reconstitute(props: NfeDocumentProps): NfeDocument {
@@ -333,15 +379,44 @@ export class NfeDocument {
     accessKey: string,
     signedXml: string,
     issuedAt: Date,
+    supplement?: { qrCode: string; urlChave: string },
     now: Date = new Date(),
+    emission?: SvcEmission | null,
   ): NfeHistoryEntry {
     this.props.attempt += 1;
+    // An NF-e attempt says whether it goes through the SVC (`SvcEmission`) or normally (`null`); an
+    // attempt that says nothing (the off-line NFC-e) keeps what the document already has.
+    if (emission !== undefined) {
+      this.props.tpEmis = emission?.tpEmis ?? 1;
+      this.props.contingencyAt = emission?.at ?? null;
+      this.props.contingencyReason = emission?.reason ?? null;
+    }
+    this.props.qrCode = supplement?.qrCode ?? null;
+    this.props.urlChave = supplement?.urlChave ?? null;
     this.props.cNf = cNf;
     this.props.accessKey = accessKey;
     this.props.signedXml = signedXml;
     this.props.issuedAt = issuedAt;
+    this.props.transmittedAt = null;
     this.props.updatedAt = now;
     return this.historyEntry(this.props.status, this.props.status);
+  }
+
+  /** A history row with the key and attempt as they are now: written before a new attempt replaces them. */
+  keyChangeEntry(): NfeHistoryEntry {
+    return this.historyEntry(this.props.status, this.props.status);
+  }
+
+  /** The 20 h warning of an off-line NFC-e was sent. */
+  markContingencyAlerted(at: Date): void {
+    this.props.contingencyAlertedAt = at;
+    this.props.updatedAt = at;
+  }
+
+  /** Written and committed right before the SOAP call: proof that the attempt may have reached the SEFAZ. */
+  markTransmitted(at: Date): void {
+    this.props.transmittedAt = at;
+    this.props.updatedAt = at;
   }
 
   markAuthorized(

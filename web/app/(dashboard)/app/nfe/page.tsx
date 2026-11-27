@@ -6,7 +6,7 @@ import { AlertTriangle, ListChecks, Package, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { collectAll, companies as companiesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { listNfe, NFE_STATUSES, type NfeDocument, type NfeStatus } from "@/lib/nfe";
+import { listNfe, listNfeAndNfce, NFE_STATUSES, type NfeDocument, type NfeKind, type NfeStatus } from "@/lib/nfe";
 import { useCursorPagination } from "@/lib/use-cursor-pagination";
 import type { Company } from "@/lib/types";
 import { NfeStatusBadge } from "@/components/nfe/nfe-status-badge";
@@ -21,13 +21,19 @@ export default function NfeListPage() {
   const t = useTranslations("Nfe");
   const tc = useTranslations("Common");
   const locale = useLocale();
-  const { can } = useAuth();
+  const { can, features } = useAuth();
+  const nfceReleased = features?.nfce === true;
+  const [model, setModel] = useState<NfeKind | "all">("nfe");
   const [companyId, setCompanyId] = useState("");
   const [status, setStatus] = useState<NfeStatus | "">("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const { items, loading, loadingMore, hasMore, error, loadMore } = useCursorPagination(
-    (cursor, signal) => listNfe({ limit: 50, cursor, ...(companyId ? { companyId } : {}), ...(status ? { status } : {}) }, signal),
-    [companyId, status],
+    (cursor, signal) => {
+      const params = { limit: 50, cursor, ...(companyId ? { companyId } : {}), ...(status ? { status } : {}) };
+      if (!nfceReleased) return listNfe(params, signal);
+      return model === "all" ? listNfeAndNfce(params, signal) : listNfe({ ...params, type: model }, signal);
+    },
+    [companyId, status, model, nfceReleased],
   );
 
   useEffect(() => {
@@ -45,11 +51,12 @@ export default function NfeListPage() {
       id: "recipient", header: t("table.recipient"), primary: true, className: "max-w-[320px]",
       cell: (nfe) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-text"><Link href={`/app/nfe/${nfe.id}`} className="hover:text-accent">{nfe.recipient.name}</Link></span>
+          <span className="truncate text-text"><Link href={`/app/nfe/${nfe.id}`} className="hover:text-accent">{nfe.recipient?.name || t("table.consumerAnonymous")}</Link></span>
           {nfe.status === "rejected" && nfe.lastError ? <span className="truncate text-[12px] font-normal text-danger">{nfe.lastError.message}</span> : <span className="truncate font-mono text-[12px] font-normal text-text-4">{companyName(nfe.companyId)}</span>}
         </div>
       ),
     },
+    ...(nfceReleased ? [{ id: "model", header: t("table.model"), cell: (nfe: NfeDocument) => <span className="text-[13px] text-text-3">{nfe.type === "nfce" ? "NFC-e" : "NF-e"}</span> }] : []),
     { id: "number", header: t("table.number"), align: "right", cell: (nfe) => <span className="font-mono text-[13px] text-text-3">{nfe.number ? `${nfe.number} / ${nfe.series}` : "—"}</span> },
     { id: "amount", header: t("table.amount"), align: "right", cell: (nfe) => <span className="font-mono text-[13px] text-text-2">{money.format(Number(nfe.totals.vNF))}</span> },
     { id: "status", header: t("table.status"), cell: (nfe) => <NfeStatusBadge status={nfe.status} /> },
@@ -70,6 +77,16 @@ export default function NfeListPage() {
       />
       <p role="note" className="banner">{t("homologationNotice")}</p>
       <div className="flex flex-wrap items-center gap-4">
+        {nfceReleased && (
+          <label className="flex items-center gap-2 text-sm text-text-3">
+            <span>{t("filters.model")}</span>
+            <select value={model} onChange={(event) => setModel(event.target.value as NfeKind | "all")} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+              <option value="nfe">NF-e</option>
+              <option value="nfce">NFC-e</option>
+              <option value="all">{t("filters.allModels")}</option>
+            </select>
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm text-text-3">
           <span>{t("filters.company")}</span>
           <select value={companyId} onChange={(event) => setCompanyId(event.target.value)} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">

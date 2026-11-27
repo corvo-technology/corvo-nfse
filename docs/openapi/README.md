@@ -83,14 +83,14 @@ Where each part lives:
 | `invoices_correct` | POST | `/invoices/{id}/corrections` | 0.2.0 | Send a correction letter (CC-e) |
 | `invoices_createBatch` | POST | `/invoices/batches` | 0.2.0 | Emit up to 50 NFS-e in one request |
 | `invoices_createDownloadUrl` | POST | `/invoices/{id}/download-url` | 0.2.0 | Get a signed download URL for invoice PDF or XML |
-| `invoices_createInutilization` | POST | `/invoices/inutilizations` | 0.2.0 | Inutilize a range of NF-e numbers |
-| `invoices_create` | POST | `/invoices` | 0.2.0 | Issue an invoice (NFS-e or NF-e), or schedule one |
+| `invoices_createInutilization` | POST | `/invoices/inutilizations` | 0.2.0 | Inutilize a range of NF-e or NFC-e numbers |
+| `invoices_create` | POST | `/invoices` | 0.2.0 | Issue an invoice (NFS-e, NF-e or NFC-e), or schedule one |
 | `invoices_discard` | POST | `/invoices/{id}/discard` | 0.2.0 | Give up a rejected NF-e |
 | `invoices_downloadPdf` | GET | `/invoices/{id}/pdf` | 0.2.0 | Download invoice PDF |
 | `invoices_downloadXml` | GET | `/invoices/{id}/xml` | 0.2.0 | Download invoice XML |
 | `invoices_get` | GET | `/invoices/{id}` | 0.2.0 | Get invoice by ID |
 | `invoices_listEvents` | GET | `/invoices/{id}/events` | 0.2.0 | Get invoice status transition events |
-| `invoices_listInutilizations` | GET | `/invoices/inutilizations` | 0.2.0 | List NF-e inutilizations |
+| `invoices_listInutilizations` | GET | `/invoices/inutilizations` | 0.2.0 | List NF-e or NFC-e inutilizations |
 | `invoices_list` | GET | `/invoices` | 0.2.0 | List invoices for the tenant |
 | `invoices_numberGaps` | GET | `/invoices/number-gaps` | 0.2.0 | List the numbering gaps |
 | `invoices_overview` | GET | `/invoices/overview` | 0.2.0 | Get invoice overview for the tenant and execution environment |

@@ -11,14 +11,15 @@ import { TYPE_PROPERTY } from './nfe.tools';
 export const NFSE_GET_DOWNLOAD_URL_TOOL = {
   name: 'nfse_get_download_url',
   description:
-    'Generate a temporary signed download URL for the PDF or XML of an authorized NFS-e invoice. The URL expires in one hour. With type "nfe" send invoice_id (the NF-e XML is the authorized nfeProc; the PDF is the DANFE).',
+    'Generate a temporary signed download URL for the PDF or XML of an authorized NFS-e invoice. The URL expires in one hour. With type "nfe" or "nfce" send invoice_id (the XML is the authorized nfeProc; the PDF is the DANFE, or the DANFCE of 80 mm for a NFC-e).',
   inputSchema: {
     type: 'object',
     properties: {
       type: TYPE_PROPERTY,
       invoice_id: {
         type: 'string',
-        description: 'UUID of the NF-e. Only with type "nfe".',
+        description:
+          'UUID of the NF-e or NFC-e. Only with type "nfe" or "nfce".',
       },
       access_key: {
         type: 'string',

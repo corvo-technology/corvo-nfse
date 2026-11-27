@@ -48,6 +48,11 @@ export interface DanfeView {
   taxes: Array<{ label: string; value: string }>;
   transport: Array<{ label: string; value: string }>;
   items: DanfeItem[];
+  /**
+   * Set for a note issued in the SVC (`tpEmis` 6 or 7): "EMITIDA EM CONTINGÊNCIA SVC-AN em
+   * 26/11/2026 12:00:00. Motivo: ...". `null` for a normal note.
+   */
+  contingency: string | null;
   additionalInfo: string;
 }
 
@@ -69,11 +74,11 @@ export interface DanfeItem {
   ipiRate: string;
 }
 
-type Node = Record<string, unknown>;
+export type Node = Record<string, unknown>;
 
 const ARRAY_TAGS = new Set(['det', 'detPag', 'dup', 'vol', 'NFref', 'obsCont']);
 
-const parser = new XMLParser({
+export const nfeXmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
   parseTagValue: false,
@@ -83,15 +88,15 @@ const parser = new XMLParser({
   isArray: (name) => ARRAY_TAGS.has(name),
 });
 
-const node = (value: unknown): Node =>
+export const node = (value: unknown): Node =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Node)
     : {};
 
-const text = (value: unknown): string =>
+export const text = (value: unknown): string =>
   typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 
-const list = (value: unknown): Node[] =>
+export const list = (value: unknown): Node[] =>
   Array.isArray(value) ? value.map(node) : value ? [node(value)] : [];
 
 /** `12345.5` as `12.345,50` (no currency sign: the DANFE columns say "R$" once). */
@@ -116,7 +121,7 @@ export function formatNumber(value: string): string {
 }
 
 /** An ISO date-time as written by the issuer (its own offset): `DD/MM/AAAA` and `HH:MM:SS`. */
-function splitDateTime(value: string): { date: string; time: string } {
+export function splitDateTime(value: string): { date: string; time: string } {
   const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}:\d{2}))?/.exec(value);
   if (!match) return { date: DASH, time: DASH };
   return {
@@ -286,8 +291,22 @@ const TAX_FIELDS: Array<[string, string]> = [
  * Reads the `nfeProc` (or a bare `NFe`) and returns what the DANFE prints. Pure: no I/O and no
  * rendering, so the formatting is tested without a PDF.
  */
+/** The notice of a note issued in the SVC (`tpEmis` 6 = SVC-AN, 7 = SVC-RS), from `dhCont` and `xJust`. */
+function contingencyOf(ide: Record<string, unknown>): string | null {
+  const tpEmis = text(ide.tpEmis);
+  if (tpEmis !== '6' && tpEmis !== '7') return null;
+  const since = splitDateTime(text(ide.dhCont));
+  const reason = text(ide.xJust);
+  return [
+    `EMITIDA EM CONTINGÊNCIA SVC-${tpEmis === '6' ? 'AN' : 'RS'}`,
+    since.date !== DASH ? ` em ${since.date} ${since.time}` : '',
+    '.',
+    reason ? ` Motivo: ${reason}` : '',
+  ].join('');
+}
+
 export function toDanfeView(nfeProcXml: string): DanfeView {
-  const tree = node(parser.parse(nfeProcXml));
+  const tree = node(nfeXmlParser.parse(nfeProcXml));
   const proc = node(tree.nfeProc);
   const inf = node(node(proc.NFe ?? tree.NFe).infNFe);
   if (!inf.ide) throw new Error('The XML is not an NF-e');
@@ -328,6 +347,7 @@ export function toDanfeView(nfeProcXml: string): DanfeView {
     })),
     transport: transportOf(node(inf.transp)),
     items: list(inf.det).map(itemOf),
+    contingency: contingencyOf(ide),
     additionalInfo: [text(adicional.infCpl), text(adicional.infAdFisco)]
       .filter(Boolean)
       .join('\n'),

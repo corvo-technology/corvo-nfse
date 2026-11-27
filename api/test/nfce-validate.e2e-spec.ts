@@ -263,14 +263,14 @@ describe('POST /v1/invoices/validate with type nfce (e2e)', () => {
       });
     });
 
-    it('create with type nfce answers 422 INVOICE_OPERATION_NOT_SUPPORTED for now', async () => {
+    it('create with type nfce is accepted now (the dry-run and the emission share the body)', async () => {
       const res = await request(ctx.app.getHttpServer())
         .post('/v1/invoices')
         .set(apiKeyHeader(key))
         .set('Idempotency-Key', randomUUID())
         .send({ type: 'nfce', ...body({ companyId }) });
-      expect(res.status).toBe(422);
-      expect(res.body.code).toBe('ERROR_INVOICE_OPERATION_NOT_SUPPORTED');
+      expect(res.status).toBe(202);
+      expect(res.body.data).toMatchObject({ type: 'nfce', status: 'queued' });
     });
   });
 });
