@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { LOCK_PORT } from '@/infra/redis/redis.constants';
@@ -9,6 +9,7 @@ import {
 } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { BLOCK_REASON_TEXT } from '@/modules/integrations/domain/block-reason-text';
 import type { BlockReason } from '@/modules/integrations/domain/integration-operation';
+import { friendlyRejectionReason } from '@/modules/invoice/domain/rejection-reason-text';
 import { monthLabel } from '@/modules/invoice/application/package/package-month';
 import {
   accountantPackageEmptyEmail,
@@ -30,6 +31,7 @@ import {
   pixExpiredEmail,
   subscriptionCanceledEmail,
   invoiceRejectedEmail,
+  invoiceRejectedHelpEmail,
   mcpConnectedEmail,
   webhookDeliveryFailedEmail,
   type RenderedEmail,
@@ -39,6 +41,7 @@ import {
   ACCOUNT_NOTICE,
   type AccountNoticeEvent,
 } from '@/shared/events/account-notice.events';
+import { LifecycleEmailSettings } from './lifecycle-email.settings';
 import { TenantRecipientsService } from './tenant-recipients.service';
 
 const DEFAULT_APP_URL = 'https://www.corvo.tech/app';
@@ -65,6 +68,7 @@ export class AccountNoticeListener {
     private readonly email: EmailService,
     private readonly config: ConfigService,
     @Inject(LOCK_PORT) private readonly locks: LockPort,
+    @Optional() private readonly lifecycle?: LifecycleEmailSettings,
   ) {}
 
   @OnEvent(ACCOUNT_NOTICE)
@@ -122,10 +126,17 @@ export class AccountNoticeListener {
           ttlMs: HOUR_MS,
         });
         if (!first) return;
-        message = invoiceRejectedEmail({
-          reason: notice.reason,
-          invoiceUrl: this.page(`invoices/${notice.invoiceId}`),
-        });
+        const invoiceUrl = this.page(`invoices/${notice.invoiceId}`);
+        message =
+          this.lifecycle?.isOn('rejectionHelp') === false
+            ? invoiceRejectedEmail({ reason: notice.reason, invoiceUrl })
+            : invoiceRejectedHelpEmail({
+                reason: friendlyRejectionReason(
+                  notice.errorCode,
+                  notice.reason,
+                ),
+                invoiceUrl,
+              });
         to = await this.recipients.emailsFor(tenantId);
         break;
       }

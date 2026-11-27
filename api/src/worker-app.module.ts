@@ -39,6 +39,11 @@ import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.sche
 import { ManualReviewSweepScheduler } from '@/modules/invoice/jobs/manual-review-sweep.scheduler';
 import { AccountantPackageScheduler } from '@/modules/invoice/jobs/accountant-package.scheduler';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LifecycleEmailsModule } from '@/modules/lifecycle-emails/lifecycle-emails.module';
+import {
+  LifecycleMonthlySummaryScheduler,
+  LifecyclePaymentReminderScheduler,
+} from '@/modules/lifecycle-emails/jobs/lifecycle-emails.scheduler';
 import { FISCAL_RECONCILIATION_REPOSITORY } from '@/modules/invoice/domain/fiscal/reconciliation/fiscal-reconciliation.repository';
 import { TypeOrmFiscalReconciliationRepository } from '@/modules/invoice/infra/fiscal/typeorm-fiscal-reconciliation.repository';
 import { InvoiceFiscalReconciliationOrmEntity } from '@/modules/invoice/infra/fiscal/invoice-fiscal-reconciliation.orm-entity';
@@ -92,6 +97,7 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     ImportModule,
     PortalSyncModule,
     PortalReachabilityModule,
+    LifecycleEmailsModule,
   ],
   providers: [
     EventProcessorScheduler,
@@ -121,6 +127,9 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     ImportCleanupCron,
     PortalSyncScheduler,
     AccountAuditRetentionScheduler,
+    ...(IS_SELF_HOSTED
+      ? []
+      : [LifecycleMonthlySummaryScheduler, LifecyclePaymentReminderScheduler]),
   ],
 })
 export class WorkerAppModule {}

@@ -35,6 +35,8 @@ export type EnqueueCreditsLowInput = {
   planName: string;
   remaining: number;
   total: number;
+  /** Days until the credits run out at the recent pace; left out without enough history. */
+  daysLeft?: number | null;
 };
 
 export type EnqueueScheduleRetryInput = {
@@ -130,6 +132,7 @@ export class EmailService {
         planName: input.planName,
         remaining: input.remaining,
         total: input.total,
+        daysLeft: input.daysLeft,
         billingUrl: billingUrl(
           this.config.get<string>('APP_URL') ?? DEFAULT_APP_URL,
         ),

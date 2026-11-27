@@ -389,6 +389,13 @@ export const envSchema = z
     SENTRY_RELEASE: z.string().min(1).optional(),
     SENTRY_ERROR_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
     SENTRY_DEBUG: booleanFromEnv.default(false),
+    /** Lifecycle e-mails to the workspace owners. The master switch turns all off; each kind has its own. */
+    LIFECYCLE_EMAILS_ENABLED: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_FIRST_INVOICE: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_MONTHLY_SUMMARY: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_CREDITS_FORECAST: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_PENDING_PAYMENT: booleanFromEnv.default(true),
+    LIFECYCLE_EMAIL_REJECTION_HELP: booleanFromEnv.default(true),
     SENTRY_FLUSH_TIMEOUT_MS: z.coerce
       .number()
       .int()

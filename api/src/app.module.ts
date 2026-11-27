@@ -38,6 +38,7 @@ import { AccountAuditModule } from '@/modules/account-audit/account-audit.module
 import { StorageModule } from '@/infra/storage/storage.module';
 import { NfseExternalModule } from '@/infra/external/nfse/nfse-external.module';
 import { DomainExceptionFilter } from '@/shared/http/domain-exception.filter';
+import { LifecycleEmailsModule } from '@/modules/lifecycle-emails/lifecycle-emails.module';
 import { SentryModule } from '@/infra/observability/sentry.module';
 
 @Module({
@@ -54,6 +55,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     HealthModule,
     CreditsModule,
     CreditsAlertsModule,
+    LifecycleEmailsModule,
     WebhooksConfigModule,
     SecurityModule,
     PlansModule,
