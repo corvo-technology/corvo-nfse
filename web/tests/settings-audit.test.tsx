@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AuditPage from "@/app/(dashboard)/app/settings/audit/page";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
@@ -39,6 +40,23 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("Settings audit tab", () => {
+
+  it("does not show the load error when an earlier request was cancelled and the new one worked", async () => {
+    let calls = 0;
+    mocks.list.mockImplementation((_params: unknown, signal: AbortSignal) => {
+      calls += 1;
+      if (calls === 1) {
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      }
+      return Promise.resolve(page([event({ id: "1", action: "invoice.issued", target: { type: "invoice", id: "i", label: "NFS-e 12" } })]));
+    });
+    render(<StrictMode><NextIntlClientProvider locale="pt" messages={messages}><AuditPage /></NextIntlClientProvider></StrictMode>);
+    expect(await inTable("NFS-e 12")).toBeTruthy();
+    await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(messages.Audit.error)).toBeNull();
+  });
   it("lists who did what and when, in the reference format", async () => {
     mocks.list.mockResolvedValue(page([
       event({ id: "1", action: "invoice.issued", occurredAt: "2026-11-24T09:00:00.000Z", target: { type: "invoice", id: "i", label: "NFS-e 12" } }),

@@ -34,9 +34,17 @@ export default function AuditPage() {
     const abort = new AbortController();
     controller.current = abort;
     const from = new Date(Date.now() - PERIOD_DAYS[period] * 86_400_000).toISOString();
+    // A request that was cancelled (a newer one replaced it) resolves to null instead of failing,
+    // so only the request still in charge can show the error.
     return auditEvents
       .list({ ...(who !== "all" ? { actorType: who } : {}), from, limit: PAGE_SIZE, ...(after ? { cursor: after } : {}) }, abort.signal)
-      .then((page) => (abort.signal.aborted ? null : page));
+      .then(
+        (page) => (abort.signal.aborted ? null : page),
+        (error: unknown) => {
+          if (abort.signal.aborted) return null;
+          throw error;
+        },
+      );
   }, [who, period]);
 
   useEffect(() => {
@@ -45,10 +53,10 @@ export default function AuditPage() {
         if (!page) return;
         setEvents(page.items);
         setCursor(page.hasMore ? page.nextCursor : null);
+        setFailed(false);
         setLoading(false);
       })
       .catch(() => {
-        if (controller.current?.signal.aborted) return;
         setEvents([]);
         setCursor(null);
         setFailed(true);
@@ -71,7 +79,7 @@ export default function AuditPage() {
         setEvents((previous) => [...previous, ...page.items]);
         setCursor(page.hasMore ? page.nextCursor : null);
       })
-      .catch(() => { if (!controller.current?.signal.aborted) setFailed(true); })
+      .catch(() => setFailed(true))
       .finally(() => setLoadingMore(false));
   };
 
