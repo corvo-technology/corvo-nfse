@@ -6020,9 +6020,10 @@ paths:
   /invoices/overview:
     get:
       description: >-
-        Exactly 7 or 30 calendar days including today in America/Sao_Paulo. Counts and up to 5
-        recent invoices use creation time and current status. Daily activity counts currently
-        authorized invoices by authorization time, including invoices created earlier. Credits are
+        Exactly 7 or 30 calendar days including today in America/Sao_Paulo. Notes of every type
+        (NFS-e, NF-e and NFC-e) are counted together. Counts and up to 5 recent notes use creation
+        time and current status (`denied` counts as rejected). Daily activity counts currently
+        authorized notes by authorization time, including invoices created earlier. Credits are
         available separately from billing.
 
 
@@ -6071,7 +6072,7 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Get invoice overview for the tenant and execution environment
+      summary: Get the overview of all notes (NFS-e, NF-e, NFC-e) for the tenant and execution environment
       tags:
         - Invoices
       x-required-permissions:
@@ -9808,10 +9809,16 @@ components:
         tenantId:
           format: uuid
           type: string
+        type:
+          description: The kind of note. Always `nfse` here; NF-e and NFC-e answer `nfe` and `nfce`.
+          enum:
+            - nfse
+          type: string
         updatedAt:
           format: date-time
           type: string
       required:
+        - type
         - id
         - companyId
         - tenantId
@@ -10234,8 +10241,13 @@ components:
             - 30d
           type: string
         recentInvoices:
+          description: >-
+            The 5 newest notes of every type, told apart by `type`: an NFS-e is the whole invoice
+            (`type: "nfse"`); an NF-e or NFC-e is a short line.
           items:
-            $ref: '#/components/schemas/Invoice'
+            oneOf:
+              - $ref: '#/components/schemas/Invoice'
+              - $ref: '#/components/schemas/OverviewNfeItem'
           maxItems: 5
           type: array
         timezone:
@@ -11516,11 +11528,13 @@ components:
     OverviewCounts:
       properties:
         authorized:
+          description: NFS-e, NF-e and NFC-e authorized.
           type: number
         processing:
-          description: Queued and processing invoices.
+          description: Queued and processing notes of every type.
           type: number
         rejected:
+          description: Rejected (NF-e also denied).
           type: number
       required:
         - authorized
@@ -11537,6 +11551,65 @@ components:
       required:
         - date
         - count
+      type: object
+    OverviewNfeItem:
+      properties:
+        accessKey:
+          nullable: true
+          type: string
+        amount:
+          description: Total of the note (`vNF`), a decimal text.
+          example: '150.00'
+          nullable: true
+          type: string
+        authorizedAt:
+          format: date-time
+          nullable: true
+          type: string
+        companyId:
+          format: uuid
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        environment:
+          enum:
+            - test
+            - live
+          type: string
+        externalId:
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          type: string
+        number:
+          nullable: true
+          type: number
+        recipientName:
+          nullable: true
+          type: string
+        status:
+          description: NF-e status, e.g. `authorized` or `denied`.
+          type: string
+        type:
+          enum:
+            - nfe
+            - nfce
+          type: string
+      required:
+        - id
+        - type
+        - companyId
+        - environment
+        - status
+        - number
+        - accessKey
+        - amount
+        - recipientName
+        - externalId
+        - authorizedAt
+        - createdAt
       type: object
     PackageSummary:
       properties:

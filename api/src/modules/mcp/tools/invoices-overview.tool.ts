@@ -3,14 +3,17 @@ import { IsIn, IsOptional, validate } from 'class-validator';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceOverviewService } from '@/modules/invoice/application/invoice-overview.service';
-import type { OverviewPeriod } from '@/modules/invoice/domain/invoice-overview.repository';
+import type {
+  OverviewPeriod,
+  OverviewRecent,
+} from '@/modules/invoice/domain/invoice-overview.repository';
 import { toPublicInvoice } from './public-shapes';
 import { invalidInput } from './tool-input-errors';
 
 export const INVOICES_OVERVIEW_TOOL = {
   name: 'invoices_overview',
   description:
-    'Dashboard summary of the workspace ("Visão geral") for the last 7 or 30 calendar days (America/Sao_Paulo, today included): how many invoices were authorized, rejected or still processing, the number of authorized notes per day, and the 5 most recent invoices. Use it to answer "como estão minhas notas?", "quantas notas emiti este mês?" or "tem alguma nota rejeitada?". It returns counts, not revenue totals: for the amount of specific notes use nfse_list or nfse_get.',
+    'Dashboard summary of the workspace ("Visão geral") for the last 7 or 30 calendar days (America/Sao_Paulo, today included): how many notes (NFS-e, NF-e and NFC-e together) were authorized, rejected or still processing, the number of authorized notes per day, and the 5 most recent notes, each with its `type` (nfse, nfe or nfce). Use it to answer "como estão minhas notas?", "quantas notas emiti este mês?" or "tem alguma nota rejeitada?". It returns counts, not revenue totals: for the amount of specific notes use nfse_list or nfse_get.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -26,6 +29,22 @@ export const INVOICES_OVERVIEW_TOOL = {
 
 class InvoicesOverviewInput {
   @IsOptional() @IsIn(['7d', '30d']) period?: OverviewPeriod;
+}
+
+/** NFS-e keeps the compact invoice view; NF-e and NFC-e are a short line (no tax id). */
+function toPublicRecent(item: OverviewRecent) {
+  if ('toJSON' in item) return toPublicInvoice(item);
+  return {
+    type: item.type,
+    id: item.id,
+    company_id: item.companyId,
+    status: item.status,
+    number: item.number,
+    amount: item.amount,
+    customer_name: item.recipientName,
+    authorized_at: item.authorizedAt,
+    created_at: item.createdAt,
+  };
 }
 
 export function createInvoicesOverviewHandler(
@@ -48,7 +67,7 @@ export function createInvoicesOverviewHandler(
     );
     return {
       ...result,
-      recentInvoices: result.recentInvoices.map(toPublicInvoice),
+      recentInvoices: result.recentInvoices.map(toPublicRecent),
     };
   };
 }

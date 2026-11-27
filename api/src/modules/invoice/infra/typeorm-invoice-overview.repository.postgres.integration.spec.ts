@@ -34,6 +34,7 @@ describePostgres(
     let runtime: DataSource;
     let repo: TypeOrmInvoiceOverviewRepository;
     const recentIds: string[] = [];
+    let nfeRecentId = '';
     beforeAll(async () => {
       if (!url) throw new Error('Test database URL is required');
       admin = new DataSource(
@@ -42,6 +43,7 @@ describePostgres(
       await admin.initialize();
       await admin.query(`CREATE SCHEMA "${schema}"`);
       await admin.runMigrations();
+      await admin.query(`CREATE SEQUENCE "${schema}".nfe_test_number`);
       await admin.query(
         `INSERT INTO "${schema}".tenants (id) VALUES ($1),($2)`,
         [tenantA, tenantB],
@@ -80,7 +82,46 @@ describePostgres(
           );
           return rows as { id: string }[];
         };
+        const nfe = async (
+          model: number,
+          status: string,
+          createdAt: string,
+          authorizedAt: string | null,
+        ) => {
+          const rows = await admin.query(
+            `INSERT INTO "${schema}".nfe_documents
+          (tenant_id,company_id,environment,model,series,number,status,nat_op,id_dest,ind_final,ind_pres,recipient,totals,payment,transport,attempt,idempotency_key,request_hash,created_at,authorized_at)
+          VALUES ($1,$2,$3,$4,1,nextval('${schema}.nfe_test_number'),$5,'Venda',1,1,1,'{"name":"Loja X"}'::jsonb,'{"vNF":"150.00"}'::jsonb,'{}'::jsonb,'{}'::jsonb,1,gen_random_uuid()::text,'h',$6::timestamptz,$7::timestamptz)
+          RETURNING id`,
+            [
+              tenant,
+              company,
+              environment,
+              model,
+              status,
+              createdAt,
+              authorizedAt,
+            ],
+          );
+          return (rows as { id: string }[])[0].id;
+        };
         if (tenant === tenantA && environment === 'test') {
+          nfeRecentId = await nfe(
+            55,
+            'authorized',
+            '2026-10-18T13:00:00Z',
+            '2026-10-18T13:00:00Z',
+          );
+          await nfe(65, 'denied', '2026-10-13T12:00:00Z', null);
+          await nfe(65, 'queued', '2026-10-13T12:00:00Z', null);
+          await nfe(55, 'discarded', '2026-10-18T14:00:00Z', null);
+          // Outside the window.
+          await nfe(
+            55,
+            'authorized',
+            '2026-10-19T03:00:00Z',
+            '2026-10-19T03:00:00Z',
+          );
           await insert(
             'authorized',
             '2026-10-12T03:00:00Z',
@@ -123,6 +164,12 @@ describePostgres(
             '2026-10-18T12:00:00Z',
             '2026-10-18T12:00:00Z',
             9,
+          );
+          await nfe(
+            65,
+            'authorized',
+            '2026-10-18T12:00:00Z',
+            '2026-10-18T12:00:00Z',
           );
         }
       }
@@ -176,19 +223,27 @@ describePostgres(
     it('aggregates every invoice and uses creation time for counts and recent notes', async () => {
       const result = await repo.read(tenantA, 'test', range);
       expect(result.counts).toEqual({
-        authorized: 1201,
-        rejected: 1,
-        processing: 2,
+        authorized: 1202,
+        rejected: 2,
+        processing: 3,
       });
-      expect(result.recentInvoices.map((invoice) => invoice.id)).toEqual(
-        recentIds.sort().reverse().slice(0, 5),
-      );
+      // The newest note is an NF-e; NFS-e come after it, as whole invoices.
+      expect(result.recentInvoices.map((invoice) => invoice.id)).toEqual([
+        nfeRecentId,
+        ...recentIds.sort().reverse().slice(0, 4),
+      ]);
+      expect(result.recentInvoices[0]).toMatchObject({
+        type: 'nfe',
+        status: 'authorized',
+        amount: '150.00',
+        recipientName: 'Loja X',
+      });
     });
     it('buckets by São Paulo authorization date, including older invoices and excluding cancelled ones', async () => {
       const result = await repo.read(tenantA, 'test', range);
       expect(result.dailyActivity).toEqual([
         { date: '2026-10-12', count: 1201 },
-        { date: '2026-10-18', count: 1 },
+        { date: '2026-10-18', count: 2 },
       ]);
     });
     it('isolates tenants and execution environments under RLS', async () => {
@@ -198,7 +253,7 @@ describePostgres(
       ] as const) {
         const result = await repo.read(tenant, environment, range);
         expect(result.counts).toEqual({
-          authorized: 9,
+          authorized: 10,
           rejected: 0,
           processing: 0,
         });
@@ -206,7 +261,7 @@ describePostgres(
         expect(
           result.recentInvoices.every(
             (invoice) =>
-              invoice.tenantId === tenant &&
+              (!('tenantId' in invoice) || invoice.tenantId === tenant) &&
               invoice.environment === environment,
           ),
         ).toBe(true);

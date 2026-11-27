@@ -1286,6 +1286,7 @@
   },
   "Invoices": {
     "anonymousCustomer": "Unidentified consumer",
+    "noteType": { "nfse": "NFS-e", "nfe": "NF-e", "nfce": "NFC-e" },
     "calculate": {
       "button": "Calculate taxes",
       "calculating": "Calculating…",

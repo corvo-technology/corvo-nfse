@@ -93,7 +93,7 @@ Where each part lives:
 | `invoices_listInutilizations` | GET | `/invoices/inutilizations` | 0.2.0 | List NF-e or NFC-e inutilizations |
 | `invoices_list` | GET | `/invoices` | 0.2.0 | List invoices for the tenant |
 | `invoices_numberGaps` | GET | `/invoices/number-gaps` | 0.2.0 | List the numbering gaps |
-| `invoices_overview` | GET | `/invoices/overview` | 0.2.0 | Get invoice overview for the tenant and execution environment |
+| `invoices_overview` | GET | `/invoices/overview` | 0.2.0 | Get the overview of all notes (NFS-e, NF-e, NFC-e) for the tenant and execution environment |
 | `invoices_resubmit` | PUT | `/invoices/{id}` | 0.2.0 | Correct and send a rejected NF-e again |
 | `invoices_review` | POST | `/invoices/review` | 0.3.0 | Resolve invoices in manual review (up to 100): retry or discard |
 | `invoices_sendEmail` | POST | `/invoices/{id}/email` | 0.2.0 | Request invoice email to customer |

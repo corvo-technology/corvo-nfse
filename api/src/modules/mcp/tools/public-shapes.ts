@@ -13,6 +13,7 @@ function maskTaxId(taxId: string | undefined): string | null {
 export function toPublicInvoice(invoice: Invoice) {
   const i = invoice.toJSON();
   return {
+    type: 'nfse' as const,
     id: i.id,
     company_id: i.companyId,
     status: i.status,
@@ -31,6 +32,7 @@ export function toPublicInvoice(invoice: Invoice) {
 
 /** Fields of an invoice that agents may see in the detail tools. Anything not listed stays hidden. */
 const DETAILED_INVOICE_FIELDS = [
+  'type',
   'id',
   'companyId',
   'environment',
