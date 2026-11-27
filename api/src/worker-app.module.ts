@@ -34,6 +34,7 @@ import { EmailModule } from '@/modules/email/email.module';
 import { EmailProcessor } from '@/infra/queues/email.processor';
 import { NfseEmailProcessor } from '@/modules/invoice/jobs/nfse-email.processor';
 import { NfseDocPrepProcessor } from '@/modules/invoice/jobs/nfse-doc-prep.processor';
+import { TEST_QUEUE_PROCESSORS } from '@/modules/invoice/jobs/test-queue.processors';
 import { FiscalReconciliationProcessor } from '@/modules/invoice/jobs/fiscal-reconciliation.processor';
 import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.scheduler';
 import { ManualReviewSweepScheduler } from '@/modules/invoice/jobs/manual-review-sweep.scheduler';
@@ -53,7 +54,10 @@ import {
 } from '@/modules/invoice/application/fiscal/fiscal-reconciliation.service';
 import { ImportModule } from '@/modules/import/import.module';
 import { ImportCleanupCron } from '@/modules/import/jobs/import-cleanup.cron';
-import { ImportEmitProcessor } from '@/modules/import/jobs/import-emit.processor';
+import {
+  ImportEmitProcessor,
+  ImportEmitTestProcessor,
+} from '@/modules/import/jobs/import-emit.processor';
 import { ImportReadProcessor } from '@/modules/import/jobs/import-read.processor';
 import { PortalReachabilityModule } from '@/modules/portal-reachability/portal-reachability.module';
 import { PortalSyncModule } from '@/modules/portal-sync/portal-sync.module';
@@ -92,7 +96,9 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     TypeOrmModule.forFeature([InvoiceFiscalReconciliationOrmEntity]),
     BullModule.registerQueue({ name: 'email' }),
     BullModule.registerQueue({ name: 'nfse-doc-prep' }),
+    BullModule.registerQueue({ name: 'nfse-doc-prep-test' }),
     BullModule.registerQueue({ name: 'nfse-email' }),
+    BullModule.registerQueue({ name: 'nfse-email-test' }),
     BullModule.registerQueue({ name: 'nfse-fiscal-reconcile' }),
     EmailExternalModule,
     EmailModule,
@@ -124,11 +130,14 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     FiscalReconciliationService,
     DpsBuilder,
     NfseEmailProcessor,
+    // Test (homologação) twins: same code on `<queue>-test`, so test never delays production.
+    ...TEST_QUEUE_PROCESSORS,
     DocsRecoveryScheduler,
     ManualReviewSweepScheduler,
     AccountantPackageScheduler,
     ImportReadProcessor,
     ImportEmitProcessor,
+    ImportEmitTestProcessor,
     ImportCleanupCron,
     PortalSyncScheduler,
     AccountAuditRetentionScheduler,

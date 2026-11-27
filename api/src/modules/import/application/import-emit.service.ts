@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
+import { queueFor, testTwinOf } from '@/infra/redis/queue-routing';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { InvoiceBatchService } from '@/modules/invoice/application/invoice-batch.service';
 import { AccountAuditRecorder } from '@/modules/account-audit/domain/account-audit';
@@ -14,6 +15,7 @@ import { importAuthContext } from './system-auth-context';
 
 export { LIMIT_CODES };
 export const IMPORT_EMIT_QUEUE = 'import-emit';
+export const IMPORT_EMIT_TEST_QUEUE = testTwinOf(IMPORT_EMIT_QUEUE);
 export const IMPORT_EMIT_ATTEMPTS = 3;
 /** Same size the batch accepts in one call. */
 const CHUNK = 50;
@@ -24,6 +26,9 @@ export class ImportEmitService {
     private readonly review: ImportReviewService,
     private readonly batch: InvoiceBatchService,
     @InjectQueue(IMPORT_EMIT_QUEUE) private readonly queue: Queue<ImportRef>,
+    // Test (homologação) imports run in their own queue so they never hold up a live one.
+    @InjectQueue(IMPORT_EMIT_TEST_QUEUE)
+    private readonly testQueue: Queue<ImportRef>,
     private readonly audit: AccountAuditRecorder,
   ) {}
 
@@ -81,7 +86,11 @@ export class ImportEmitService {
     environment: ExecutionEnvironment,
     importId: string,
   ) {
-    return this.queue.add(
+    const queue =
+      queueFor(IMPORT_EMIT_QUEUE, environment) === IMPORT_EMIT_TEST_QUEUE
+        ? this.testQueue
+        : this.queue;
+    return queue.add(
       'emit',
       { tenantId, environment, importId },
       {

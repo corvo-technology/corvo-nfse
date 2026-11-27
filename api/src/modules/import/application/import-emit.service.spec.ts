@@ -26,18 +26,21 @@ describe('ImportEmitService', () => {
   const review = { get: jest.fn() };
   const batch = { emitBatch: jest.fn() };
   const queue = { add: jest.fn() };
+  const testQueue = { add: jest.fn() };
   let service: ImportEmitService;
   let audit: FakeAccountAudit;
 
   beforeEach(() => {
     jest.resetAllMocks();
     queue.add.mockResolvedValue(undefined);
+    testQueue.add.mockResolvedValue(undefined);
     audit = new FakeAccountAudit();
     service = new ImportEmitService(
       repo as never,
       review as never,
       batch as never,
       queue as never,
+      testQueue as never,
       audit,
     );
   });
@@ -87,6 +90,17 @@ describe('ImportEmitService', () => {
         expect.objectContaining({ attempts: 3 }),
       );
       expect(out.status).toBe('emitting');
+    });
+
+    it('a test import runs in its own queue and a live one does not', async () => {
+      review.get
+        .mockResolvedValueOnce(view('ready'))
+        .mockResolvedValueOnce(view('emitting'));
+      repo.markRowsQueued.mockResolvedValue(3);
+      repo.claimEmit.mockResolvedValue(true);
+      await service.emit(T, 'test', 'i1');
+      expect(testQueue.add).toHaveBeenCalledTimes(1);
+      expect(queue.add).not.toHaveBeenCalled();
     });
 
     it('a second click while emitting with nothing queued enqueues nothing', async () => {

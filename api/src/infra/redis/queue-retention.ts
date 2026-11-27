@@ -46,11 +46,16 @@ export const REPEATABLE_JOB_RETENTION = {
   removeOnFail: FAILED_JOB_RETENTION,
 };
 
+/** Test twins (`<name>-test`, see queue-routing.ts) keep jobs exactly as long as their live queue. */
 export const QUEUE_RETENTION = {
   'nfse-emission': IDEMPOTENT_JOB_RETENTION,
+  'nfse-emission-test': IDEMPOTENT_JOB_RETENTION,
   'nfse-cancellation': IDEMPOTENT_JOB_RETENTION,
+  'nfse-cancellation-test': IDEMPOTENT_JOB_RETENTION,
   'nfse-email': IDEMPOTENT_JOB_RETENTION,
+  'nfse-email-test': IDEMPOTENT_JOB_RETENTION,
   'nfse-doc-prep': REPEATABLE_JOB_RETENTION,
+  'nfse-doc-prep-test': REPEATABLE_JOB_RETENTION,
   'nfse-fiscal-reconcile': REPEATABLE_JOB_RETENTION,
 } as const;
 

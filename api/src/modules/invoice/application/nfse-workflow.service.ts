@@ -1,4 +1,5 @@
 import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
+import { queueFor } from '@/infra/redis/queue-routing';
 import type { Company } from '@/modules/company/domain/company';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
@@ -726,7 +727,7 @@ export class NfseWorkflowService {
     await this.settleSubstitution(invoice);
     try {
       await this.queues.add(
-        'nfse-doc-prep',
+        queueFor('nfse-doc-prep', invoice.environment),
         'prepare',
         {
           invoiceId: invoice.id,
@@ -1397,7 +1398,7 @@ export class NfseWorkflowService {
     uncertainSince: Date = new Date(),
   ): Promise<void> {
     await this.queues.add(
-      'nfse-reconciliation',
+      queueFor('nfse-reconciliation', invoice.environment),
       'reconcile',
       {
         invoiceId: invoice.id,

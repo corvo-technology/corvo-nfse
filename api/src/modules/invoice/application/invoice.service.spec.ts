@@ -81,9 +81,11 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
   let audit: FakeAccountAudit;
   // Module-level so tests can assert on the same mock queue instance
   let capturedQueueAddCalls: unknown[][] = [];
+  let testQueueAddCalls: unknown[][] = [];
 
   beforeEach(() => {
     capturedQueueAddCalls = [];
+    testQueueAddCalls = [];
 
     invoiceRepo = {
       findByIdAndTenantId: jest.fn(),
@@ -120,6 +122,18 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
 
     const mockQueues = {
       'nfse-email': mockQueueInstance,
+      'nfse-email-test': {
+        ...mockQueueInstance,
+        add: jest.fn((jobName: string, data: unknown, options?: unknown) => {
+          testQueueAddCalls.push([jobName, data, options]);
+          capturedQueueAddCalls.push([jobName, data, options]);
+          return Promise.resolve({
+            id: 'job-1',
+            queueName: 'nfse-email-test',
+            jobName,
+          });
+        }),
+      },
     } as unknown as Record<string, Queue>;
 
     queueService = new BullmqQueueService(mockQueues as never, {
@@ -393,6 +407,18 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
 
       expect(result.status).toBe('queued');
       expect(result.emailId).toBe('valid_key-123');
+    });
+
+    it('a test invoice e-mail goes to the test queue and a live one to the live queue', async () => {
+      const invoice = makeAuthorizedInvoice({ customerEmail: 'a@b.com' });
+      invoiceRepo.findByIdAndTenantId.mockResolvedValue(invoice);
+
+      await service.requestEmail('inv-1', 'tenant-1', undefined, 'test');
+      expect(testQueueAddCalls).toHaveLength(1);
+
+      await service.requestEmail('inv-1', 'tenant-1', undefined, 'live');
+      expect(testQueueAddCalls).toHaveLength(1);
+      expect(capturedQueueAddCalls).toHaveLength(2);
     });
 
     it('updates email status to queued', async () => {

@@ -79,7 +79,31 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     return this.rowsOf(raw).length > 0;
   }
 
+  /**
+   * Production never waits for test: `live` messages are claimed first, `test` ones only get what
+   * is left of the batch. A flood of test messages can neither fill the batch nor delay a live one,
+   * and still moves (at least one per round, at most a fifth of the batch) so it never starves.
+   * The caller dispatches the result in order, so live messages also run first.
+   */
   async claimBatch(
+    now: Date,
+    limit: number,
+    leaseUntil: Date,
+  ): Promise<OutboxMessage[]> {
+    const live = await this.claimEnvironment('live', now, limit, leaseUntil);
+    const testCap = Math.max(1, Math.floor(limit / 5));
+    const testLimit = Math.min(testCap, Math.max(limit - live.length, 1));
+    const test = await this.claimEnvironment(
+      'test',
+      now,
+      testLimit,
+      leaseUntil,
+    );
+    return [...live, ...test];
+  }
+
+  private async claimEnvironment(
+    environment: ExecutionEnvironment,
     now: Date,
     limit: number,
     leaseUntil: Date,
@@ -87,8 +111,9 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
     const raw: unknown = await this.dataSource.query(
       `WITH due AS (
          SELECT id FROM ${this.table()}
-         WHERE (status = 'pending' AND available_at <= $1)
-            OR (status = 'claimed' AND lease_until < $1)
+         WHERE environment = $4
+           AND ((status = 'pending' AND available_at <= $1)
+             OR (status = 'claimed' AND lease_until < $1))
          ORDER BY available_at
          LIMIT $2
          FOR UPDATE SKIP LOCKED
@@ -97,7 +122,7 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
        SET status = 'claimed', lease_until = $3, attempts = m.attempts + 1, updated_at = $1
        FROM due WHERE m.id = due.id
        RETURNING m.*`,
-      [now, limit, leaseUntil],
+      [now, limit, leaseUntil, environment],
     );
     return this.rowsOf(raw).map((row) => this.toDomain(row));
   }

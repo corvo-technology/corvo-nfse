@@ -55,6 +55,22 @@ describe('ManualReviewSweepScheduler', () => {
     );
   });
 
+  it('checks a test invoice on the test twin and a live one on the live queue', async () => {
+    findManualReview.mockResolvedValue([
+      { id: 'l1', tenantId: 'a', companyId: 'c', environment: 'live' },
+      { id: 't1', tenantId: 'a', companyId: 'c', environment: 'test' },
+    ]);
+    await build(['a']).handle();
+    expect(
+      (add.mock.calls as [string, string, { invoiceId: string }][]).map(
+        ([queue, , data]) => [queue, data.invoiceId],
+      ),
+    ).toEqual([
+      ['nfse-reconciliation', 'l1'],
+      ['nfse-reconciliation-test', 't1'],
+    ]);
+  });
+
   it('skips invoices older than the age limit', async () => {
     findManualReview.mockResolvedValue([]);
     await build(['a']).handle();

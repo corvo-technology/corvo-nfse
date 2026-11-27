@@ -957,8 +957,10 @@ describe('NfseWorkflowService preparedDps from the fiscal snapshot', () => {
     );
 
     expect(invoice.status).toBe('reconciliation_required');
+    // createInvoice() makes a test invoice: its reconciliation runs on the test twin.
+    expect(invoice.environment).toBe('test');
     expect(fakes.queues.add).toHaveBeenCalledWith(
-      'nfse-reconciliation',
+      'nfse-reconciliation-test',
       'reconcile',
       expect.objectContaining({ invoiceId: invoice.id }),
       expect.anything(),
