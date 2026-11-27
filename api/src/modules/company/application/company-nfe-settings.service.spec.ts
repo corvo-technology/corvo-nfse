@@ -1,6 +1,8 @@
 import { UnprocessableEntityException } from '@nestjs/common';
 import { Company } from '../domain/company';
 import type { ICompanyNfeSettingsRepository } from '../domain/company-nfe-settings.repository';
+import type { ICadastroLookup } from '../domain/cadastro-lookup';
+import type { RegistrationLookup } from '../domain/nfe-registration';
 import type { NfeSettings } from '../domain/nfe-settings';
 import { CompanyNfeSettingsService } from './company-nfe-settings.service';
 import type { CompanyService } from './company.service';
@@ -29,6 +31,7 @@ function build(
   c: Company,
   regime: string | null = 'Simples Nacional',
   stored: NfeSettings | null = null,
+  lookup: RegistrationLookup = { kind: 'unavailable' },
 ) {
   const saved: NfeSettings = {
     companyId: c.id,
@@ -48,6 +51,7 @@ function build(
   const repo = {
     find: jest.fn().mockResolvedValue(stored),
     upsert: jest.fn().mockResolvedValue(saved),
+    saveRegistrationCheck: jest.fn().mockResolvedValue(undefined),
   } as unknown as jest.Mocked<ICompanyNfeSettingsRepository>;
   const companies = {
     findById: jest.fn().mockResolvedValue(c),
@@ -57,7 +61,14 @@ function build(
       specialRegime: null,
     }),
   } as unknown as CompanyService;
-  return { service: new CompanyNfeSettingsService(companies, repo), repo };
+  const cadastro = {
+    lookup: jest.fn().mockResolvedValue(lookup),
+  } as unknown as jest.Mocked<ICadastroLookup>;
+  return {
+    service: new CompanyNfeSettingsService(companies, repo, cadastro),
+    repo,
+    cadastro,
+  };
 }
 
 const settingsRow = (companyId: string): NfeSettings => ({
@@ -185,6 +196,166 @@ describe('CompanyNfeSettingsService', () => {
       }),
     ).rejects.toMatchObject({
       response: { code: 'STATE_REGISTRATION_INVALID' },
+    });
+  });
+
+  describe('Consulta Cadastro da SEFAZ', () => {
+    const found = (
+      ...registrations: {
+        stateRegistration: string;
+        enabled: boolean;
+        nfeCredential?: 'yes' | 'no' | 'unknown';
+      }[]
+    ): RegistrationLookup => ({
+      kind: 'found',
+      registrations: registrations.map((r) => ({
+        nfeCredential: 'unknown' as const,
+        ...r,
+      })),
+    });
+
+    it('sem IE salva e com uma só habilitada: sugere a IE', async () => {
+      const { service } = build(
+        company('SP'),
+        'Simples Nacional',
+        null,
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      const view = await service.readiness('c', tenantId, 'test');
+      expect(view).toMatchObject({
+        ready: false,
+        status: 'ie_suggested',
+        suggestedStateRegistration: '110042490114',
+      });
+    });
+
+    it('empresa sem IE (só serviço) não pode emitir', async () => {
+      const { service } = build(company('SP'), 'Simples Nacional', null, {
+        kind: 'not_found',
+      });
+      const view = await service.readiness('c', tenantId, 'test');
+      expect(view.status).toBe('no_registration');
+      expect(view.message).toContain('Empresa sem inscrição estadual');
+    });
+
+    it('IE habilitada e cadastro completo: pronta, e guarda a resposta', async () => {
+      const c = company('SP');
+      const { service, repo } = build(
+        c,
+        'Simples Nacional',
+        { ...settingsRow(c.id), crt: 1 as const },
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      const view = await service.readiness('c', tenantId, 'test');
+      expect(view).toMatchObject({ ready: true, status: 'ready' });
+      expect(repo.saveRegistrationCheck).toHaveBeenCalledWith(
+        c.id,
+        tenantId,
+        expect.objectContaining({
+          status: 'ready',
+          stateRegistration: '110042490114',
+        }),
+      );
+    });
+
+    it('consulta indisponível: neutra, não guarda nada e não impede a nota', async () => {
+      const c = company('SP');
+      const { service, repo } = build(c, 'Simples Nacional', {
+        ...settingsRow(c.id),
+        crt: 1 as const,
+      });
+      const view = await service.readiness('c', tenantId, 'test');
+      expect(view.status).toBe('unavailable');
+      expect(view.message).toContain('sintegra.gov.br');
+      expect(repo.saveRegistrationCheck).not.toHaveBeenCalled();
+    });
+
+    it('sem certificado: explica', async () => {
+      const c = company('SP');
+      const { service } = build(
+        c,
+        'Simples Nacional',
+        { ...settingsRow(c.id), crt: 1 as const },
+        {
+          kind: 'no_certificate',
+        },
+      );
+      const view = await service.readiness('c', tenantId, 'test');
+      expect(view.status).toBe('no_certificate');
+      expect(view.message).toContain('certificado');
+    });
+
+    it('cadastro da empresa incompleto aparece antes de "pronta"', async () => {
+      const c = company('SP');
+      const row = { ...settingsRow(c.id), crt: null };
+      const { service } = build(
+        c,
+        'Lucro Presumido',
+        row,
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      const view = await service.readiness('c', tenantId, 'test');
+      expect(view).toMatchObject({
+        ready: false,
+        status: 'company_incomplete',
+      });
+    });
+
+    it('salvar sem IE usa a que a SEFAZ achou', async () => {
+      const { service, repo } = build(
+        company('SP'),
+        'Simples Nacional',
+        null,
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      await service.update('c', tenantId, 'test', {});
+      expect(repo.upsert).toHaveBeenCalledWith(
+        'c',
+        tenantId,
+        expect.objectContaining({ stateRegistration: '110042490114' }),
+      );
+    });
+
+    it('salvar sem IE e sem nenhuma na SEFAZ: 422 com a explicação', async () => {
+      const { service, repo } = build(company('SP'), 'Simples Nacional', null, {
+        kind: 'not_found',
+      });
+      await expect(
+        service.update('c', tenantId, 'test', {}),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'STATE_REGISTRATION_REQUIRED',
+          message: expect.stringContaining('sem inscrição estadual'),
+        },
+      });
+      expect(repo.upsert).not.toHaveBeenCalled();
+    });
+
+    it('IE digitada que a SEFAZ não conhece: salva e avisa', async () => {
+      const { service, repo } = build(
+        company('SP'),
+        'Simples Nacional',
+        null,
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      const view = await service.update('c', tenantId, 'test', {
+        stateRegistration: '123456785004',
+      });
+      expect(repo.upsert).toHaveBeenCalled();
+      expect(view.registrationWarning).toContain('não é deste CNPJ');
+      expect(repo.saveRegistrationCheck).toHaveBeenCalledWith(
+        'c',
+        tenantId,
+        expect.objectContaining({ status: 'ie_mismatch' }),
+      );
+    });
+
+    it('consulta fora do ar ao salvar: salva sem aviso', async () => {
+      const { service } = build(company('SP'));
+      const view = await service.update('c', tenantId, 'test', {
+        stateRegistration: '110042490114',
+      });
+      expect(view.registrationWarning).toBeNull();
     });
   });
 });

@@ -437,9 +437,16 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'companies_updateNfeSettings',
     tag: 'NF-e',
     description:
-      'Sets the NF-e settings of the company. The state registration is validated for the state of the company (422 `STATE_REGISTRATION_INVALID`). Fields left out take their defaults.\n\nPermission: `nfe.documents.manage`.',
+      'Sets the NF-e settings of the company. The state registration is validated for the state of the company (422 `STATE_REGISTRATION_INVALID`); left out, the IE the SEFAZ has for the CNPJ is used when there is exactly one enabled (else 422 `STATE_REGISTRATION_REQUIRED`). The saved IE is checked at the SEFAZ cadastro: a refusal comes as `registrationWarning`, never as an error. Fields left out take their defaults.\n\nPermission: `nfe.documents.manage`.',
     ok: { 200: data(ref('NfeSettings')) },
     errors: [422],
+  },
+  'GET /companies/{id}/nfe-readiness': {
+    id: 'companies_getNfeReadiness',
+    tag: 'NF-e',
+    description:
+      'Can the company issue NF-e and NFC-e? Asks the SEFAZ "Consulta Cadastro" (with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers a `status` with a plain `message`. A company with no IE (service-only) cannot issue NF-e/NFC-e. `suggestedStateRegistration` is the IE to save when the company has none yet. The consulta runs at the production SEFAZ cadastro even for test companies. UFs without the service answer `unavailable`.\n\nPermission: `nfe.documents.view`.',
+    ok: { 200: data(ref('NfeReadiness')) },
   },
   'POST /invoices/validate': {
     id: 'invoices_validate',

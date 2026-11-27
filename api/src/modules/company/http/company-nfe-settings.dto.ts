@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsIn,
@@ -13,15 +13,16 @@ import {
 } from 'class-validator';
 
 export class UpdateCompanyNfeSettingsDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '110042490114',
     description:
-      'State registration (IE) of the company, digits (dots and dashes are accepted). Validated for the state of the company; `ISENTO` is not valid for an issuer.',
+      'State registration (IE) of the company, digits (dots and dashes are accepted). Validated for the state of the company; `ISENTO` is not valid for an issuer. Leave it out to use the IE the SEFAZ has for the CNPJ (when there is exactly one enabled; else 422 `STATE_REGISTRATION_REQUIRED`).',
   })
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @MaxLength(18)
-  stateRegistration!: string;
+  stateRegistration?: string;
 
   @ApiPropertyOptional({
     enum: [1, 4],

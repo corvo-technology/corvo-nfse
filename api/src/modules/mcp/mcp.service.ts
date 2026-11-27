@@ -219,6 +219,7 @@ import {
   NFE_CORRECT_TOOL,
   NFE_INUTILIZE_TOOL,
   NFE_NUMBER_GAPS_TOOL,
+  NFE_READINESS_TOOL,
   NFE_SETTINGS_GET_TOOL,
   NFE_SETTINGS_UPDATE_TOOL,
   NFE_VALIDATE_TOOL,
@@ -234,6 +235,7 @@ import {
   createNfeListHandler,
   createNfeNumberGapsHandler,
   createNfeReviewHandler,
+  createNfeReadinessHandler,
   createNfeSettingsGetHandler,
   createNfeSettingsUpdateHandler,
   createNfeValidateHandler,
@@ -655,6 +657,7 @@ export class McpService {
         createNfeSettingsGetHandler(this.nfe),
         'nfse:read',
       ],
+      [NFE_READINESS_TOOL, createNfeReadinessHandler(this.nfe), 'nfse:read'],
     ] as const)
       this.server.registerTool(tool, this.wrapWithScopeCheck(handler, scope));
   }

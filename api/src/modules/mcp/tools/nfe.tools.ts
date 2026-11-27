@@ -154,7 +154,11 @@ const typeOfModel = (model?: 55 | 65): McpGoodsType =>
   model === 65 ? 'nfce' : 'nfe';
 
 class NfeSettingsUpdateInput extends CompanyInput {
-  @IsString() @MinLength(8) @MaxLength(18) state_registration!: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(18)
+  state_registration?: string;
   @IsOptional() @IsIn([1, 4]) crt?: 1 | 4;
   @IsOptional() @IsInt() @Min(0) @Max(999) default_series?: number;
   @IsOptional() @IsInt() @Min(0) @Max(999) nfce_default_series?: number;
@@ -501,12 +505,16 @@ export const NFE_SETTINGS_GET_TOOL = {
 export const NFE_SETTINGS_UPDATE_TOOL = {
   name: 'nfe_settings_update',
   description:
-    'Set the NF-e and NFC-e settings of a company: state registration (IE, validated for the state of the company) plus optional defaults (default_series for the NF-e, nfce_default_series for the NFC-e). The CRT follows the tax regime of the company (Simples Nacional 1, MEI 4); send `crt` only to override it. Returns the settings and what is still missing.',
+    'Set the NF-e and NFC-e settings of a company: state registration (IE, validated for the state of the company; leave it out to use the IE the SEFAZ has for the CNPJ when there is exactly one enabled) plus optional defaults (default_series for the NF-e, nfce_default_series for the NFC-e). The CRT follows the tax regime of the company (Simples Nacional 1, MEI 4); send `crt` only to override it. Returns the settings, what is still missing and `registrationWarning` when the SEFAZ cadastro says the IE will be refused.',
   inputSchema: {
     type: 'object',
     properties: {
       company_id: { type: 'string', description: 'UUID of the company' },
-      state_registration: { type: 'string', description: 'IE, digits' },
+      state_registration: {
+        type: 'string',
+        description:
+          'IE, digits. Optional: left out, the IE found at the SEFAZ is used (when there is exactly one enabled)',
+      },
       crt: { type: 'number', enum: [1, 4] },
       default_series: { type: 'number', minimum: 0, maximum: 999 },
       nfce_default_series: { type: 'number', minimum: 0, maximum: 999 },
@@ -514,7 +522,20 @@ export const NFE_SETTINGS_UPDATE_TOOL = {
       default_csosn: { type: 'string', enum: ['102', '400'] },
       default_origin: { type: 'number', minimum: 0, maximum: 8 },
     },
-    required: ['company_id', 'state_registration'],
+    required: ['company_id'],
+  },
+} as const;
+
+export const NFE_READINESS_TOOL = {
+  name: 'nfe_readiness',
+  description:
+    'Can the company issue NF-e and NFC-e? Run it BEFORE the first note: it asks the SEFAZ (Consulta Cadastro, with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers `status`, a plain pt-BR `message` and `suggestedStateRegistration` (the IE to save with nfe_settings_update). A company with no IE (service-only) cannot issue NF-e or NFC-e. `unavailable` means the state has no consulta or the SEFAZ did not answer: nothing is known.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      company_id: { type: 'string', description: 'UUID of the company' },
+    },
+    required: ['company_id'],
   },
 } as const;
 
@@ -526,6 +547,7 @@ export const NFE_ONLY_TOOL_NAMES = [
   NFE_NUMBER_GAPS_TOOL.name,
   NFE_SETTINGS_GET_TOOL.name,
   NFE_SETTINGS_UPDATE_TOOL.name,
+  NFE_READINESS_TOOL.name,
 ] as const;
 
 export function createNfeValidateHandler(nfe: McpNfe): Handler {
@@ -607,6 +629,19 @@ export function createNfeSettingsGetHandler(nfe: McpNfe): Handler {
           ctx.activeTenantId,
           executionEnvironment(ctx),
         ),
+    );
+  };
+}
+
+export function createNfeReadinessHandler(nfe: McpNfe): Handler {
+  return async (raw, ctx) => {
+    const params = await parse(CompanyInput, raw);
+    return nfe.withSettings(ctx, 'nfe.documents.view', (settings) =>
+      settings.readiness(
+        params.company_id,
+        ctx.activeTenantId,
+        executionEnvironment(ctx),
+      ),
     );
   };
 }

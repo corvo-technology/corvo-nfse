@@ -1723,6 +1723,68 @@ paths:
         - Companies
       x-required-permissions:
         - nfse.companies.manage
+  /companies/{id}/nfe-readiness:
+    get:
+      description: >-
+        Can the company issue NF-e and NFC-e? Asks the SEFAZ "Consulta Cadastro" (with the company
+        certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and
+        answers a `status` with a plain `message`. A company with no IE (service-only) cannot issue
+        NF-e/NFC-e. `suggestedStateRegistration` is the IE to save when the company has none yet.
+        The consulta runs at the production SEFAZ cadastro even for test companies. UFs without the
+        service answer `unavailable`.
+
+
+        Permission: `nfe.documents.view`.
+
+
+        Permission: `nfe.documents.view`.
+      operationId: companies_getNfeReadiness
+      parameters:
+        - description: Identifier (UUID) of the company.
+          in: path
+          name: id
+          required: true
+          schema:
+            format: uuid
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NfeReadiness'
+                required:
+                  - data
+                type: object
+          description: OK
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/X-RateLimit-Limit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/X-RateLimit-Remaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/X-RateLimit-Reset'
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+      security:
+        - ApiKeyAuth: []
+      summary: Can the company issue NF-e and NFC-e? Checked at the SEFAZ
+      tags:
+        - NF-e
+      x-required-permissions:
+        - nfe.documents.view
   /companies/{id}/nfe-settings:
     get:
       description: >-
@@ -1784,7 +1846,10 @@ paths:
     put:
       description: >-
         Sets the NF-e settings of the company. The state registration is validated for the state of
-        the company (422 `STATE_REGISTRATION_INVALID`). Fields left out take their defaults.
+        the company (422 `STATE_REGISTRATION_INVALID`); left out, the IE the SEFAZ has for the CNPJ
+        is used when there is exactly one enabled (else 422 `STATE_REGISTRATION_REQUIRED`). The
+        saved IE is checked at the SEFAZ cadastro: a refusal comes as `registrationWarning`, never
+        as an error. Fields left out take their defaults.
 
 
         Permission: `nfe.documents.manage`.
@@ -11277,6 +11342,72 @@ components:
         - tPag
         - amount
       type: object
+    NfeReadiness:
+      properties:
+        checkedAt:
+          format: date-time
+          nullable: true
+          type: string
+        companyId:
+          format: uuid
+          type: string
+        message:
+          description: The status in a plain pt-BR sentence, ready to show.
+          type: string
+        missing:
+          items:
+            type: string
+          type: array
+        ready:
+          description: True only when nothing is missing and the SEFAZ says the IE is enabled.
+          type: boolean
+        registrations:
+          items:
+            properties:
+              enabled:
+                type: boolean
+              stateRegistration:
+                type: string
+            required:
+              - stateRegistration
+              - enabled
+            type: object
+          type: array
+        stateRegistration:
+          example: '110042490114'
+          nullable: true
+          type: string
+        status:
+          description: >-
+            `unavailable`: the UF has no consulta or the SEFAZ did not answer (nothing is known;
+            check the IE at the CCC).
+          enum:
+            - ready
+            - ie_suggested
+            - ie_choose
+            - no_registration
+            - not_enabled
+            - not_credentialed
+            - ie_mismatch
+            - unavailable
+            - no_certificate
+            - company_incomplete
+          type: string
+        suggestedStateRegistration:
+          description: The one enabled IE the SEFAZ has for the CNPJ, when there is exactly one.
+          nullable: true
+          type: string
+      required:
+        - companyId
+        - ready
+        - status
+        - message
+        - stateRegistration
+        - suggestedStateRegistration
+        - registrations
+        - missing
+        - checkedAt
+      type: object
     NfeRecipient:
       properties:
         address:
@@ -11434,6 +11565,12 @@ components:
           maximum: 999
           minimum: 0
           type: integer
+        registrationWarning:
+          description: >-
+            Set only by `PUT`: the SEFAZ cadastro says the IE just saved will be refused. A warning,
+            never a block.
+          nullable: true
+          type: string
         stateRegistration:
           example: '110042490114'
           nullable: true
@@ -11452,6 +11589,7 @@ components:
         - defaultCofinsCst
         - enabledAt
         - missing
+        - registrationWarning
       type: object
     NfeTimelineEntry:
       properties:
@@ -12666,13 +12804,13 @@ components:
         stateRegistration:
           description: >-
             State registration (IE) of the company, digits (dots and dashes are accepted). Validated
-            for the state of the company; `ISENTO` is not valid for an issuer.
+            for the state of the company; `ISENTO` is not valid for an issuer. Leave it out to use
+            the IE the SEFAZ has for the CNPJ (when there is exactly one enabled; else 422
+            `STATE_REGISTRATION_REQUIRED`).
           example: '110042490114'
           maxLength: 18
           minLength: 8
           type: string
-      required:
-        - stateRegistration
       type: object
     UpdateCredentials:
       properties:

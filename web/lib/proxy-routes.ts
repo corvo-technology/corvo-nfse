@@ -48,6 +48,7 @@ export const proxyRoutes: [RegExp, string[]][] = [
   [/^companies\/[^/]+\/dps-sequence$/, ["GET", "PUT"]],
   [/^companies\/[^/]+\/dps-sequence\/(check|confirm)$/, ["POST"]],
   [/^companies\/[^/]+\/nfe-settings$/, ["GET", "PUT"]],
+  [/^companies\/[^/]+\/nfe-readiness$/, ["GET"]],
   [/^invoices$/, ["GET", "POST"]],
   [/^customers$/, ["GET"]],
   [/^customers\/registry\/[^/]+$/, ["GET"]],
