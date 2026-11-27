@@ -92,7 +92,12 @@ export function toNfeResponse(doc: NfeDocument) {
             ? new Date(s.contingencyAt.getTime() + NFCE_CONTINGENCY_DEADLINE_MS)
             : null,
         }
-      : {}),
+      : {
+          // NF-e only: 1 normal, 6 or 7 when it was issued through the SVC (`dhCont` and `xJust`).
+          emissionType: s.tpEmis,
+          contingencyAt: s.contingencyAt,
+          contingencyReason: s.contingencyReason,
+        }),
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
   };

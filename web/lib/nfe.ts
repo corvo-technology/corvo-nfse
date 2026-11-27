@@ -43,6 +43,8 @@ export interface NfeDocument {
   qrCode?: string | null; urlChave?: string | null;
   /** NFC-e issued off-line (`tpEmis` 9): when, why, and the 24 h limit to transmit it. Null when it was issued online. */
   contingencyAt?: string | null; contingencyReason?: string | null; contingencyDeadlineAt?: string | null;
+  /** NF-e only: the `tpEmis` of the key. 1 normal, 6 SVC-AN, 7 SVC-RS (issued through the SEFAZ Virtual de Contingência). */
+  emissionType?: 1 | 6 | 7;
   documentsReady: boolean; documentsReadyAt: string | null; emailStatus: string | null; emailSentAt: string | null; attempt: number; lastError: NfeLastError | null; nextCheckAt: string | null; createdAt: string; updatedAt: string;
 }
 export interface NfeAccepted { type: NfeKind; id: string; status: NfeStatus; replayed?: true }

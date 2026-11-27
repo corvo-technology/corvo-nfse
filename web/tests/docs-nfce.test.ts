@@ -104,3 +104,14 @@ describe("NFC-e docs", () => {
     expect(buildLlmsFull("pt")).toContain("NFC-e: venda ao consumidor");
   });
 });
+
+describe("NF-e SVC docs", () => {
+  it.each(["en", "pt"] as const)("%s: the files and webhooks page explains the SVC and lists its events", (locale) => {
+    const text = allText(page(locale, "nfe-files").blocks);
+    expect(text).toContain("SVC-AN");
+    expect(text).toContain("tpEmis");
+    expect(text).toContain("nfe.contingency.entered");
+    expect(text).toContain("nfe.contingency.exited");
+    expect(text).toContain("EMITIDA EM CONTINGÊNCIA SVC");
+  });
+});

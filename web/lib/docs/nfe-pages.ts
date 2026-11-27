@@ -390,8 +390,20 @@ function files(locale: DocsLocale): DocSection {
           ["`nfe.document.documents_ready`", l("The XML and the DANFE are ready to download.", "O XML e o DANFE estão prontos para baixar.")],
           ["`nfe.document.email_sent` · `nfe.document.email_failed`", l("The e-mail to the recipient went or failed.", "O e-mail ao destinatário foi enviado ou falhou.")],
           ["`nfe.inutilization.completed` · `nfe.inutilization.rejected`", l("An inutilization was accepted or refused.", "Uma inutilização foi aceita ou recusada.")],
+          ["`nfe.contingency.entered` · `nfe.contingency.exited`", l("The NF-e of a state started, or stopped, going out through the SVC. The `data` carries `uf`, `tpAmb`, `authority` (`SVCAN` or `SVCRS`) and `dhCont`; there is no `documentId`.", "A NF-e de um estado passou a sair, ou deixou de sair, pela SVC. O `data` traz `uf`, `tpAmb`, `authority` (`SVCAN` ou `SVCRS`) e `dhCont`; não há `documentId`.")],
         ],
       },
+      heading(l("When the SEFAZ of the state is down (SVC)", "Quando a SEFAZ do estado está fora do ar (SVC)")),
+      text(l(
+        "If the SEFAZ of the state of the company stops answering while the rest of the government still does, Corvo sends the NF-e through the **SEFAZ Virtual de Contingência** (SVC-AN or SVC-RS, depending on the state). It is automatic: you do nothing and the request does not change.",
+        "Se a SEFAZ do estado da empresa parar de responder enquanto o resto do governo continua no ar, a Corvo envia a NF-e pela **SEFAZ Virtual de Contingência** (SVC-AN ou SVC-RS, conforme o estado). É automático: você não faz nada e o pedido não muda.",
+      )),
+      list([
+        l("Only a note that **was never sent** changes: it gets a new key (`tpEmis` 6 or 7) with the same number and series. A note that may already have reached its SEFAZ keeps its key and waits for it; Corvo checks it by key and never numbers it again.", "Só muda a nota que **nunca foi enviada**: ela ganha chave nova (`tpEmis` 6 ou 7) com o mesmo número e série. Uma nota que pode já ter chegado na SEFAZ dela mantém a chave e espera por ela; a Corvo confere pela chave e nunca numera de novo."),
+        l("The note is valid. The response shows `emissionType` 6 (SVC-AN) or 7 (SVC-RS), `contingencyAt` and `contingencyReason`; the DANFE says \"EMITIDA EM CONTINGÊNCIA SVC\".", "A nota é válida. A resposta mostra `emissionType` 6 (SVC-AN) ou 7 (SVC-RS), `contingencyAt` e `contingencyReason`; o DANFE diz \"EMITIDA EM CONTINGÊNCIA SVC\"."),
+        l("If it is Corvo's own network that cannot reach the government, the SVC does not help (it is a government host too) and the note waits as usual.", "Se quem não alcança o governo é a rede da própria Corvo, a SVC não ajuda (ela também é um endereço do governo) e a nota espera como de costume."),
+        l("The NFS-e and the NFC-e do not use the SVC. Inutilization is only made at the SEFAZ of the state.", "A NFS-e e a NFC-e não usam a SVC. A inutilização só é feita na SEFAZ do estado."),
+      ]),
     ],
   };
 }

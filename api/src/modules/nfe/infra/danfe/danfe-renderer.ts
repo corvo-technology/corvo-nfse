@@ -482,7 +482,9 @@ function drawItems(doc: Doc, view: DanfeView, start: number): number {
 }
 
 function drawAdditional(doc: Doc, view: DanfeView, start: number): void {
-  const info = view.additionalInfo || '-';
+  // A note issued in the SVC says so first, before anything the issuer wrote.
+  const info =
+    [view.contingency, view.additionalInfo].filter(Boolean).join('\n') || '-';
   doc.font('regular').fontSize(7);
   const infoH = Math.min(
     BOTTOM - LEFT - 2,

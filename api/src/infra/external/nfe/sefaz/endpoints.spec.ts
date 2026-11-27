@@ -179,7 +179,7 @@ describe('every UF', () => {
 
 describe('ENDPOINTS_SVC', () => {
   it('has five services (no inutilização) per authority and environment, model 55 only', () => {
-    for (const [authority, tpEmis] of [
+    for (const [authority] of [
       ['SVCAN', 6],
       ['SVCRS', 7],
     ] as const)

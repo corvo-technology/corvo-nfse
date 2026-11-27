@@ -81,7 +81,7 @@ describe('PlatformContingencyService', () => {
 
   it('does not leave the SVC when the audit cannot be written', async () => {
     const { service, switcher, audit } = setup('svc');
-    audit.insert.mockRejectedValueOnce(new Error('db') as never);
+    audit.insert.mockRejectedValueOnce(new Error('db'));
     await expect(
       service.forceExit(actor, 'SP', 2, 'sem auditoria'),
     ).rejects.toThrow('db');

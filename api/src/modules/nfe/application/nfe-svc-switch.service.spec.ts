@@ -58,8 +58,8 @@ function setup(opts: {
   };
   const service = new NfeSvcSwitchService(
     states as never,
-    reader as never,
-    status as never,
+    reader,
+    status,
     announcer as never,
   );
   return { service, states, reader, status, announcer };

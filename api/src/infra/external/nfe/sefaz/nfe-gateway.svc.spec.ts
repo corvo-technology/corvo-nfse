@@ -3,12 +3,14 @@ import { join } from 'node:path';
 import { MockAgent } from 'undici';
 import type { SigningContext } from '@/modules/fiscal-core/domain/ports/gateway.port';
 import { makeTestA1 } from '../../../../../test/fixtures/nfe/test-a1';
+import { buildCancelEvent } from '@/modules/nfe/domain/builder/env-evento.builder';
 import { loadCertificate } from './certificate-loader';
 import { TableAuthorityEndpointResolver } from './endpoints';
 import { NfeGateway } from './nfe-gateway';
 import { XmllintSchemaValidator } from './schema-validator';
 import type { SignedNfe } from './signed-nfe';
 import { SefazSoapClient } from './soap-client';
+import { withStructuralSignature } from './xml-signer';
 
 const FIXTURES = join(__dirname, '../../../../../test/fixtures/nfe');
 const soap = (name: string) =>
@@ -23,7 +25,11 @@ const SVC_KEY = `${BASE_KEY.slice(0, 34)}6${BASE_KEY.slice(35)}`;
 
 const resolver = new TableAuthorityEndpointResolver();
 const svcUrl = (
-  service: 'NfeAutorizacao' | 'NfeConsultaProtocolo' | 'NfeStatusServico',
+  service:
+    | 'NfeAutorizacao'
+    | 'NfeConsultaProtocolo'
+    | 'NfeStatusServico'
+    | 'RecepcaoEvento',
 ) =>
   new URL(
     resolver.resolve({ uf: 'SP', tpAmb: 2, model: 55, tpEmis: 6, service }).url,
@@ -114,5 +120,31 @@ describe('NfeGateway on the SVC', () => {
         tpEmis: 6,
       }),
     ).toEqual({ kind: 'ok', value: { up: true } });
+  });
+
+  it('cancels a note of the SVC at the SVC event endpoint, found by the tpEmis of its key', async () => {
+    const { agent, gateway } = setup();
+    const built = buildCancelEvent({
+      accessKey: SVC_KEY,
+      cnpj: '12345678000195',
+      cOrgao: '35',
+      tpAmb: 2,
+      dhEvento: '2026-11-26T10:20:00-03:00',
+      nSeq: 1,
+      protocol: '135260000000001',
+      justification: 'Cancelamento por erro de digitação do pedido',
+    });
+    const signedXml = withStructuralSignature(built.xml, built.referenceTag);
+    const svc = svcUrl('RecepcaoEvento');
+    expect(svc.hostname).toBe('hom.svc.fazenda.gov.br');
+    agent
+      .get(svc.origin)
+      .intercept({ path: svc.pathname, method: 'POST' })
+      .reply(200, soap('ret-evento-135'));
+    const outcome = await gateway.cancel.cancel(
+      { accessKey: SVC_KEY, reason: 'x', justification: 'x', signedXml },
+      ctx,
+    );
+    expect(outcome.kind).toBe('ok');
   });
 });

@@ -3763,6 +3763,7 @@
       "hint": "O que fazer",
       "contingencyPending": "Esta NFC-e foi emitida em contingência off-line e ainda não foi enviada à SEFAZ. Ela já pode ser entregue ao cliente. O envio é automático e o prazo é até {deadline}.",
       "contingencyIssued": "Emitida em contingência",
+      "svcIssued": "Emitida pela contingência {authority}: a SEFAZ do estado estava fora do ar. A nota é válida e continua com a mesma numeração.",
       "reconciling": "Não tivemos resposta da SEFAZ. Estamos conferindo pela chave de acesso, sem emitir de novo.",
       "manualReview": "A SEFAZ ainda não confirmou esta nota. Use “Conferir na SEFAZ” para perguntar de novo.",
       "errorType": {

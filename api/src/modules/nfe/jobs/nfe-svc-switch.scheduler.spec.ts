@@ -42,7 +42,7 @@ describe('NfeSvcSwitchScheduler', () => {
       { uf: 'SP', model: 55, tpAmb: 2 },
       { uf: 'RJ', model: 55, tpAmb: 2 },
     ]);
-    service.evaluate.mockRejectedValueOnce(new Error('redis down') as never);
+    service.evaluate.mockRejectedValueOnce(new Error('redis down'));
     await expect(scheduler.run(NOW)).resolves.toBeUndefined();
     expect(service.evaluate.mock.calls.map((c) => (c as unknown[])[0])).toEqual(
       ['SP', 'RJ'],

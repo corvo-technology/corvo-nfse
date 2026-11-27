@@ -3763,6 +3763,7 @@
       "hint": "What to do",
       "contingencyPending": "This NFC-e was issued in offline contingency and was not sent to the SEFAZ yet. It can already be handed to the customer. It is sent automatically, and the limit is {deadline}.",
       "contingencyIssued": "Issued in contingency",
+      "svcIssued": "Issued through the {authority} contingency: the state SEFAZ was down. The note is valid and keeps its numbering.",
       "reconciling": "The SEFAZ did not answer. We are checking by the access key, without issuing again.",
       "manualReview": "The SEFAZ has not confirmed this note yet. Use “Check with the SEFAZ” to ask again.",
       "errorType": {
