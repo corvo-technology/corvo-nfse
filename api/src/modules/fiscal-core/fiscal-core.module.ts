@@ -39,6 +39,7 @@ import { TypeormNfeReleaseReader } from './infra/typeorm-nfe-release.reader';
     NfeAccessPolicy,
     NfeEmissionPreconditions,
     NfeEnabledGuard,
+    NFE_ENABLED_AUTHORITIES,
   ],
 })
 export class FiscalCoreModule {}

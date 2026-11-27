@@ -104,4 +104,28 @@ describe("NfeSettingsForm", () => {
     await screen.findByText("All set: the company can issue NF-e.");
     expect(screen.queryByLabelText(/NFC-e series/)).toBeNull();
   });
+
+  it("NFC-e released: the off-line option is off by default, can be turned on and is saved", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [], nfceAutoOffline: true }));
+    renderForm(true, true);
+    await screen.findByText("All set: the company can issue NF-e.");
+    const box = screen.getByLabelText(/Issue in offline contingency automatically/) as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("c1", expect.objectContaining({ nfceAutoOffline: true })));
+    await waitFor(() => expect((screen.getByLabelText(/Issue in offline contingency automatically/) as HTMLInputElement).checked).toBe(true));
+  });
+
+  it("without NFC-e the off-line option is not offered nor sent", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    renderForm(true, false);
+    await screen.findByText("All set: the company can issue NF-e.");
+    expect(screen.queryByLabelText(/Issue in offline contingency automatically/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+    expect(mocks.update.mock.calls[0][1]).not.toHaveProperty("nfceAutoOffline");
+  });
 });

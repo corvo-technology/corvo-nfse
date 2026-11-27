@@ -178,4 +178,13 @@ export class NfceRequestDto {
   @IsOptional()
   @IsBoolean()
   sendEmail?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['offline'],
+    description:
+      'Issue in off-line contingency (`tpEmis` 9): the NFC-e is numbered, signed and returned at once (`201`, status `contingency_pending`, with `qrCode`, `xmlUrl` and `pdfUrl`) and Corvo transmits it when the SEFAZ answers, within 24 hours. Left out, the company option "issue off-line automatically" decides when the SEFAZ cannot be reached; without it the NFC-e goes the normal way (`202`).',
+  })
+  @IsOptional()
+  @IsIn(['offline'])
+  contingency?: 'offline';
 }

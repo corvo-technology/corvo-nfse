@@ -165,6 +165,29 @@ export class NfeDocumentOrmEntity {
   @Column({ name: 'url_chave', type: 'varchar', length: 85, nullable: true })
   urlChave!: string | null;
 
+  /** NFC-e off-line (`tpEmis` 9): `dhCont`. */
+  @Column({ name: 'contingency_at', type: 'timestamptz', nullable: true })
+  contingencyAt!: Date | null;
+
+  /** NFC-e off-line: `xJust`. */
+  @Column({
+    name: 'contingency_reason',
+    type: 'varchar',
+    length: 256,
+    nullable: true,
+  })
+  contingencyReason!: string | null;
+
+  @Column({
+    name: 'contingency_alerted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  contingencyAlertedAt!: Date | null;
+
+  @Column({ name: 'transmitted_at', type: 'timestamptz', nullable: true })
+  transmittedAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

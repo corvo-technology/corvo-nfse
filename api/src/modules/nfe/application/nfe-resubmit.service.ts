@@ -5,12 +5,14 @@ import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
 import { contentFromDraft } from '../domain/nfe-draft-mapper';
 import type { NfeInput } from '../domain/nfe-input';
+import { lockedFieldsChanged } from '@/modules/nfce/domain/offline-correction';
 import {
+  nfceContingencyFieldLocked,
   nfeInvalidState,
   nfeNotFound,
   nfeValidationFailed,
 } from './nfe-errors';
-import { emitMessage } from './nfe-messages';
+import { emitMessage, transmitMessage } from './nfe-messages';
 import { NfePreparation, type PreparedNfe } from './nfe-preparation.service';
 import { nfeRequestHash } from './nfe-request-hash';
 import { keyOf } from './nfe-outcome.service';
@@ -59,6 +61,14 @@ export class NfeResubmitService {
       requestHash: string;
       prepare: () => Promise<PreparedNfe>;
       model?: 55 | 65;
+      /**
+       * An off-line NFC-e (`tpEmis` 9) comes back to `contingency_pending` with the same key: this
+       * builds and signs the corrected XML on the document, inside the transition.
+       */
+      rebuildOffline?: (
+        locked: NfeDocument,
+        prepared: PreparedNfe,
+      ) => void | Promise<void>;
     },
   ): Promise<NfeSubmitted> {
     const { requestHash } = submission;
@@ -79,23 +89,37 @@ export class NfeResubmitService {
         },
       ]);
 
-    const { draft } = await submission.prepare();
-    const content = contentFromDraft(draft);
-    const result = await this.transitions.apply(keyOf(current), 'queued', {
-      from: ['rejected'],
-      change: async (locked) => {
-        await this.ledger.reserve({
-          type: documentTypeOf(locked.toSnapshot().model),
-          id: locked.id,
-          tenantId,
-          environment,
-        });
-        locked.replaceContent(content, requestHash);
-        locked.recordError(null);
-        await this.documents.replaceItems(locked);
+    const prepared = await submission.prepare();
+    const content = contentFromDraft(prepared.draft);
+    const offline = current.toSnapshot().tpEmis === 9;
+    if (offline) {
+      const fields = lockedFieldsChanged(current.toSnapshot(), content);
+      if (fields.length > 0) throw nfceContingencyFieldLocked(fields);
+    }
+    const result = await this.transitions.apply(
+      keyOf(current),
+      offline ? 'contingency_pending' : 'queued',
+      {
+        from: ['rejected'],
+        change: async (locked) => {
+          await this.ledger.reserve({
+            type: documentTypeOf(locked.toSnapshot().model),
+            id: locked.id,
+            tenantId,
+            environment,
+          });
+          locked.replaceContent(content, requestHash);
+          locked.recordError(null);
+          await this.documents.replaceItems(locked);
+          if (offline) await submission.rebuildOffline?.(locked, prepared);
+        },
+        messages: [
+          offline
+            ? transmitMessage(current, current.attempt + 1)
+            : emitMessage(current),
+        ],
       },
-      messages: [emitMessage(current)],
-    });
+    );
     if (!result.applied)
       // Someone else resubmitted or discarded it between the read and the lock.
       return this.replayOrConflict(result.document, requestHash, 'resubmitted');

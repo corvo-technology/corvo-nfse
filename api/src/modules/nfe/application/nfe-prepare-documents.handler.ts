@@ -111,7 +111,8 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
       environment: doc.environment,
     };
 
-    if (!(await this.storage.fileExists(ref, NFE_PROC_FILE)))
+    // An off-line NFC-e may have the signed XML (no protocol) stored under this name already.
+    if (s.tpEmis === 9 || !(await this.storage.fileExists(ref, NFE_PROC_FILE)))
       await this.storage.saveFile(
         ref,
         NFE_PROC_FILE,
@@ -145,7 +146,13 @@ export class NfePrepareDocumentsHandler implements OutboxHandler, OnModuleInit {
   ): Promise<void> {
     const s = doc.toSnapshot();
     const file = s.model === 65 ? DANFCE_FILE : DANFE_FILE;
-    if (!cancelled && (await this.storage.fileExists(ref, file))) return;
+    // An off-line NFC-e may have the DANFCE of the contingency (no protocol) stored already: redraw it.
+    if (
+      !cancelled &&
+      s.tpEmis !== 9 &&
+      (await this.storage.fileExists(ref, file))
+    )
+      return;
     const xml = buildNfeProc(s.signedXml!, s.protNfeXml!);
     const renderer = s.model === 65 ? this.danfce : this.danfe;
     const pdf = await renderer.render(xml, {

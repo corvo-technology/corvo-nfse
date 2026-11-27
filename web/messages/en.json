@@ -2200,6 +2200,8 @@
     "out_of_phase1_scope": "This invoice is not accepted yet: for now only normal NF-e from Simples Nacional or MEI companies.",
     "nfce_ind_pres_invalid": "On a NFC-e the buyer presence must be 1 (in person), 4 (delivery) or 5 (in person outside the establishment).",
     "nfce_delivery_address_required": "For a delivery sale give the consumer's CPF or CNPJ, name and address.",
+    "nfce_offline_not_available": "The off-line contingency NFC-e is not available yet for the state of this company.",
+    "nfce_contingency_field_locked": "This NFC-e was issued in contingency and is already with the consumer: only the description, barcode, NCM, CEST, unit and additional information can change. The rest (amounts, quantities, payment, consumer) cannot.",
     "nfce_consumer_id_required": "For this sale total the NFC-e needs the consumer's CPF or CNPJ.",
     "nfce_card_data_required": "For an integrated payment give the acquirer CNPJ and the authorization number.",
     "nfce_card_brand_invalid": "The card brand is not in the official table.",
@@ -3661,6 +3663,7 @@
     },
     "status": {
       "queued": "Queued",
+      "contingency_pending": "Issued offline, to be sent",
       "processing": "Sending",
       "authorized": "Authorized",
       "rejected": "Rejected",
@@ -3722,7 +3725,9 @@
       "crtUnsupported": "NF-e is only for Simples Nacional and MEI for now. Check the regime in the company's tax profile.",
       "natOpPlaceholder": "Sale of goods",
       "nfceSeries": "NFC-e series",
-      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1."
+      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1.",
+      "nfceAutoOffline": "Issue in offline contingency automatically",
+      "nfceAutoOfflineHint": "When the SEFAZ does not answer, the NFC-e is issued at once with the contingency notice and sent later. It can still be rejected afterwards, after the customer already has it. Off by default."
     },
     "detail": {
       "title": "NF-e",
@@ -3756,6 +3761,9 @@
       "documentsHint": "The files are ready after the SEFAZ authorizes the note.",
       "events": "History",
       "hint": "What to do",
+      "contingencyPending": "This NFC-e was issued in offline contingency and was not sent to the SEFAZ yet. It can already be handed to the customer. It is sent automatically, and the limit is {deadline}.",
+      "contingencyIssued": "Issued in contingency",
+      "svcIssued": "Issued through the {authority} contingency: the state SEFAZ was down. The note is valid and keeps its numbering.",
       "reconciling": "The SEFAZ did not answer. We are checking by the access key, without issuing again.",
       "manualReview": "The SEFAZ has not confirmed this note yet. Use “Check with the SEFAZ” to ask again.",
       "errorType": {
@@ -4147,7 +4155,8 @@
         "credit_grant": "Gave extra invoices",
         "user_viewed": "Opened a user",
         "nfe_access_changed": "Changed NF-e release",
-        "nfce_access_set": "Changed NFC-e release"
+        "nfce_access_set": "Changed NFC-e release",
+        "svc_forced_exit": "Left the SVC contingency"
       },
       "success": "Done",
       "failure": "Failed"
@@ -4167,6 +4176,25 @@
       "errorReason": "The reason must have 5 to 500 characters.",
       "errorNotFound": "This workspace was not found.",
       "errorGeneric": "Could not change the release. Nothing was saved. Try again."
+    },
+    "svc": {
+      "title": "NF-e in contingency (SVC)",
+      "empty": "No state is in contingency. NF-e go out through each state's own SEFAZ.",
+      "uf": "State",
+      "env": "Environment",
+      "live": "Production",
+      "test": "Homologation",
+      "authority": "Virtual SEFAZ",
+      "since": "Since",
+      "exit": "Leave the SVC",
+      "exitTitle": "Leave the SVC: {uf}",
+      "exitDescription": "The NF-e of {uf} go out through the origin SEFAZ again. Use it only when it is back. Notes already issued in contingency stay valid.",
+      "reason": "Reason",
+      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
+      "cancel": "Cancel",
+      "errorReason": "The reason must have 5 to 500 characters.",
+      "errorNotFound": "That state is no longer in contingency.",
+      "errorGeneric": "Could not leave the contingency. Nothing was changed. Try again."
     }
   }
 }

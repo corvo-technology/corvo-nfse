@@ -41,7 +41,11 @@ export type WebhookEventType =
   | 'nfce.document.cancelled'
   | 'nfce.document.cancellation_rejected'
   | 'nfce.inutilization.completed'
-  | 'nfce.inutilization.rejected';
+  | 'nfce.inutilization.rejected'
+  | 'nfce.contingency.deadline_near'
+  // NF-e contingency (SVC), global per UF
+  | 'nfe.contingency.entered'
+  | 'nfe.contingency.exited';
 
 /** Event types a tenant may subscribe to through the public API. */
 export const PUBLIC_WEBHOOK_EVENT_TYPES = [
@@ -84,6 +88,9 @@ export const PUBLIC_WEBHOOK_EVENT_TYPES = [
   'nfce.document.cancellation_rejected',
   'nfce.inutilization.completed',
   'nfce.inutilization.rejected',
+  'nfce.contingency.deadline_near',
+  'nfe.contingency.entered',
+  'nfe.contingency.exited',
 ] as const satisfies readonly WebhookEventType[];
 
 export type PublicWebhookEventType =

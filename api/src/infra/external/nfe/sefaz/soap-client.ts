@@ -11,6 +11,8 @@ export interface SoapRequest {
   bodyXml: string;
   certificate: LoadedCertificate;
   timeoutMs: number;
+  /** The backup route (HTTP CONNECT proxy, mTLS still end to end). Absent = our own direct mTLS agent. */
+  dispatcher?: Dispatcher;
 }
 
 export type SoapResult =
@@ -30,11 +32,22 @@ export interface SoapLogEntry {
 export interface SefazSoapClientOptions {
   /** Test hook: replaces the mTLS dispatcher (a MockAgent). */
   dispatcherFor?: (certificate: LoadedCertificate) => Dispatcher;
+  /**
+   * Picks the backup route for a call: a dispatcher while the proxy is in use, `undefined` for the direct
+   * route. A failure here means direct.
+   */
+  proxyFor?: (
+    host: string,
+    certificate: LoadedCertificate,
+  ) => Promise<Dispatcher | undefined>;
   logger?: (entry: SoapLogEntry) => void;
 }
 
 const SOAP12_ENVELOPE = 'http://www.w3.org/2003/05/soap-envelope';
 const AGENT_CACHE_SIZE = 50;
+
+/** Node's own roots plus the ICP-Brasil chain; the server certificate is always verified. */
+export const SEFAZ_TRUST_ROOTS: string[] = [...rootCertificates, ICP_BRASIL_CA];
 
 /** Errors raised before a single byte of the body could reach the server. */
 const NOT_SENT_CODES = new Set([
@@ -154,14 +167,16 @@ export class SefazSoapClient {
       return result;
     };
 
+    const url = new URL(endpoint.url);
     let dispatcher: Dispatcher;
     try {
-      dispatcher = this.dispatcherFor(req.certificate, req.timeoutMs);
+      dispatcher =
+        req.dispatcher ??
+        (await this.proxied(url.hostname, req.certificate)) ??
+        this.dispatcherFor(req.certificate, req.timeoutMs);
     } catch {
       return finish({ kind: 'unavailable' }, 'tls-setup-failed');
     }
-
-    const url = new URL(endpoint.url);
     try {
       const response = await dispatcher.request({
         origin: url.origin,
@@ -202,6 +217,17 @@ export class SefazSoapClient {
     }
   }
 
+  private async proxied(
+    host: string,
+    certificate: LoadedCertificate,
+  ): Promise<Dispatcher | undefined> {
+    try {
+      return await this.options.proxyFor?.(host, certificate);
+    } catch {
+      return undefined;
+    }
+  }
+
   private log(entry: SoapLogEntry): void {
     const sink =
       this.options.logger ??
@@ -233,8 +259,7 @@ export class SefazSoapClient {
       connect: {
         key: certificate.keyPem,
         cert: certificate.certPem,
-        // Node's own roots plus the ICP-Brasil chain; the server certificate is always verified.
-        ca: [...rootCertificates, ICP_BRASIL_CA],
+        ca: SEFAZ_TRUST_ROOTS,
         rejectUnauthorized: true,
         timeout: timeoutMs,
       },

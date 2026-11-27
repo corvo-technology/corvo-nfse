@@ -44,6 +44,7 @@ import { TypeormNfeInutilizations } from '@/modules/nfe/infra/typeorm-nfe-inutil
 import { NfeNumberGapsQuery } from '@/modules/nfe/infra/typeorm-nfe-number-gaps.query';
 import { data } from '@/shared/http/response';
 import { validateDto } from '@/shared/http/validate-dto';
+import { NfceOfflineService } from '../application/nfce-offline.service';
 import { NfceIntakeService } from '../application/nfce-intake.service';
 import { NfceResubmitService } from '../application/nfce-resubmit.service';
 import { NfceValidateService } from '../application/nfce-validate.service';
@@ -80,6 +81,7 @@ export class NfceInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
   constructor(
     private readonly router: InvoiceTypeRouter,
     private readonly intake: NfceIntakeService,
+    private readonly offline: NfceOfflineService,
     private readonly validation: NfceValidateService,
     private readonly consult: NfeConsultService,
     private readonly resubmission: NfceResubmitService,
@@ -125,13 +127,44 @@ export class NfceInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
   ) {
     const key = NfeIntakeService.assertIdempotencyKey(idempotencyKey);
     const dto = await validateDto(NfceRequestDto, withoutType(body));
-    const result = await this.intake.submit(
+    // Off-line (`tpEmis` 9): the PDV asked for it, or the company turned the option on and the SEFAZ
+    // cannot be reached. The note is complete at once; otherwise it is queued for the SEFAZ.
+    const reason = await this.offline.reasonFor(
+      call.tenantId,
+      call.environment,
+      dto,
+    );
+    if (reason === null) {
+      const result = await this.intake.submit(
+        call.tenantId,
+        call.environment,
+        dto,
+        key,
+      );
+      return data(accepted(result, res));
+    }
+    const result = await this.offline.submit(
       call.tenantId,
       call.environment,
       dto,
       key,
+      reason,
     );
-    return data(accepted(result, res));
+    const doc = await this.documents.findById(
+      result.id,
+      call.tenantId,
+      call.environment,
+      { model: 65 },
+    );
+    if (!doc) throw nfeNotFound();
+    res.status(result.replayed ? 200 : 201);
+    return data({
+      ...accepted(result, { status: () => undefined }),
+      accessKey: doc.accessKey,
+      qrCode: doc.toSnapshot().qrCode,
+      xmlUrl: `/v1/invoices/${doc.id}/xml`,
+      pdfUrl: `/v1/invoices/${doc.id}/pdf`,
+    });
   }
 
   async list(query: Record<string, unknown>, call: InvoiceCall) {

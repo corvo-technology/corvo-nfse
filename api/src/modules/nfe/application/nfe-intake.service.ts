@@ -18,7 +18,12 @@ import {
   nfeIdempotencyKeyRequired,
   nfeIdempotencyKeyReused,
 } from './nfe-errors';
-import { emitMessage } from './nfe-messages';
+import { NFCE_CONTINGENCY_ALERT_AFTER_MS } from '@/modules/nfce/domain/contingency';
+import {
+  contingencyAlertMessage,
+  emitMessage,
+  transmitMessage,
+} from './nfe-messages';
 import { NfePreparation, type PreparedNfe } from './nfe-preparation.service';
 import { isValidIdempotencyKey, nfeRequestHash } from './nfe-request-hash';
 import { documentTypeOf } from './nfe-transition.service';
@@ -34,6 +39,16 @@ export interface NfeSubmission {
   model: 55 | 65;
   /** The preconditions and the validators of the model; throws when anything is refused. */
   prepare: () => Promise<PreparedNfe>;
+  /**
+   * NFC-e issued off-line (`tpEmis` 9): the document is born `contingency_pending` and `assemble`
+   * numbers, keys and signs it inside the same transaction, so the note is complete when it commits.
+   */
+  offline?: {
+    contingencyAt: Date;
+    /** `xJust`. */
+    reason: string;
+    assemble: (document: NfeDocument, prepared: PreparedNfe) => Promise<void>;
+  };
 }
 
 export interface NfeSubmitted {
@@ -112,16 +127,25 @@ export class NfeIntakeService {
     );
     if (earlier) return this.replayOrConflict(earlier, requestHash);
 
-    const { draft } = await submission.prepare();
-    const document = NfeDocument.create({
+    const prepared = await submission.prepare();
+    const { offline } = submission;
+    const params = {
       tenantId,
       companyId,
       environment,
-      model,
       idempotencyKey,
       requestHash,
-      ...contentFromDraft(draft),
-    });
+      ...contentFromDraft(prepared.draft),
+    };
+    const document =
+      offline && model === 65
+        ? NfeDocument.createOffline({
+            ...params,
+            model,
+            contingencyAt: offline.contingencyAt,
+            contingencyReason: offline.reason,
+          })
+        : NfeDocument.create({ ...params, model });
 
     const outcome = await runWithTenant(tenantId, () =>
       this.unitOfWork.execute(() =>
@@ -139,9 +163,22 @@ export class NfeIntakeService {
             tenantId,
             environment,
           });
+          await offline?.assemble(document, prepared);
           await this.documents.insert(document);
           await this.documents.appendHistory(document.creationEntry());
-          await this.outbox.enqueue(emitMessage(document));
+          await this.outbox.enqueue(
+            offline ? transmitMessage(document) : emitMessage(document),
+          );
+          if (offline)
+            await this.outbox.enqueue(
+              contingencyAlertMessage(
+                document,
+                new Date(
+                  offline.contingencyAt.getTime() +
+                    NFCE_CONTINGENCY_ALERT_AFTER_MS,
+                ),
+              ),
+            );
           return {
             id: document.id,
             status: document.status,

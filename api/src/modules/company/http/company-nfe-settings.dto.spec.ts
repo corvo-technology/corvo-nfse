@@ -28,3 +28,12 @@ describe('UpdateCompanyNfeSettingsDto series', () => {
     ]);
   });
 });
+
+describe('UpdateCompanyNfeSettingsDto nfceAutoOffline', () => {
+  it('accepts a boolean and refuses anything else', async () => {
+    expect(await errorsOf({ nfceAutoOffline: true })).toEqual([]);
+    expect(await errorsOf({ nfceAutoOffline: 'yes' })).toEqual([
+      'nfceAutoOffline',
+    ]);
+  });
+});

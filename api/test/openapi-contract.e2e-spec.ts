@@ -1768,6 +1768,54 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       ).toBe(true);
     });
 
+    it('issues a NFC-e off-line (contingency "offline"): 201 at once with the key, the QR Code and the files; the same key answers 200', async () => {
+      const created = await call('POST /invoices', {
+        body: nfceBody({ contingency: 'offline', additionalInfo: 'offline' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-offline' },
+        status: 201,
+      });
+      const id = created.body.data.id as string;
+      expect(created.body.data).toMatchObject({
+        type: 'nfce',
+        status: 'contingency_pending',
+        xmlUrl: `/v1/invoices/${id}/xml`,
+        pdfUrl: `/v1/invoices/${id}/pdf`,
+      });
+      expect((created.body.data.accessKey as string)[34]).toBe('9');
+      expect(created.body.data.qrCode).toContain(
+        `?p=${created.body.data.accessKey as string}|3|2|`,
+      );
+      const detail = await call('GET /invoices/{id}', {
+        path: `/invoices/${id}`,
+        status: 200,
+      });
+      expect(detail.body.data).toMatchObject({
+        status: 'contingency_pending',
+        contingencyReason:
+          'Emissao em contingencia off-line solicitada pelo emitente',
+      });
+      const xml = await call('GET /invoices/{id}/xml', {
+        path: `/invoices/${id}/xml`,
+        status: 200,
+      });
+      expect(xml.text).toContain('<tpEmis>9</tpEmis>');
+      const pdf = await call('GET /invoices/{id}/pdf', {
+        path: `/invoices/${id}/pdf`,
+        status: 200,
+      });
+      expect(pdf.text.startsWith('%PDF-')).toBe(true);
+      const again = await call('POST /invoices', {
+        body: nfceBody({ contingency: 'offline', additionalInfo: 'offline' }),
+        headers: { 'Idempotency-Key': 'e2e-nfce-offline' },
+        status: 200,
+      });
+      expect(again.body.data).toMatchObject({
+        id,
+        status: 'contingency_pending',
+        replayed: true,
+      });
+    });
+
     it('serves the DANFCE of a NFC-e: 80 mm by default, A4 with ?layout=a4, 409 before the documents are ready', async () => {
       const created = await call('POST /invoices', {
         body: nfceBody({ additionalInfo: 'cupom' }),

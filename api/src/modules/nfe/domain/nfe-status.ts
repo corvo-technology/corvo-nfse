@@ -1,5 +1,6 @@
 export type NfeStatus =
   | 'queued'
+  | 'contingency_pending'
   | 'processing'
   | 'authorized'
   | 'rejected'
@@ -13,6 +14,7 @@ export type NfeStatus =
 
 export const NFE_STATUSES: readonly NfeStatus[] = [
   'queued',
+  'contingency_pending',
   'processing',
   'authorized',
   'rejected',
@@ -32,12 +34,15 @@ export const NFE_STATUSES: readonly NfeStatus[] = [
  */
 export const NFE_VALID_TRANSITIONS: Record<NfeStatus, NfeStatus[]> = {
   queued: ['processing'],
+  // NFC-e issued off-line (`tpEmis` 9): delivered to the consumer already, waiting to be transmitted.
+  contingency_pending: ['processing'],
   processing: [
     'authorized',
     'rejected',
     'denied',
     'retry_pending',
     'reconciliation_required',
+    'contingency_pending',
   ],
   retry_pending: ['processing'],
   reconciliation_required: [
@@ -49,7 +54,7 @@ export const NFE_VALID_TRANSITIONS: Record<NfeStatus, NfeStatus[]> = {
   manual_review: ['reconciliation_required', 'authorized', 'rejected'],
   authorized: ['cancelling'],
   cancelling: ['cancelled', 'authorized'],
-  rejected: ['queued', 'discarded'],
+  rejected: ['queued', 'contingency_pending', 'discarded'],
   denied: [],
   cancelled: [],
   discarded: [],

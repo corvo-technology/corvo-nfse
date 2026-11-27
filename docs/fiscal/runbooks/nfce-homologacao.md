@@ -108,6 +108,29 @@ Registre o resultado de cada um (e corrija o código se a SEFAZ discordar):
    endereço em toda venda não presencial **[não verificado]**: confira com uma venda de entrega.
 9. **Limite do CPF.** O limite de R$ 10.000,00 vale em SP? A tabela por UF começa vazia e usa o padrão.
 
+## Contingência off-line (tpEmis 9)
+
+A NFC-e off-line sai com `contingency: "offline"` (ou pela opção da empresa `nfceAutoOffline`, desligada por
+padrão) e é transmitida depois, em até 24 horas. O QR Code v3 off-line é assinado com o A1 (RSA SHA-1, base64);
+o algoritmo, a fonte e o que **não** está confirmado estão em [`docs/fiscal/nfce-qrcode.md`](../nfce-qrcode.md).
+
+Antes de liberar em produção, na homologação de SP:
+
+1. **Assinatura do QR Code.** Emita uma NFC-e off-line e transmita. A SEFAZ rejeita com 583 se a assinatura
+   diferir da calculada (445 se vier assinatura numa nota normal, 474 se faltar na contingência). Se vier 583,
+   o ponto a conferir é o texto assinado (o `|` entre os campos 6 e 7 vazios, o formato de `vNF`).
+2. **`xJust` e `dhCont`.** Confirme que a SEFAZ aceita os textos `SEFAZ indisponivel` e
+   `Sem comunicacao com a SEFAZ` (15 a 256 caracteres).
+3. **Prazo.** Uma nota transmitida depois de 24 h volta com `cStat` 150 (autorizada fora do prazo); a Corvo
+   trata 150 como autorização.
+4. **Rejeição depois da entrega.** Corrija só os campos livres (`PUT /v1/invoices/{id}`): a chave não muda. Se
+   a rejeição não puder ser corrigida assim, o caso é do contador do cliente.
+5. **Alerta de 20 h.** O webhook `nfce.contingency.deadline_near` sai uma vez, 20 h depois do `dhCont`, só
+   para nota que ainda não foi transmitida. O e-mail ao dono da conta sai só em produção.
+
+Quem decide ligar a opção automática é a empresa (painel, "Emitir em contingência off-line automaticamente"):
+a nota já está com o consumidor e pode ser rejeitada depois.
+
 ## Inutilização em SP: pendência
 
 A inutilização continua **sendo sugerida** (lacunas e número perdido) até o contador confirmar os Ajustes

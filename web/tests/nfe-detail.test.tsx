@@ -50,6 +50,19 @@ describe("NF-e detail", () => {
     expect(screen.getByText("Camiseta")).toBeTruthy();
   });
 
+  it("issued through the SVC: says which one, the date and the reason", async () => {
+    mocks.get.mockResolvedValue(nfe({ emissionType: 6, contingencyAt: "2026-11-26T15:00:00.000Z", contingencyReason: "SEFAZ de origem indisponivel" }));
+    await renderPage();
+    expect(screen.getByText(/Issued through the SVC-AN contingency/)).toBeTruthy();
+    expect(screen.getByText(/SEFAZ de origem indisponivel/)).toBeTruthy();
+  });
+
+  it("a normal note has no SVC notice", async () => {
+    mocks.get.mockResolvedValue(nfe({ emissionType: 1 }));
+    await renderPage();
+    expect(screen.queryByText(/contingency:/)).toBeNull();
+  });
+
   it("rejected: offers resubmit (to the filled form) and discard, and shows the error with its hint", async () => {
     mocks.get.mockResolvedValue(nfe({ status: "rejected", documentsReady: false, lastError: { type: "validation", code: "ERROR_NCM_INVALID", message: "x", hint: "Check the NCM with your accountant" } }));
     await renderPage();
