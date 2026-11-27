@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { auditEvents } from "@/lib/api";
 import type { AuditActorFilter, AuditEvent } from "@/lib/audit";
+import { Select } from "@/components/ui/select";
 
 const PERIOD_DAYS = { d7: 7, d30: 30, y1: 365 } as const;
 type Period = keyof typeof PERIOD_DAYS;
@@ -81,15 +82,15 @@ export default function AuditPage() {
       <div className="dash-in flex flex-wrap gap-4">
         <label className="flex flex-col gap-1.5 text-[12.5px] text-text-3">
           {t("filters.who")}
-          <select className="field" value={who} onChange={(event) => changeWho(event.target.value as AuditActorFilter)}>
+          <Select value={who} onChange={(event) => changeWho(event.target.value as AuditActorFilter)}>
             {WHO.map((value) => <option key={value} value={value}>{t(`filters.${value}`)}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="flex flex-col gap-1.5 text-[12.5px] text-text-3">
           {t("filters.period")}
-          <select className="field" value={period} onChange={(event) => changePeriod(event.target.value as Period)}>
+          <Select value={period} onChange={(event) => changePeriod(event.target.value as Period)}>
             {(Object.keys(PERIOD_DAYS) as Period[]).map((value) => <option key={value} value={value}>{t(`filters.${value}`)}</option>)}
-          </select>
+          </Select>
         </label>
       </div>
 

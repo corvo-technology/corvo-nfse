@@ -31,6 +31,7 @@ import {
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
+import { reconciliationDelayMs } from '@/modules/fiscal-core/domain/reconciliation-schedule';
 import { FiscalPortalBreaker, isPortalOutage } from './fiscal-portal-breaker';
 import {
   PORTAL_DPS_QUERY_REJECTED,
@@ -80,11 +81,6 @@ export interface FiscalJobData {
   uncertainSince?: string;
   /** Set by a person on an invoice in manual review: confirm on the portal and discard it. */
   review?: 'discard' | 'sweep' | 'renumber';
-}
-
-/** Delay before the next automatic reconciliation: 2, 4, 8, 16 min, then 30 min. */
-export function reconciliationDelayMs(attempt: number): number {
-  return Math.min(1800000, 60000 * 2 ** attempt);
 }
 
 /** `timeout` when the portal did not answer in time; `error` for any other failure. */

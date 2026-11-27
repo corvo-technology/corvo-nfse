@@ -18,6 +18,7 @@ interface SitemapPage {
 /** Last content change per group of pages. */
 export const LAST_MODIFIED = {
   marketing: "2026-10-27",
+  products: "2026-11-27",
   docs: "2026-10-27",
   legal: "2026-10-27",
 } as const;
@@ -26,6 +27,9 @@ export const LAST_MODIFIED = {
 export const PAGES: SitemapPage[] = [
   { path: "", changeFrequency: "weekly", priority: 1, lastModified: LAST_MODIFIED.marketing },
   { path: "/start", changeFrequency: "monthly", priority: 0.9, lastModified: LAST_MODIFIED.marketing },
+  { path: "/integrations", changeFrequency: "monthly", priority: 0.8, lastModified: LAST_MODIFIED.products },
+  { path: "/nf-e", changeFrequency: "monthly", priority: 0.7, lastModified: LAST_MODIFIED.products },
+  { path: "/nfc-e", changeFrequency: "monthly", priority: 0.7, lastModified: LAST_MODIFIED.products },
   { path: "/docs", changeFrequency: "weekly", priority: 0.9, lastModified: LAST_MODIFIED.docs },
   { path: "/api-docs", changeFrequency: "weekly", priority: 0.9, lastModified: LAST_MODIFIED.docs },
   ...DOC_SLUGS.map((slug) => ({

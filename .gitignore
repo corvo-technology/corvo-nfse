@@ -30,6 +30,8 @@ tmp/
 *.key
 *.p12
 *.pfx
+# Public ICP-Brasil CA chain used for the SEFAZ mTLS trust (no private keys; see certs/README.md).
+!api/src/infra/external/nfe/sefaz/certs/icp-brasil-chain.pem
 .aws/
 .vercel/
 carrosseis/

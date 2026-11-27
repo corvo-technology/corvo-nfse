@@ -539,7 +539,8 @@ export class Invoice {
   }
 
   /** HTTP/MCP representation: the invoice fields at the top level, plus the derived states. */
-  toJSON(): Omit<InvoiceProps, 'requestHash'> & Omit<InvoiceState, 'status'> {
+  toJSON(): Omit<InvoiceProps, 'requestHash'> &
+    Omit<InvoiceState, 'status'> & { type: 'nfse' } {
     const { requestHash: _hash, ...props } = this.toSnapshot();
     const { documentsStatus, emailStatus, stage } = this.state;
     // An authorized note with an error text but no error code carries a stale reconciliation
@@ -549,7 +550,7 @@ export class Invoice {
       props.lastErrorMessage = null;
       props.lastErrorProvider = null;
     }
-    return { ...props, documentsStatus, emailStatus, stage };
+    return { type: 'nfse', ...props, documentsStatus, emailStatus, stage };
   }
 
   toSnapshot(): InvoiceProps {

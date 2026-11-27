@@ -19,6 +19,7 @@ graphify-out
 **/*.p12
 **/*.pfx
 **/*.pem
+!api/src/infra/external/nfe/sefaz/certs/icp-brasil-chain.pem
 **/*.key
 **/npm-debug.log*
 **/yarn-error.log*

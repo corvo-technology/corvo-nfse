@@ -25,7 +25,11 @@ describeReal(
     const http = () => request(ctx.app.getHttpServer());
 
     /** Every /v1/platform route with the verb it answers to. */
-    const routes: Array<{ method: 'get' | 'post'; path: () => string }> = [
+    const routes: Array<{
+      method: 'get' | 'post' | 'put';
+      path: () => string;
+      body?: object;
+    }> = [
       { method: 'get', path: () => '/v1/platform/overview' },
       { method: 'get', path: () => '/v1/platform/users' },
       {
@@ -44,11 +48,10 @@ describeReal(
       headers: Record<string, string>,
     ) => {
       const req = http()[route.method](route.path()).set(headers);
-      return route.method === 'post'
-        ? req
-            .set('Idempotency-Key', randomUUID())
-            .send({ amount: 5, reason: 'cortesia de teste' })
-        : req;
+      if (route.method === 'get') return req;
+      return req
+        .set('Idempotency-Key', randomUUID())
+        .send(route.body ?? { amount: 5, reason: 'cortesia de teste' });
     };
     const cookieHeaders = (who: { cookie: string; csrf?: string }) => ({
       Cookie: who.cookie,

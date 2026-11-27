@@ -7,6 +7,7 @@ import { Field, Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { integrations, type IntegrationConnection, type IntegrationProvider } from "@/lib/api";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { Select } from "@/components/ui/select";
 
 interface ConnectionCredentialsProps {
   connection: IntegrationConnection;
@@ -62,9 +63,9 @@ export function ConnectionCredentials({ connection, provider, canManage, onUpdat
               <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (value.trim() || field.options) void save(field.key); }}>
                 <Field label={t("detail.credentials.newValue")} className="min-w-[14rem] flex-1">
                   {(control) => field.options ? (
-                    <select {...control} className="field" value={value || field.options[0]} onChange={(e) => setValue(e.target.value)}>
+                    <Select {...control} value={value || field.options[0]} onChange={(e) => setValue(e.target.value)}>
                       {field.options.map((option) => <option key={option} value={option}>{t.has(`wizard.options.${field.key}.${option}`) ? t(`wizard.options.${field.key}.${option}`) : option}</option>)}
-                    </select>
+                    </Select>
                   ) : <Input {...control} type="password" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />}
                 </Field>
                 <Button type="submit" variant="accent" size="sm" disabled={!value.trim() && !field.options} loading={busy}>{t("detail.credentials.save")}</Button>

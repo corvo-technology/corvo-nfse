@@ -17,6 +17,7 @@ import {
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { data } from '@/shared/http/response';
 import { FiscalPortalBreaker } from '../application/fiscal-portal-breaker';
+import { AuthorityReachabilityStore } from '@/modules/portal-reachability/authority-reachability.store';
 import { PortalReachabilityStore } from '@/modules/portal-reachability/reachability.store';
 import { InvoiceReviewService } from '../application/invoice-review.service';
 import { ReviewInvoicesDto } from './invoice-review.dto';
@@ -29,6 +30,7 @@ export class InvoiceReviewController {
     private readonly review: InvoiceReviewService,
     private readonly portal: FiscalPortalBreaker,
     private readonly reachability: PortalReachabilityStore,
+    private readonly authorityReachability: AuthorityReachabilityStore,
   ) {}
 
   @Post('invoices/review')
@@ -65,7 +67,7 @@ export class InvoiceReviewController {
       'available is false while emission is paused because the portal stopped answering; invoices wait in the queue and are sent once it answers again. connection says what the connection tests see: ok, portal_down (the portal is down), or a problem on the Corvo side (gov_unreachable_from_us, no_internet, emission_failures); invoices wait in the queue in every case.',
   })
   async portalStatus(@Req() req: RequestWithAuthContext) {
-    const [status, connection] = await Promise.all([
+    const [status, connection, authorities, probed] = await Promise.all([
       this.portal.status(executionEnvironment(req.authContext!)),
       this.reachability
         .current()
@@ -74,7 +76,13 @@ export class InvoiceReviewController {
           since: null,
           ourSide: false,
         })),
+      this.portal.authorities(),
+      this.authorityReachability.all().catch(() => []),
     ]);
-    return data({ ...status, connection });
+    return data({
+      ...status,
+      connection: { ...connection, authorities: probed },
+      authorities,
+    });
   }
 }

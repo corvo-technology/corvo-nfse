@@ -37,6 +37,9 @@ const platformAdminExemptions: Record<string, string[]> = {
     '@/modules/auth/infra/typeorm-tenant.repository',
     '../infra/platform-admin-audit.repository',
   ],
+  'platform-admin/application/platform-contingency.service.ts': [
+    '../infra/platform-admin-audit.repository',
+  ],
 };
 
 describe('business persistence boundaries', () => {

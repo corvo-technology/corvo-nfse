@@ -48,7 +48,9 @@ function WorkspaceBlock({ workspace, email, onGranted }: { workspace: PlatformWo
             <h2 className="font-medium">{t("workspace")} <span className="text-sm text-text-3">{workspace.tenantId}</span></h2>
             <p className="text-sm text-text-3">{t("role")}: <span>{workspace.role}</span>{workspace.isOwn && <> · {t("own")}</>}</p>
           </div>
-          {billing && workspace.isOwn && <GrantCreditsButton tenantId={workspace.tenantId} email={email} onGranted={onGranted} />}
+          <div className="flex flex-wrap items-start gap-3">
+            {billing && workspace.isOwn && <GrantCreditsButton tenantId={workspace.tenantId} email={email} onGranted={onGranted} />}
+          </div>
         </div>
 
         {billing && (

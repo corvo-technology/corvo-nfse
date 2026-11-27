@@ -14,6 +14,7 @@ import { Field } from "@/components/ui/input";
 import { ServiceCodeCombobox } from "@/components/ui/service-code-combobox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiErrorText } from "@/lib/use-api-error";
+import { Select } from "@/components/ui/select";
 
 /** Mirrors the API rule `simples.ibscbs-effective`: from this date Simples Nacional invoices may need IBS/CBS classification. */
 const SIMPLES_IBSCBS_FROM = "2027-01-01";
@@ -102,8 +103,8 @@ function Guide({ company, canView, canManage }: { company: Company; canView: boo
         : todo(t("serviceTitle"), t(serviceState === "missing" ? "serviceHint" : "serviceReviewHint"), serviceState === "missing" || serviceState === "unreviewed"
           ? <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("serviceLabel")} required>{props => <ServiceCodeCombobox {...props} value={code} onChange={setCode} />}</Field>
-            <Field label={t("issRateLabel")} required hint={t("issRateHint")}>{props => <input {...props} className="field" inputMode="decimal" placeholder="5" value={issRate} disabled={saving} onChange={event => setIssRate(event.target.value)} />}</Field>
-            <Field label={t("retentionLabel")} className="sm:col-span-2">{props => <select {...props} className="field" value={retention} disabled={saving} onChange={event => setRetention(event.target.value as typeof retention)}><option value="NONE_CONFIRMED">{t("retentionNone")}</option><option value="UNKNOWN">{t("retentionSome")}</option></select>}</Field>
+            <Field label={t("issRateLabel")} required hint={t("issRateHint")}>{props => <input {...props} inputMode="decimal" placeholder="5" value={issRate} disabled={saving} onChange={event => setIssRate(event.target.value)} />}</Field>
+            <Field label={t("retentionLabel")} className="sm:col-span-2">{props => <Select {...props} value={retention} disabled={saving} onChange={event => setRetention(event.target.value as typeof retention)}><option value="NONE_CONFIRMED">{t("retentionNone")}</option><option value="UNKNOWN">{t("retentionSome")}</option></Select>}</Field>
             <div className="sm:col-span-2"><Button variant="accent" loading={saving} onClick={saveService}>{t("saveService")}</Button></div>
           </div>
           : <p className="text-[12.5px] text-text-3">{t("serviceAdvanced")}</p>)}

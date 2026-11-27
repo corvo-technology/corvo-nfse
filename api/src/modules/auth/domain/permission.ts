@@ -14,7 +14,10 @@ export type TenantPermission =
   | 'nfse.certificates.view'
   | 'nfse.certificates.manage'
   | 'nfse.invoices.view'
-  | 'nfse.invoices.issue';
+  | 'nfse.invoices.issue'
+  | 'nfe.documents.view'
+  | 'nfe.documents.issue'
+  | 'nfe.documents.manage';
 
 /** Roles supported for tenant memberships. */
 export type TenantMembershipRole = 'admin' | 'developer' | 'billing';
@@ -48,6 +51,9 @@ export const TENANT_ADMIN_PERMISSIONS: TenantPermission[] = [
   'nfse.certificates.manage',
   'nfse.invoices.view',
   'nfse.invoices.issue',
+  'nfe.documents.view',
+  'nfe.documents.issue',
+  'nfe.documents.manage',
 ];
 
 const DEVELOPER_PERMISSIONS: TenantPermission[] = [
@@ -63,6 +69,9 @@ const DEVELOPER_PERMISSIONS: TenantPermission[] = [
   'nfse.certificates.view',
   'nfse.invoices.view',
   'nfse.invoices.issue',
+  'nfe.documents.view',
+  'nfe.documents.issue',
+  'nfe.documents.manage',
 ];
 
 const BILLING_PERMISSIONS: TenantPermission[] = [
@@ -73,6 +82,7 @@ const BILLING_PERMISSIONS: TenantPermission[] = [
   'billing.manage',
   'nfse.companies.view',
   'nfse.invoices.view',
+  'nfe.documents.view',
 ];
 
 export const TENANT_ROLE_PERMISSIONS: Readonly<
@@ -98,6 +108,7 @@ export const TENANT_PERMISSION_CATEGORY_CATALOG: PermissionCategoryCatalogItem[]
     { id: 'settings', name: 'Settings' },
     { id: 'billing', name: 'Billing' },
     { id: 'nfse', name: 'NFS-e' },
+    { id: 'nfe', name: 'NF-e' },
   ];
 
 const PERMISSION_LABELS: Record<
@@ -183,6 +194,22 @@ const PERMISSION_LABELS: Record<
     name: 'Issue NFS-e invoices',
     description: 'Can create and emit NFS-e invoices',
     category: 'nfse',
+  },
+  'nfe.documents.view': {
+    name: 'View NF-e documents',
+    description: 'Can list and view NF-e documents and company NF-e settings',
+    category: 'nfe',
+  },
+  'nfe.documents.issue': {
+    name: 'Issue NF-e documents',
+    description: 'Can create and emit NF-e documents',
+    category: 'nfe',
+  },
+  'nfe.documents.manage': {
+    name: 'Manage NF-e documents',
+    description:
+      'Can cancel, correct and void NF-e documents and edit company NF-e settings',
+    category: 'nfe',
   },
 };
 

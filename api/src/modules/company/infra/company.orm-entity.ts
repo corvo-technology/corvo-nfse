@@ -4,6 +4,7 @@ import {
   ForeignKey,
   Index,
   Check,
+  Unique,
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -12,6 +13,7 @@ import {
 } from 'typeorm';
 
 @Entity('nfse_companies')
+@Unique('uq_nfse_companies_id_tenant', ['id', 'tenantId'])
 @ForeignKey('TenantOrmEntity', ['tenantId'], ['id'], {
   name: 'fk_nfse_companies_tenant',
   onDelete: 'CASCADE',

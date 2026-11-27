@@ -21,6 +21,7 @@ import { ManualReviewActions } from "@/components/invoices/manual-review-actions
 import { PendingSalesPanel } from "@/components/dashboard/integrations/pending-sales-panel";
 import { usePendingSales } from "@/lib/use-pending-sales";
 import { InvoicePackageButton } from "@/components/invoices/invoice-package-button";
+import { Select } from "@/components/ui/select";
 
 const FILTERS = ["all", "scheduled", "authorized", "processing", "manual_review", "rejected", "cancelled", "sales"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -112,10 +113,10 @@ function InvoicesList() {
 
       <label className="flex items-center gap-2 text-sm text-text-3">
         <span>{tOrigin("filterLabel")}</span>
-        <select value={origin} onChange={(e) => setOrigin(e.target.value as InvoiceOriginKind | "")} className="min-h-10 rounded-md border border-border bg-transparent px-3 text-[13px] text-text">
+        <Select value={origin} onChange={(e) => setOrigin(e.target.value as InvoiceOriginKind | "")} className="w-auto">
           <option value="">{tOrigin("all")}</option>
           {INVOICE_ORIGINS.map((o) => <option key={o} value={o}>{tOrigin(`kind.${o}`)}</option>)}
-        </select>
+        </Select>
       </label>
 
       {!showingSales && pendingSales.sales.length > 0 && (

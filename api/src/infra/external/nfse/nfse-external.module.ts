@@ -1,13 +1,18 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Inject, Module, type OnModuleInit } from '@nestjs/common';
+import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal-document.registry';
+import { FiscalCoreModule } from '@/modules/fiscal-core/fiscal-core.module';
+import { PortalReachabilityReadModule } from '@/modules/portal-reachability/portal-reachability-read.module';
+import { NfseGatewayAdapter } from './nfse-gateway.adapter';
 import { GovRateLimiter } from './gov-rate-limiter';
 import { OpenNfseProvider } from './open-nfse.provider';
 import { FakeNfseProvider } from './fake-nfse.provider';
 import { NfseProviderFactory } from './nfse-provider.factory';
 import { FAKE_NFSE_PROVIDER, OPEN_NFSE_PROVIDER } from './nfse.constants';
-import { FISCAL_PROVIDER } from './nfse-fiscal-provider';
+import { FISCAL_PROVIDER, type FiscalProvider } from './nfse-fiscal-provider';
 
 @Global()
 @Module({
+  imports: [FiscalCoreModule, PortalReachabilityReadModule],
   providers: [
     GovRateLimiter,
     OpenNfseProvider,
@@ -25,4 +30,14 @@ import { FISCAL_PROVIDER } from './nfse-fiscal-provider';
     GovRateLimiter,
   ],
 })
-export class NfseExternalModule {}
+export class NfseExternalModule implements OnModuleInit {
+  constructor(
+    private readonly registry: FiscalDocumentRegistry,
+    @Inject(OPEN_NFSE_PROVIDER) private readonly provider: FiscalProvider,
+  ) {}
+
+  /** Exposes the NFS-e provider through the shared fiscal ports; the NFS-e workflow is unchanged. */
+  onModuleInit(): void {
+    this.registry.register(new NfseGatewayAdapter(this.provider));
+  }
+}

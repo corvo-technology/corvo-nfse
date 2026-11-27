@@ -40,8 +40,12 @@ export function createInMemoryRetryStore() {
   };
 }
 
+export function parsePfx(_pfx: unknown, _password: string) {
+  return { keyPem: 'MOCK-KEY', certPem: 'MOCK-CERT' };
+}
+
 export class NfseClient {
-  constructor(_config: any) {}
+  constructor(public readonly options: any) {}
   // eslint-disable-next-line @typescript-eslint/require-await
   async emitir(_params: any) {
     return {

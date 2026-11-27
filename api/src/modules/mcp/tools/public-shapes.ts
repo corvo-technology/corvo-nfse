@@ -13,6 +13,7 @@ function maskTaxId(taxId: string | undefined): string | null {
 export function toPublicInvoice(invoice: Invoice) {
   const i = invoice.toJSON();
   return {
+    type: 'nfse' as const,
     id: i.id,
     company_id: i.companyId,
     status: i.status,
@@ -31,6 +32,7 @@ export function toPublicInvoice(invoice: Invoice) {
 
 /** Fields of an invoice that agents may see in the detail tools. Anything not listed stays hidden. */
 const DETAILED_INVOICE_FIELDS = [
+  'type',
   'id',
   'companyId',
   'environment',
@@ -118,5 +120,89 @@ export function toPublicWebhookDelivery(delivery: WebhookDelivery) {
     error: snippet(delivery.lastError ?? delivery.errorMessage),
     response_snippet: snippet(delivery.responseBody),
     created_at: delivery.createdAt,
+  };
+}
+
+/** Fields of an NF-e that agents may see. An allowlist: no XML, no log of the SEFAZ answer. */
+const DETAILED_NFE_FIELDS = [
+  'type',
+  'id',
+  'companyId',
+  'environment',
+  'model',
+  'status',
+  'series',
+  'number',
+  'accessKey',
+  'issuedAt',
+  'authorizedAt',
+  'protocol',
+  'cStat',
+  'xMotivo',
+  'cancelReason',
+  'cancelRequestedAt',
+  'natOp',
+  'recipient',
+  'items',
+  'totals',
+  'payment',
+  'additionalInfo',
+  'externalId',
+  'documentsReady',
+  'documentsReadyAt',
+  'documentsStatus',
+  'stage',
+  'emailStatus',
+  'emailSentAt',
+  'attempt',
+  'lastError',
+  'nextCheckAt',
+  // NFC-e only: the QR Code text (v3, no secret) and the consult page
+  'qrCode',
+  'urlChave',
+  'createdAt',
+  'updatedAt',
+] as const;
+
+/** Detail view of an NF-e (nfse_get): the API answer, filtered by an allowlist. */
+export function toDetailedNfe(nfe: unknown): Record<string, unknown> {
+  const json = nfe as Record<string, unknown>;
+  const detail: Record<string, unknown> = {};
+  for (const field of DETAILED_NFE_FIELDS)
+    if (field in json) detail[field] = json[field];
+  return detail;
+}
+
+/** Compact line of an NF-e in a list: the recipient is a name and the last 4 digits of the tax id. */
+export function toPublicNfe(nfe: unknown) {
+  const n = nfe as {
+    type?: string;
+    id: string;
+    companyId: string;
+    status: string;
+    series: number | null;
+    number: number | null;
+    accessKey: string | null;
+    totals?: { vNF?: string } | null;
+    recipient?: { name?: string; taxId?: string } | null;
+    authorizedAt: unknown;
+    createdAt: unknown;
+    lastError?: { code?: string; message?: string } | null;
+  };
+  return {
+    type: n.type === 'nfce' ? ('nfce' as const) : ('nfe' as const),
+    id: n.id,
+    companyId: n.companyId,
+    status: n.status,
+    series: n.series,
+    number: n.number,
+    accessKey: n.accessKey,
+    amount: n.totals?.vNF ?? null,
+    recipientName: n.recipient?.name ?? null,
+    recipientTaxId: maskTaxId(n.recipient?.taxId),
+    authorizedAt: n.authorizedAt,
+    createdAt: n.createdAt,
+    errorCode: n.lastError?.code ?? null,
+    errorMessage: n.lastError?.message ?? null,
   };
 }

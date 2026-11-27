@@ -8,6 +8,53 @@ Built from `git log --since=2026-10-26` and the diff of the controllers and DTOs
 
 - `GET /fiscal-portal/status` answers a new field, `connection` (`state`, `since`, `ourSide`): what the connection tests see (`ok`, `portal_down`, `gov_unreachable_from_us`, `no_internet`, `emission_failures`). Additive; invoices wait in the queue in every state.
 
+## Next: NFC-e in test mode (homologação)
+
+NFC-e (consumer sale, model 65) joins the same `/invoices` routes with `type: "nfce"`. It is open to every account (no release; production answers `422 NFE_PRODUCTION_DISABLED` until it is turned on), runs only against the SEFAZ test environment and starts in SP. Nothing about NFS-e or NF-e changed: the NFC-e only adds values and optional fields.
+
+- `invoices_create`, `invoices_validate` and `invoices_resubmit` accept the NFC-e body (`recipient` optional, `indPres` 1, 4 or 5, `payments[].card`; no `natOp`); the `202` answer is `{ type: "nfce", id, status, replayed? }`. `invoices_list` takes `type=nfce`, and `type=all` also brings the NFC-e.
+- `invoices_get` of an NFC-e adds `qrCode` and `urlChave`. `invoices_downloadPdf` answers the DANFCE (80 mm cupom); `?layout=a4` answers the same note on an A4 page (the NF-e and the NFS-e ignore `layout`).
+- `invoices_correct` on a NFC-e answers `422 INVOICE_OPERATION_NOT_SUPPORTED` (there is no correction letter). `invoices_cancel` is meant for the first 30 minutes. `invoices_createInutilization` and `invoices_numberGaps` take `type=nfce`.
+- Company settings (`companies_getNfeSettings` / `companies_updateNfeSettings`) gain `nfceDefaultSeries` (0 to 999, default 1).
+- New codes (open string): `NFCE_CONSUMER_ID_REQUIRED`, `NFCE_DELIVERY_ADDRESS_REQUIRED`, `NFCE_IND_PRES_INVALID`, `NFCE_CARD_DATA_REQUIRED`, `NFCE_CARD_BRAND_INVALID`, `NFCE_CARD_NOT_ALLOWED`, `NFCE_NO_PAYMENT_AMOUNT`, `NFCE_SCOPE_NOT_SUPPORTED`.
+- New webhook events, with `data.documentType: "nfce"`: `nfce.document.authorized`, `.rejected`, `.denied`, `.failed`, `.reconciliation_required`, `.manual_review`, `.documents_ready`, `.email_sent`, `.email_failed`, `.cancelled`, `.cancellation_rejected`, and `nfce.inutilization.completed` / `nfce.inutilization.rejected`.
+- MCP: `type: "nfce"` in `nfse_issue`, `nfse_list` (and `all`), `nfse_get`, `nfse_cancel`, `nfse_review` and the downloads; `nfe_validate` takes `type`; `nfe_inutilize` and `nfe_number_gaps` take `model` 55 or 65; `nfe_settings_update` takes `nfce_default_series`.
+
+## Next: NF-e in test mode (homologação)
+
+NF-e (goods, model 55) joins the API **inside the existing `/invoices` routes**, chosen by a `type`. It is open to every account (no release; production answers `422 NFE_PRODUCTION_DISABLED` until it is turned on), runs only against the SEFAZ test environment, and is for Simples Nacional / MEI companies in every state. Corvo does not calculate NF-e taxes: the caller sends CFOP, NCM and CSOSN.
+
+### Note for SDK and client generators: nothing about NFS-e changed
+
+- No NFS-e route, field, enum value, status or error code was renamed or removed. A request without `type` is an NFS-e, and an NFS-e answer still has no `type` (absent means `nfse`).
+- `invoices_create` accepts `type: "nfe"` in the body; its `202` answer for an NF-e (`200` when the same `Idempotency-Key` is repeated) is `{ type: "nfe", id, status, replayed? }`. `invoices_list` takes `type=nfse|nfe|all` (default `nfse`): `nfe` lists NF-e, `all` answers a summary shape with a keyset cursor, and the NFS-e-only filters (`from`, `to`, `externalId`, `customerTaxId`, `origin`) are refused with `400` for `nfe` and `all`.
+- Every route that has an `{id}` (`invoices_get`, `_cancel`, `_listEvents`, `_downloadXml`, `_downloadPdf`, `_createDownloadUrl`) finds the document by its id, so the same operation serves both types. An operation that exists for only one type answers `422 INVOICE_OPERATION_NOT_SUPPORTED` when asked for the other (for example `invoices_correct`, `invoices_discard` or inutilization for an NFS-e). The cancel body of an NF-e is `{ justification }` (15 to 255 characters), not `{ reason, description }`.
+- An NF-e issue (`POST`) and a resubmission (`PUT`) require the `Idempotency-Key` header (1 to 200 characters); for an NFS-e it stays optional.
+- Treat `code` as an open string: new ones appear (`NFE_VALIDATION_FAILED`, `COMPANY_NFE_INCOMPLETE`, `STATE_REGISTRATION_INVALID`, `UF_NOT_ENABLED`, `NFE_PRODUCTION_DISABLED`, `NFE_INVALID_STATE`, `JUSTIFICATION_LENGTH`, `CORRECTION_LENGTH`, `CORRECTION_LIMIT_REACHED`, `INUTILIZATION_RANGE_*`, `IDEMPOTENCY_KEY_*`, `INVOICE_OPERATION_NOT_SUPPORTED`, ...). NF-e errors add `type` (`communication`, `validation` or `configuration`).
+
+### New operations (tag `NF-e` for the company settings; the others are tagged `Invoices`)
+
+| Operation | Route | What it does |
+| --- | --- | --- |
+| `companies_getNfeSettings` / `companies_updateNfeSettings` | `GET` / `PUT /companies/{id}/nfe-settings` | IE, CRT, default series, nature of the operation and CSOSN; `missing` lists what the company still lacks |
+| `invoices_validate` | `POST /invoices/validate` | Dry-run of an NF-e (`type` in the body); `?includeXml=true` adds the XML |
+| `invoices_resubmit` | `PUT /invoices/{id}` | Fix and send a rejected NF-e again, same number |
+| `invoices_sync` | `POST /invoices/{id}/sync` | Ask the SEFAZ about the note by its access key |
+| `invoices_discard` | `POST /invoices/{id}/discard` | Give up a rejected NF-e |
+| `invoices_correct` | `POST /invoices/{id}/corrections` | Correction letter (CC-e), up to 20 per note |
+| `invoices_createInutilization` / `invoices_listInutilizations` | `POST` / `GET /invoices/inutilizations` | Inutilize a range of numbers (`type` required) |
+| `invoices_numberGaps` | `GET /invoices/number-gaps?type=nfe` | Skipped numbers per company and series |
+
+Existing operations that gained the NF-e behaviour: `invoices_create`, `invoices_list`, `invoices_get`, `invoices_cancel`, `invoices_listEvents` (for an NF-e it answers the timeline of states and fiscal events, not paginated), `invoices_downloadXml` (authorized `nfeProc`), `invoices_downloadPdf` (DANFE) and `invoices_createDownloadUrl`.
+
+### Webhooks
+
+New events, with `data.documentType: "nfe"` and `data.documentId` instead of `invoiceId`: `nfe.document.authorized`, `.rejected`, `.denied`, `.failed`, `.reconciliation_required`, `.manual_review`, `.cancelled`, `.cancellation_rejected`, `.corrected`, `.documents_ready`, `.email_sent`, `.email_failed`, and `nfe.inutilization.completed` / `nfe.inutilization.rejected`. The NFS-e events and their payload did not change; the filter by `invoiceId` keeps working.
+
+### MCP
+
+`nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` and `nfse_download_pdf` take an optional `type` (`nfse` default, `nfe`; `nfse_list` also `all`); without it they behave exactly as before. New tools, listed for every account: `nfe_validate`, `nfe_correct`, `nfe_inutilize`, `nfe_number_gaps`, `nfe_settings_get`, `nfe_settings_update`.
+
 ## 0.3.0 (2026-11-24)
 
 ### Breaking changes

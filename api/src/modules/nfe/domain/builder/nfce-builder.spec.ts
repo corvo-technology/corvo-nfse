@@ -1,0 +1,245 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { XMLParser } from 'fast-xml-parser';
+import { makeTestA1 } from '../../../../../test/fixtures/nfe/test-a1';
+import { loadCertificate } from '@/infra/external/nfe/sefaz/certificate-loader';
+import { XmllintSchemaValidator } from '@/infra/external/nfe/sefaz/schema-validator';
+import {
+  SefazXmlSigner,
+  withStructuralSignature,
+} from '@/infra/external/nfe/sefaz/xml-signer';
+import { buildNfceDraft } from '@/modules/nfce/domain/nfce-draft';
+import type { NfceInput } from '@/modules/nfce/domain/nfce-input';
+import { SETTINGS, issuerFixture } from '../../testing/draft-fixture';
+import { HOMOLOGATION_RECIPIENT_NAME } from './context';
+import { NfeXmlBuilder } from './nfe-xml-builder';
+import {
+  ALL_NFCE_FIXTURES,
+  NFCE_ANONIMA,
+  NFCE_CARTAO,
+  NFCE_COM_CPF,
+} from './__fixtures__/inputs';
+
+const schema = new XmllintSchemaValidator();
+const FIXED_ITEM_TEXT =
+  'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
+
+const builderOf = (input: NfceInput, environment: 'test' | 'live' = 'test') =>
+  NfeXmlBuilder.for(
+    buildNfceDraft(input, issuerFixture(), SETTINGS, environment),
+  )
+    .withNumber(1, 10)
+    .withCnf('12345678')
+    .withIssuedAt('2026-11-26T10:00:00-03:00')
+    .withVerProc('Corvo 0.0.1')
+    .withSupplement({
+      qrCodeBase: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode',
+      urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+    });
+
+const parse = (xml: string) =>
+  new XMLParser({ parseTagValue: false, isArray: (n) => n === 'det' }).parse(
+    xml,
+  ) as {
+    NFe: {
+      infNFe: {
+        ide: Record<string, string>;
+        dest?: Record<string, string>;
+        det: Array<{ prod: { xProd: string } }>;
+      };
+    };
+  };
+
+describe('NfeXmlBuilder, model 65', () => {
+  it('anonymous sale: no dest, mod 65, DANFCE, inside the UF, key with 65', () => {
+    const built = builderOf(NFCE_ANONIMA).build();
+    const { infNFe } = parse(built.xml).NFe;
+    expect(infNFe.dest).toBeUndefined();
+    expect(infNFe.ide.mod).toBe('65');
+    expect(infNFe.ide.tpImp).toBe('4');
+    expect(infNFe.ide.idDest).toBe('1');
+    expect(infNFe.ide.indFinal).toBe('1');
+    expect(infNFe.ide.indPres).toBe('1');
+    expect(built.accessKey.slice(20, 22)).toBe('65');
+  });
+
+  it('homologation: only the first item gets the fixed text (Review Focus 1)', () => {
+    const { det } = parse(builderOf(NFCE_COM_CPF).build().xml).NFe.infNFe;
+    expect(det[0].prod.xProd).toBe(FIXED_ITEM_TEXT);
+    expect(det[1].prod.xProd).toBe('Segundo produto');
+  });
+
+  it('production keeps the real description', () => {
+    const { det } = parse(builderOf(NFCE_COM_CPF, 'live').build().xml).NFe
+      .infNFe;
+    expect(det[0].prod.xProd).toBe('Produto de teste');
+  });
+
+  it('a CPF consumer in homologation gets the fixed name, no address, indIEDest 9, no IE', () => {
+    const { dest } = parse(builderOf(NFCE_COM_CPF).build().xml).NFe.infNFe;
+    expect(dest).toEqual({
+      CPF: '12345678909',
+      xNome: HOMOLOGATION_RECIPIENT_NAME,
+      indIEDest: '9',
+    });
+  });
+
+  it('a CPF consumer in production keeps the name', () => {
+    const { dest } = parse(builderOf(NFCE_COM_CPF, 'live').build().xml).NFe
+      .infNFe;
+    expect(dest?.xNome).toBe('Maria da Silva');
+  });
+
+  it('a CPF alone sends no xNome in production', () => {
+    const { dest } = parse(
+      builderOf(
+        { ...NFCE_ANONIMA, recipient: { taxId: '12345678909' } },
+        'live',
+      ).build().xml,
+    ).NFe.infNFe;
+    expect(dest).toEqual({ CPF: '12345678909', indIEDest: '9' });
+  });
+
+  it('a name without a CPF leaves no dest (the layout needs an identification)', () => {
+    const built = builderOf({
+      ...NFCE_ANONIMA,
+      recipient: { name: 'Maria' },
+    }).build();
+    expect(parse(built.xml).NFe.infNFe.dest).toBeUndefined();
+  });
+
+  it('card group follows the layout order', () => {
+    expect(builderOf(NFCE_CARTAO).build().xml).toContain(
+      '<card><tpIntegra>1</tpIntegra><CNPJ>11222333000181</CNPJ><tBand>01</tBand><cAut>A1B2C3</cAut></card>',
+    );
+    const bare = builderOf({
+      ...NFCE_ANONIMA,
+      payments: [{ tPag: '03', amount: 20, card: {} }],
+    }).build().xml;
+    expect(bare).toContain('<card><tpIntegra>2</tpIntegra></card>');
+  });
+
+  it.each(Object.entries(ALL_NFCE_FIXTURES))(
+    '%s passes the XSD with a structural signature',
+    async (_, input) => {
+      const built = builderOf(input).build();
+      expect(
+        await schema.validate(
+          withStructuralSignature(built.xml, built.referenceTag),
+          'nfe',
+        ),
+      ).toEqual({ ok: true });
+    },
+  );
+
+  describe('infNFeSupl', () => {
+    it('carries the QR Code v3 and the urlChave, after infNFe', () => {
+      const built = builderOf(NFCE_ANONIMA).build();
+      expect(built.qrCode).toBe(
+        `https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=${built.accessKey}|3|2`,
+      );
+      expect(built.urlChave).toBe(
+        'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+      );
+      expect(built.xml).toContain(
+        `</infNFe><infNFeSupl><qrCode>${built.qrCode}</qrCode><urlChave>${built.urlChave}</urlChave></infNFeSupl></NFe>`,
+      );
+      expect(built.xml).not.toContain('CDATA');
+    });
+
+    it('uses tpAmb 1 in the QR of a live company', () => {
+      const built = builderOf(NFCE_ANONIMA, 'live')
+        .withSupplement({
+          qrCodeBase: 'https://www.nfce.fazenda.sp.gov.br/qrcode',
+          urlChave: 'https://www.nfce.fazenda.sp.gov.br/consulta',
+        })
+        .build();
+      expect(built.qrCode?.endsWith('|3|1')).toBe(true);
+    });
+
+    it('is required for model 65', () => {
+      const base = NfeXmlBuilder.for(
+        buildNfceDraft(NFCE_ANONIMA, issuerFixture(), SETTINGS, 'test'),
+      )
+        .withNumber(1, 10)
+        .withCnf('12345678')
+        .withIssuedAt('2026-11-26T10:00:00-03:00');
+      expect(() => base.build()).toThrow(
+        'NfeXmlBuilder: withSupplement() is required for model 65',
+      );
+    });
+
+    it('signed for real: Signature comes after infNFeSupl and the XSD passes', async () => {
+      const { pfx, password } = makeTestA1({ cnpj: '11222333000181' });
+      const built = builderOf(NFCE_COM_CPF).build();
+      const signed = new SefazXmlSigner().sign(
+        built.xml,
+        built.referenceTag,
+        loadCertificate(pfx, password),
+      );
+      expect(signed.indexOf('</infNFeSupl><Signature')).toBeGreaterThan(0);
+      expect(await schema.validate(signed, 'nfe')).toEqual({ ok: true });
+    });
+
+    it('produces the XML of the fixture, byte for byte', () => {
+      const expected = readFileSync(
+        join(__dirname, '__fixtures__', 'nfce-simples-102.xml'),
+        'utf8',
+      ).trim();
+      expect(builderOf(NFCE_ANONIMA).build().xml).toBe(expected);
+    });
+  });
+  describe('contingency (tpEmis 9)', () => {
+    const contingency = {
+      tpEmis: 9 as const,
+      dhCont: '2026-11-26T10:00:00-03:00',
+      xJust: 'SEFAZ indisponivel',
+    };
+    const offline = (input: NfceInput = NFCE_ANONIMA) =>
+      builderOf(input)
+        .withContingency(contingency)
+        .withSupplement({
+          qrCodeOf: (key) =>
+            `https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=${key}|3|2|26|20.00|||QUJD`,
+          urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+        });
+
+    it('writes tpEmis 9 in ide and in position 35 of the key, with dhCont and xJust at the end of ide', () => {
+      const built = offline().build();
+      expect(built.accessKey[34]).toBe('9');
+      const ide = parse(built.xml).NFe.infNFe.ide;
+      expect(ide.tpEmis).toBe('9');
+      expect(ide.dhCont).toBe('2026-11-26T10:00:00-03:00');
+      expect(ide.xJust).toBe('SEFAZ indisponivel');
+      expect(built.xml).toContain(
+        '</verProc><dhCont>2026-11-26T10:00:00-03:00</dhCont><xJust>SEFAZ indisponivel</xJust></ide>',
+      );
+      expect(built.qrCode).toContain(`?p=${built.accessKey}|3|2|26|`);
+    });
+
+    it('passes the XSD with a structural signature', async () => {
+      const built = offline().build();
+      expect(
+        await schema.validate(
+          withStructuralSignature(built.xml, built.referenceTag),
+          'nfe',
+        ),
+      ).toEqual({ ok: true });
+    });
+
+    it('without contingency the XML is the same as before', () => {
+      const built = builderOf(NFCE_ANONIMA).withContingency(null).build();
+      expect(built.accessKey[34]).toBe('1');
+      expect(built.xml).not.toContain('dhCont');
+    });
+
+    it('refuses an xJust with 14 characters', () => {
+      expect(() =>
+        builderOf(NFCE_ANONIMA).withContingency({
+          ...contingency,
+          xJust: '12345678901234',
+        }),
+      ).toThrow('xJust');
+    });
+  });
+});

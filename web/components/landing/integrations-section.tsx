@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check, FileText, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { CorvoLogo } from "@/components/ui/corvo-logo";
+import { INTEGRATION_PLATFORMS } from "@/lib/integrations-catalog";
 
 const PLATFORMS = [
   { id: "woovi", name: "Woovi", logo: "/integrations/woovi.png", width: 800, height: 250 },
@@ -10,6 +11,9 @@ const PLATFORMS = [
 ] as const;
 
 const STEPS = ["connect", "webhook", "done"] as const;
+
+/** Platforms listed on the integrations page beyond the two drawn here and the three named in the link. */
+const MORE_PLATFORMS = INTEGRATION_PLATFORMS.length - PLATFORMS.length - 3;
 
 /** Dark tiles, like the rest of the page: Woovi's green works as it is and AbacatePay's logo is the white version. */
 function PlatformTile({ id, name, logo, width, height }: (typeof PLATFORMS)[number]) {
@@ -28,13 +32,20 @@ const DownLine = () => <span aria-hidden className="mx-auto block h-8 w-0 border
 /** Two payment platforms feed Corvo, which hands back an invoice. Decorative: the text beside it says the same. */
 function FlowVisual() {
   const t = useTranslations("LandingIntegrations");
+  const locale = useLocale();
   return (
     <div className="flex min-w-0 flex-col items-stretch xl:flex-row xl:items-start xl:justify-center">
       <div className="flex w-full shrink-0 flex-col gap-4 xl:w-[192px]">
         {PLATFORMS.map((platform) => (
           <PlatformTile key={platform.id} {...platform} />
         ))}
-        <p className="rounded-[6px] border border-dashed border-ink/25 px-4 py-3 text-[12.5px] text-ink-2">{t("platforms.soon")}</p>
+        <Link
+          href={`/${locale}/integrations`}
+          className="flex flex-col gap-0.5 rounded-[6px] border border-dashed border-ink/25 px-4 py-3 text-[12.5px] leading-snug text-ink-2 transition-colors hover:border-ink/50 hover:text-ink"
+        >
+          <span>{t("platforms.moreLead", { count: MORE_PLATFORMS })}</span>
+          <span className="font-medium text-ink">{t("platforms.moreCta")} →</span>
+        </Link>
       </div>
 
       <DownLine />

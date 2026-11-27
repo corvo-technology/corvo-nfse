@@ -60,11 +60,12 @@ describe('PlatformAdminModule', () => {
     expect(workerImports).not.toContain(PlatformAdminModule);
   });
 
-  it('agrega os seis módulos de feature', () => {
+  it('agrega os oito módulos de feature', () => {
     const { imports } = load('cloud');
     expect(imports.map((m) => m.name).sort()).toEqual([
       'PlatformAttentionModule',
       'PlatformAuditModule',
+      'PlatformContingencyModule',
       'PlatformCreditGrantModule',
       'PlatformOverviewModule',
       'PlatformUserDetailModule',
@@ -74,7 +75,7 @@ describe('PlatformAdminModule', () => {
 
   it('todo controller do módulo tem PLATFORM_ADMIN_ONLY e PlatformAdminGuard em __guards__', () => {
     const { controllers, guard } = load('cloud');
-    expect(controllers).toHaveLength(6);
+    expect(controllers).toHaveLength(7);
     for (const controller of controllers) {
       expect(Reflect.getMetadata(PLATFORM_ADMIN_ONLY, controller)).toBe(true);
       expect(Reflect.getMetadata('__guards__', controller)).toContain(guard);
@@ -90,6 +91,6 @@ describe('PlatformAdminModule', () => {
     expect(cloud.filter((n) => !self.includes(n))).toEqual([
       'PlatformCreditGrantController',
     ]);
-    expect(self).toHaveLength(5);
+    expect(self).toHaveLength(6);
   });
 });

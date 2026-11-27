@@ -29,6 +29,24 @@ export function Footer() {
               {t("pricing")}
             </Link>
             <Link
+              href={`/${locale}/integrations`}
+              className="hover:text-text-2 transition-colors"
+            >
+              {t("integrations")}
+            </Link>
+            <Link
+              href={`/${locale}/nf-e`}
+              className="hover:text-text-2 transition-colors"
+            >
+              {t("nfe")}
+            </Link>
+            <Link
+              href={`/${locale}/nfc-e`}
+              className="hover:text-text-2 transition-colors"
+            >
+              {t("nfce")}
+            </Link>
+            <Link
               href={`/${locale}/docs`}
               className="hover:text-text-2 transition-colors"
             >

@@ -422,7 +422,11 @@ export type InvoiceStatus = "queued" | "processing" | "authorized" | "rejected" 
 export type CancellationReasonCode = "issue_error" | "service_not_provided" | "other";
 /** What the national portal says about an authorized invoice. */
 export type PortalFlag = "taker_rejected" | "blocked";
+/** The kind of note: service (NFS-e), goods (NF-e) or consumer sale (NFC-e). */
+export type NoteType = "nfse" | "nfe" | "nfce";
 export interface Invoice {
+  /** Missing means NFS-e. */
+  type?: NoteType;
   portalFlag?: PortalFlag | null;
   id: string; tenantId: string; companyId: string; externalId?: string | null; idempotencyKey?: string | null;
   accessKey?: string | null; nfseNumber?: number | null; status: InvoiceStatus;

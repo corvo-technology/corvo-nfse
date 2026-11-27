@@ -77,7 +77,7 @@ describe('platform-admin invariants (source scan)', () => {
     expect(offenders.map(rel)).toEqual([]);
   });
 
-  it('fora do admin, runAsPlatformAdminOnTenant só existe na definição e na concessão', () => {
+  it('fora do admin, runAsPlatformAdminOnTenant só existe na definição, e na concessão', () => {
     const users = walk(SRC)
       .filter((f) => f.endsWith('.ts') && !isSpec(f))
       .filter((f) => /runAsPlatformAdminOnTenant/.test(code(f)))
@@ -147,6 +147,7 @@ describe('route table invariant', () => {
     expect(platform.map((c) => c.name).sort()).toEqual([
       'PlatformAttentionController',
       'PlatformAuditController',
+      'PlatformContingencyController',
       'PlatformCreditGrantController',
       'PlatformOverviewController',
       'PlatformUserDetailController',

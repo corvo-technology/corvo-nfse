@@ -36,6 +36,8 @@ export class WebhookDeliveryQuery extends CursorQuery {
   @IsOptional() @IsIn(['live', 'test']) environment?: 'live' | 'test';
   /** Only deliveries about this invoice. */
   @IsOptional() @IsUUID() invoice_id?: string;
+  /** Only deliveries about this NF-e. */
+  @IsOptional() @IsUUID() document_id?: string;
   /** Only this event, e.g. `nfse.invoice.authorized`. */
   @IsOptional()
   @IsString()

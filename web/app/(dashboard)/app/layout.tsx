@@ -33,7 +33,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/companies": t("Companies.title"),
     "/app/invoices": t("Invoices.title"),
     "/app/invoices/new": t("Invoices.newTitle"),
+    "/app/nfe": t("Nfe.title"),
+    "/app/nfe/new": t("Nfe.new.title"),
+    "/app/nfe/number-gaps": t("Nfe.gaps.title"),
+    "/app/customers": t("Customers.title"),
     "/app/integrations": t("Integrations.title"),
+    "/app/schedules": t("Schedules.title"),
     "/app/webhooks": t("Webhooks.title"),
     "/app/api-keys": t("ApiKeys.title"),
     "/app/agents": t("Agents.title"),
@@ -64,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const path = window.location.pathname;
       if (/^\/app\/companies\/[^/]+$/.test(path)) router.replace("/app/companies");
       else if (/^\/app\/invoices\/(?!new$)[^/]+$/.test(path)) router.replace("/app/invoices");
+      else if (/^\/app\/nfe\/(?!new$|number-gaps$)[^/]+$/.test(path)) router.replace("/app/nfe");
     };
     window.addEventListener("fiscal-environment-change", onEnvironmentChange);
     return () => window.removeEventListener("fiscal-environment-change", onEnvironmentChange);

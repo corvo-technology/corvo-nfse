@@ -9,6 +9,7 @@ import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/lib/auth";
 import { copyInvoiceHref } from "@/lib/invoice-copy";
+import { invoiceHref } from "@/lib/invoice-href";
 import { invoiceOrigin, originText } from "@/lib/invoice-origin";
 import { timeAgo } from "@/lib/i18n-helpers";
 import { formatScheduledDate, isScheduled } from "@/lib/invoice-schedule";
@@ -66,7 +67,10 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       primary: true,
       cell: (inv) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-text"><Link href={`/app/invoices/${inv.id}`} className="hover:text-accent">{inv.customerName || t("anonymousCustomer")}</Link></span>
+          <span className="flex items-center gap-2 truncate text-text">
+            {inv.type && inv.type !== "nfse" && <Badge variant="gray" dot={false}>{t(`noteType.${inv.type}`)}</Badge>}
+            <Link href={invoiceHref(inv)} className="truncate hover:text-accent">{inv.customerName || t("anonymousCustomer")}</Link>
+          </span>
           {(inv.status === "rejected" || inv.status === "failed") && (inv.lastErrorMessage || inv.lastErrorCode) ? (
             <span className="truncate text-[12px] font-normal text-danger">{invoiceError(inv.lastErrorCode, inv.lastErrorMessage)}</span>
           ) : (
@@ -119,12 +123,12 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       align: "right",
       cell: (inv) => <span className="text-[13px] text-text-3">{timeAgo(inv.createdAt, timeAgoT)}</span>,
     },
-    ...(can("nfse.invoices.issue") ? [{
+    ...(can("nfse.invoices.issue") && rows.some((inv) => !inv.type || inv.type === "nfse") ? [{
       id: "copy",
       header: t("copyAction"),
       action: true,
       align: "right" as const,
-      cell: (inv: Invoice) => (
+      cell: (inv: Invoice) => inv.type && inv.type !== "nfse" ? null : (
         <Link
           href={copyInvoiceHref(inv.id)}
           aria-label={t("copyInvoice", { name: inv.customerName || t("anonymousCustomer") })}
@@ -142,7 +146,7 @@ export function InvoiceTable({ invoices, emptyText, loading, maxRows, timeAgoT }
       align: "right",
       cell: (inv) => (
         <Link
-          href={`/app/invoices/${inv.id}`}
+          href={invoiceHref(inv)}
           aria-label={t("viewInvoice", { name: inv.customerName || t("anonymousCustomer") })}
           title={t("view")}
           className="-my-1.5 inline-flex h-9 w-9 items-center justify-center rounded-lg text-text-3 transition-colors hover:bg-white/5 hover:text-text"

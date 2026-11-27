@@ -299,3 +299,12 @@ describe("manual review in batches", () => {
     expect(results).toHaveLength(150);
   });
 });
+describe("overview with every kind of note", () => {
+  it("shows an NF-e next to an NFS-e, with its type, number and recipient", async () => {
+    const nfe = { id: "nfe-1", type: "nfe", companyId: "co-1", status: "denied", number: 7, accessKey: null, amount: "150.00", recipientName: "Loja X", externalId: null, authorizedAt: null, createdAt: "2026-11-27T10:00:00.000Z" };
+    fetchMock.mockResolvedValue(reply({ data: { period: "7d", from: "2026-11-21", to: "2026-11-27", timezone: "America/Sao_Paulo", counts: { authorized: 1, rejected: 1, processing: 0 }, dailyActivity: [], recentInvoices: [nfe, { ...invoice, type: "nfse" }] } }));
+    const overview = await invoices.overview("7d");
+    expect(overview.recentInvoices[0]).toMatchObject({ type: "nfe", id: "nfe-1", status: "rejected", nfseNumber: 7, amount: 150, customerName: "Loja X" });
+    expect(overview.recentInvoices[1]).toMatchObject({ type: "nfse", id: invoice.id });
+  });
+});

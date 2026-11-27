@@ -9,6 +9,7 @@ import { maskTaxId } from "@/lib/masks";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 
 export interface ScheduleCompanyOption { id: string; name: string }
 interface Props {
@@ -138,10 +139,10 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
         {!editing && (
           <Field label={t("form.company")} error={errors.company} required>
             {(c) => (
-              <select {...c} className="field" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+              <Select {...c} value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
                 <option value="">{t("form.companyPlaceholder")}</option>
                 {companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-              </select>
+              </Select>
             )}
           </Field>
         )}
@@ -161,33 +162,33 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
         {recurring && (
           <Field label={t("form.frequency")}>
             {(c) => (
-              <select {...c} className="field" value={frequency} onChange={(e) => setFrequency(e.target.value as ScheduleFrequency)}>
+              <Select {...c} value={frequency} onChange={(e) => setFrequency(e.target.value as ScheduleFrequency)}>
                 {FREQUENCIES.map((value) => <option key={value} value={value}>{t(`frequency.${value}`)}</option>)}
-              </select>
+              </Select>
             )}
           </Field>
         )}
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t("form.firstDate")} hint={t("form.firstDateHint")} error={errors.firstDate} required>
-            {(c) => <input {...c} type="date" className="field" min={tomorrowInSaoPaulo()} value={firstDate} onChange={(e) => setFirstDate(e.target.value)} />}
+            {(c) => <input {...c} type="date" min={tomorrowInSaoPaulo()} value={firstDate} onChange={(e) => setFirstDate(e.target.value)} />}
           </Field>
           {recurring && (
             <Field label={t("form.endsOn")} hint={t("form.endsOnHint")} optionalLabel={t("form.optional")}>
-              {(c) => <input {...c} type="date" className="field" min={firstDate || tomorrowInSaoPaulo()} value={endsOn} onChange={(e) => setEndsOn(e.target.value)} />}
+              {(c) => <input {...c} type="date" min={firstDate || tomorrowInSaoPaulo()} value={endsOn} onChange={(e) => setEndsOn(e.target.value)} />}
             </Field>
           )}
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t("form.amount")} error={errors.amount} required>
-            {(c) => <input {...c} type="text" inputMode="decimal" className="field" value={amount} onChange={(e) => setAmount(e.target.value)} />}
+            {(c) => <input {...c} type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />}
           </Field>
           <Field label={t("form.description")} optionalLabel={t("form.optional")}>
-            {(c) => <input {...c} type="text" className="field" value={description} onChange={(e) => setDescription(e.target.value)} />}
+            {(c) => <input {...c} type="text" value={description} onChange={(e) => setDescription(e.target.value)} />}
           </Field>
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t("form.purchaseOrder")} optionalLabel={t("form.optional")} hint={t("form.purchaseOrderHint")}>
-            {(c) => <input {...c} type="text" className="field" maxLength={60} value={purchaseOrder} onChange={(e) => setPurchaseOrder(e.target.value)} autoComplete="off" />}
+            {(c) => <input {...c} type="text" maxLength={60} value={purchaseOrder} onChange={(e) => setPurchaseOrder(e.target.value)} autoComplete="off" />}
           </Field>
           <Field label={t("form.notes")} optionalLabel={t("form.optional")} hint={t("form.notesHint")}>
             {(c) => <textarea {...c} className="field resize-y" rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />}
@@ -197,13 +198,13 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
           <p className="text-[12.5px] text-text-3">{t("form.customerHint")}</p>
           <div className="grid gap-5 sm:grid-cols-3">
             <Field label={t("form.customerName")}>
-              {(c) => <input {...c} type="text" className="field" value={name} onChange={(e) => setName(e.target.value)} />}
+              {(c) => <input {...c} type="text" value={name} onChange={(e) => setName(e.target.value)} />}
             </Field>
             <Field label={t("form.customerTaxId")} error={errors.taxId}>
-              {(c) => <input {...c} type="text" inputMode="numeric" className="field" value={taxId} onChange={(e) => setTaxId(maskTaxId(e.target.value))} />}
+              {(c) => <input {...c} type="text" inputMode="numeric" value={taxId} onChange={(e) => setTaxId(maskTaxId(e.target.value))} />}
             </Field>
             <Field label={t("form.customerEmail")}>
-              {(c) => <input {...c} type="email" className="field" value={email} onChange={(e) => setEmail(e.target.value)} />}
+              {(c) => <input {...c} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />}
             </Field>
           </div>
         </div>

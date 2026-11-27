@@ -7,6 +7,7 @@ import {
   Building2,
   CreditCard,
   FileText,
+  Package,
   KeyRound,
   LayoutDashboard,
   Plug,
@@ -39,6 +40,7 @@ const navMain: NavItem[] = [
   { key: "Sidebar.nav.overview", href: "/app", icon: LayoutDashboard },
   { key: "Sidebar.nav.companies", href: "/app/companies", icon: Building2 },
   { key: "Sidebar.nav.invoices", href: "/app/invoices", icon: FileText },
+  { key: "Sidebar.nav.nfe", href: "/app/nfe", icon: Package },
   { key: "Sidebar.nav.customers", href: "/app/customers", icon: Contact },
 ];
 

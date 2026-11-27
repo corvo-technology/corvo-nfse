@@ -87,11 +87,12 @@
       "members": "Membros",
       "settings": "Configurações",
       "companies": "Empresas",
-      "invoices": "Notas fiscais",
+      "invoices": "Notas de serviço (NFS-e)",
       "billing": "Plano",
       "agents": "Agentes de IA",
       "integrations": "Integrações",
       "customers": "Clientes",
+      "nfe": "Notas de produto (NF-e)",
       "admin": "Admin"
     },
     "selfHosted": "Self-hosted",
@@ -202,7 +203,11 @@
       "creditsLow": "Créditos do ciclo quase no fim",
       "creditsLowDetail": "{used} de {allowance} usados"
     },
-    "creditsLoadFailed": "Não foi possível carregar os créditos."
+    "creditsLoadFailed": "Não foi possível carregar os créditos.",
+    "newService": "Nota de serviço (NFS-e)",
+    "newProduct": "Nota de produto (NF-e)",
+    "newChoose": "Que nota você quer emitir?",
+    "newConsumer": "Venda ao consumidor (NFC-e)"
   },
   "Connections": {
     "title": "Conexões",
@@ -606,7 +611,11 @@
     }
   },
   "Settings": {
-    "tabs": { "label": "Seções de configurações", "general": "Geral", "audit": "Auditoria" },
+    "tabs": {
+      "label": "Seções de configurações",
+      "general": "Geral",
+      "audit": "Auditoria"
+    },
     "title": "Configurações",
     "subtitle": "Configurações de ambiente e faturamento.",
     "billing": "Faturamento",
@@ -636,7 +645,12 @@
   "Audit": {
     "title": "Auditoria",
     "subtitle": "Quem fez o quê na sua conta. Guardamos os últimos 12 meses.",
-    "columns": { "when": "Quando", "who": "Quem", "action": "Ação", "item": "Item" },
+    "columns": {
+      "when": "Quando",
+      "who": "Quem",
+      "action": "Ação",
+      "item": "Item"
+    },
     "filters": {
       "who": "Quem",
       "period": "Período",
@@ -656,7 +670,10 @@
     "empty": "Nada registrado neste período.",
     "error": "Não foi possível carregar a auditoria.",
     "loadMore": "Carregar mais",
-    "charge": { "pix": "Pix", "card": "Cartão" },
+    "charge": {
+      "pix": "Pix",
+      "card": "Cartão"
+    },
     "credits": "{count, plural, one {# crédito} other {# créditos}}",
     "actions": {
       "company": { "created": "Criou empresa", "updated": "Atualizou empresa", "deleted": "Excluiu empresa" },
@@ -1040,6 +1057,9 @@
     "cookiePreferences": "Preferências de cookies",
     "blog": "Blog",
     "github": "GitHub",
+    "integrations": "Integrações",
+    "nfe": "NF-e",
+    "nfce": "NFC-e",
     "license": "Código aberto · AGPL-3.0"
   },
   "CookieConsent": {
@@ -1269,6 +1289,7 @@
   },
   "Invoices": {
     "anonymousCustomer": "Consumidor não identificado",
+    "noteType": { "nfse": "NFS-e", "nfe": "NF-e", "nfce": "NFC-e" },
     "calculate": {
       "button": "Calcular tributos",
       "calculating": "Calculando…",
@@ -1815,7 +1836,8 @@
       "useSuggested": "Começar no nº {next}",
       "confirmFree": "Confirmar numeração",
       "confirmed": "Pronto. A próxima nota será a nº {number}.",
-      "testNote": "No ambiente de teste, a numeração começa num número alto e aleatório. Assim este Corvo não repete números que outra instalação com o mesmo CNPJ já usou na Receita."
+      "testNote": "No ambiente de teste, a numeração começa num número alto e aleatório. Assim este Corvo não repete números que outra instalação com o mesmo CNPJ já usou na Receita.",
+      "placeholder": "{next}"
     },
     "fiscalAdvanced": "Modo avançado (contador)",
     "legalName": "Razão social",
@@ -2115,6 +2137,43 @@
     "insufficient_credits": "Você está sem notas disponíveis. Compre mais notas para emitir.",
     "company_not_ready": "Complete o cadastro fiscal da empresa antes de emitir.",
     "company_not_found": "Empresa não encontrada.",
+    "nfe_production_disabled": "NF-e e NFC-e em produção ainda não estão liberadas. Use o ambiente de teste.",
+    "company_nfe_incomplete": "Complete o cadastro da empresa (endereço, inscrição estadual e regime) para emitir NF-e.",
+    "uf_not_enabled": "A NFC-e ainda não está disponível para o estado da empresa.",
+    "state_registration_invalid": "A inscrição estadual não é válida para o estado da empresa. Confira o número e o estado.",
+    "nfe_schema_invalid": "O XML da NF-e não passou na validação do layout. Confira os campos e tente de novo.",
+    "nfe_validation_failed": "A NF-e tem problemas. Confira os campos indicados e envie de novo.",
+    "invoice_operation_not_supported": "Essa operação não existe para esse tipo de nota. Por exemplo, carta de correção, descarte e inutilização são só da NF-e.",
+    "nfe_invalid_state": "Essa ação não vale para a situação atual da NF-e.",
+    "nfe_download_format_invalid": "Formato de arquivo inválido. Use xml ou pdf.",
+    "justification_length": "A justificativa precisa ter de 15 a 255 caracteres.",
+    "correction_length": "A correção precisa ter de 15 a 1000 caracteres.",
+    "correction_limit_reached": "Essa NF-e já recebeu o máximo de 20 cartas de correção.",
+    "inutilization_range_invalid": "A faixa de números não é válida: use de 1 a 999999999, com o início antes do fim.",
+    "inutilization_range_in_use": "Há uma NF-e que não foi descartada usando um número dessa faixa. Descarte a nota antes de inutilizar.",
+    "inutilization_range_overlap": "Outro pedido de inutilização, em andamento ou já aprovado, cobre parte dessa faixa.",
+    "company_mismatch": "Não dá para trocar a empresa de uma NF-e rejeitada.",
+    "sefaz_no_answer": "A SEFAZ não respondeu. O Corvo confere pela chave de acesso, sem emitir de novo.",
+    "sefaz_unavailable": "A SEFAZ está fora do ar. A nota será enviada quando ela voltar.",
+    "certificate_unusable": "O certificado digital da empresa está vencido ou inválido. Envie outro para emitir.",
+    "tax_id_invalid": "O CPF ou CNPJ do destinatário não é válido.",
+    "recipient_ie_invalid": "A inscrição estadual do destinatário não combina com o tipo de contribuinte informado.",
+    "ncm_invalid": "O NCM precisa ter 8 dígitos.",
+    "cfop_destination_mismatch": "O CFOP não combina com o destino: use 5xxx dentro do estado e 6xxx para outro estado.",
+    "csosn_not_supported": "Só os CSOSN 102 e 400 são aceitos.",
+    "payments_total_mismatch": "A soma dos pagamentos menos o troco precisa ser igual ao total da nota.",
+    "text_charset_invalid": "Há caracteres que a SEFAZ não aceita (emoji, quebra de linha ou símbolos especiais). Use só letras, números e pontuação comum.",
+    "out_of_phase1_scope": "Esta nota ainda não é aceita: por enquanto só NF-e normal de empresas do Simples Nacional ou MEI.",
+    "nfce_ind_pres_invalid": "Na NFC-e a presença do comprador só pode ser 1 (presencial), 4 (entrega) ou 5 (presencial fora do estabelecimento).",
+    "nfce_delivery_address_required": "Na venda com entrega informe o CPF ou CNPJ, o nome e o endereço do consumidor.",
+    "nfce_offline_not_available": "A NFC-e em contingência off-line ainda não está disponível para o estado desta empresa.",
+    "nfce_contingency_field_locked": "Esta NFC-e foi emitida em contingência e já está com o consumidor: só a descrição, o código de barras, o NCM, o CEST, a unidade e as informações adicionais podem mudar. O resto (valores, quantidades, pagamento, consumidor) não.",
+    "nfce_consumer_id_required": "Para este valor de venda, a NFC-e precisa do CPF ou CNPJ do consumidor.",
+    "nfce_card_data_required": "No pagamento integrado, informe o CNPJ da credenciadora e o número de autorização.",
+    "nfce_card_brand_invalid": "A bandeira do cartão não existe na tabela oficial.",
+    "nfce_card_not_allowed": "Os dados de cartão só valem para pagamento em cartão de crédito, débito ou PIX.",
+    "nfce_no_payment_amount": "Na forma de pagamento \"sem pagamento\" (90) o valor precisa ser zero.",
+    "nfce_scope_not_supported": "Esta NFC-e ainda não é aceita: só venda normal dentro do estado do emitente.",
     "accountant_email_invalid": "Informe um e-mail válido para o contador.",
     "package_month_invalid": "Informe o mês no formato AAAA-MM.",
     "package_include_invalid": "Escolha xml, pdf ou os dois.",
@@ -3260,7 +3319,8 @@
     "platforms": {
       "woovi": "Cobranças Pix",
       "abacatepay": "Pix, cartão e boleto",
-      "soon": "Mais plataformas a caminho."
+      "moreLead": "+ Mercado Pago, Stripe, Hotmart e mais {count}.",
+      "moreCta": "Ver todas as integrações"
     },
     "invoice": {
       "status": "Emitida",
@@ -3710,6 +3770,360 @@
     "notFoundChecked": "A Receita não tem parâmetros para o código {code}. Confira o código IBGE de 7 dígitos.",
     "link": "Ver a situação dos municípios"
   },
+  "Nfe": {
+    "title": "NF-e",
+    "subtitle": "Notas fiscais de produto (NF-e, modelo 55).",
+    "homologationNotice": "A NF-e está em teste (homologação): as notas aqui não têm valor fiscal. O Corvo não calcula impostos: você informa CFOP, NCM e CSOSN de cada item.",
+    "loadFailed": "Não foi possível carregar as notas. Tente de novo.",
+    "loadMore": "Carregar mais",
+    "empty": "Nenhuma NF-e por aqui ainda.",
+    "table": {
+      "recipient": "Destinatário",
+      "number": "Número / série",
+      "amount": "Valor",
+      "status": "Situação",
+      "created": "Criada em",
+      "model": "Modelo",
+      "consumerAnonymous": "Consumidor não identificado"
+    },
+    "filters": {
+      "company": "Empresa",
+      "allCompanies": "Todas",
+      "status": "Situação",
+      "allStatuses": "Todas",
+      "model": "Modelo",
+      "allModels": "Todos"
+    },
+    "status": {
+      "queued": "Na fila",
+      "contingency_pending": "Emitida sem internet, falta enviar",
+      "processing": "Enviando",
+      "authorized": "Autorizada",
+      "rejected": "Rejeitada",
+      "denied": "Denegada",
+      "retry_pending": "Vai tentar de novo",
+      "reconciliation_required": "Conferindo com a SEFAZ",
+      "manual_review": "Precisa de decisão",
+      "cancelling": "Cancelando",
+      "cancelled": "Cancelada",
+      "discarded": "Descartada"
+    },
+    "new": {
+      "open": "Nova NF-e",
+      "title": "Nova NF-e",
+      "subtitle": "Preencha os dados, confira com “Validar” e emita. Nada é enviado ao validar.",
+      "resubmitTitle": "Corrigir e reenviar",
+      "resubmitSubtitle": "Corrija o que a SEFAZ recusou e envie de novo. A nota mantém o mesmo número.",
+      "loading": "Carregando…",
+      "failed": "Não foi possível carregar os dados. Tente de novo."
+    },
+    "settings": {
+      "title": "NF-e",
+      "subtitle": "Dados que a empresa precisa ter para emitir nota de produto.",
+      "loading": "Carregando dados da NF-e…",
+      "loadFailed": "Não foi possível carregar os dados da NF-e.",
+      "ready": "Tudo certo: a empresa já pode emitir NF-e.",
+      "missingTitle": "Falta isto para emitir NF-e:",
+      "missing": {
+        "address_street": "Rua do endereço da empresa",
+        "address_number": "Número do endereço da empresa",
+        "address_district": "Bairro do endereço da empresa",
+        "address_zip": "CEP da empresa",
+        "address_city_code": "Município da empresa",
+        "address_state": "Estado (UF) da empresa",
+        "state_registration": "Inscrição estadual (IE)",
+        "crt": "Regime tributário da empresa (Simples Nacional ou MEI)"
+      },
+      "stateRegistration": "Inscrição estadual (IE)",
+      "stateRegistrationHint": "Só os números. O Corvo confere se vale para o estado da empresa.",
+      "crt": "Regime tributário",
+      "crtHint": "Por enquanto só o Simples Nacional.",
+      "crt1": "Simples Nacional",
+      "crt4": "Simples Nacional – MEI",
+      "series": "Série",
+      "seriesHint": "A série usada nas notas novas. Se não souber, deixe 1.",
+      "natOp": "Natureza da operação",
+      "natOpHint": "Usada quando a nota não traz uma. Exemplo: Venda de mercadoria.",
+      "csosn": "CSOSN padrão dos itens",
+      "csosnHint": "102 é o comum no Simples. Use 400 se a operação for imune ou não tributada.",
+      "csosn102": "102 – sem crédito de imposto",
+      "csosn400": "400 – não tributada",
+      "save": "Salvar dados da NF-e",
+      "saved": "Dados da NF-e salvos.",
+      "saveFailed": "Não foi possível salvar. Confira os dados e tente de novo.",
+      "readOnly": "Só quem administra a conta pode mudar estes dados.",
+      "stateRegistrationPlaceholder": "ex.: {example}",
+      "crtFollows": "Vem do cadastro fiscal da empresa.",
+      "crtEdit": "Mudar o regime da empresa",
+      "crtUnsupported": "NF-e por enquanto só para Simples Nacional e MEI. Confira o regime no cadastro fiscal da empresa.",
+      "natOpPlaceholder": "Venda de mercadoria",
+      "nfceSeries": "Série da NFC-e",
+      "nfceSeriesHint": "A série usada nas vendas ao consumidor. Na dúvida, deixe 1.",
+      "nfceAutoOffline": "Emitir em contingência off-line automaticamente",
+      "nfceAutoOfflineHint": "Quando a SEFAZ não responde, a NFC-e sai na hora com o aviso de contingência e é enviada depois. Ela pode ser rejeitada mais tarde, depois de já ter sido entregue ao cliente. Desligado por padrão."
+    },
+    "detail": {
+      "title": "NF-e",
+      "loading": "Carregando a nota…",
+      "failed": "Não foi possível carregar a nota. Tente de novo.",
+      "refresh": "Atualizar",
+      "back": "Voltar",
+      "sync": "Conferir na SEFAZ",
+      "syncDone": "Pedimos a conferência à SEFAZ. A situação aparece aqui em instantes.",
+      "resubmit": "Corrigir e reenviar",
+      "discard": "Descartar",
+      "discardTitle": "Descartar esta NF-e?",
+      "discardWarning": "A nota rejeitada deixa de existir e o número dela fica sem uso. Depois, use “Números pulados” para inutilizar esse número.",
+      "discardConfirm": "Descartar a nota",
+      "discarded": "NF-e descartada.",
+      "correct": "Carta de correção",
+      "correctionSent": "Carta de correção enviada. Ela aparece no histórico quando a SEFAZ responder.",
+      "cancel": "Cancelar nota",
+      "cancelRequested": "Pedido de cancelamento enviado. A situação muda quando a SEFAZ responder.",
+      "recipient": "Destinatário",
+      "amount": "Valor total",
+      "natOp": "Natureza da operação",
+      "numberSeries": "Número / série",
+      "accessKey": "Chave de acesso",
+      "protocol": "Protocolo de autorização",
+      "authorizedAt": "Autorizada em",
+      "additionalInfo": "Informações adicionais",
+      "cancelReason": "Motivo do cancelamento",
+      "items": "Itens",
+      "documents": "Arquivos",
+      "documentsHint": "Os arquivos ficam prontos depois que a SEFAZ autoriza a nota.",
+      "events": "Histórico",
+      "hint": "O que fazer",
+      "contingencyPending": "Esta NFC-e foi emitida em contingência off-line e ainda não foi enviada à SEFAZ. Ela já pode ser entregue ao cliente. O envio é automático e o prazo é até {deadline}.",
+      "contingencyIssued": "Emitida em contingência",
+      "svcIssued": "Emitida pela contingência {authority}: a SEFAZ do estado estava fora do ar. A nota é válida e continua com a mesma numeração.",
+      "reconciling": "Não tivemos resposta da SEFAZ. Estamos conferindo pela chave de acesso, sem emitir de novo.",
+      "manualReview": "A SEFAZ ainda não confirmou esta nota. Use “Conferir na SEFAZ” para perguntar de novo.",
+      "errorType": {
+        "communication": "Falha de comunicação",
+        "validation": "Dados com problema",
+        "configuration": "Falta configurar"
+      },
+      "email": {
+        "sent": "A nota foi enviada por e-mail ao destinatário.",
+        "failed": "Não foi possível enviar o e-mail ao destinatário."
+      },
+      "consumer": "Consumidor",
+      "consumerAnonymous": "Consumidor não identificado",
+      "danfce80": "DANFCE (80 mm)",
+      "danfceA4": "DANFCE (A4)",
+      "qrAlt": "QR Code da NFC-e",
+      "consultLink": "Consultar a nota no site da SEFAZ",
+      "cancelWindow": "A NFC-e pode ser cancelada em até 30 minutos depois da autorização. Passado esse prazo, fale com o seu contador. A NFC-e não tem carta de correção: cancele e emita outra."
+    },
+    "timeline": {
+      "empty": "Ainda não há histórico.",
+      "cancellation": "Cancelamento",
+      "correction": "Carta de correção nº {sequence}",
+      "cancelRequested": "Cancelamento pedido",
+      "cancelRefused": "Cancelamento recusado",
+      "reason": "Motivo: {text}",
+      "eventStatus": {
+        "pending": "Enviando",
+        "pending_check": "Conferindo com a SEFAZ",
+        "registered": "Registrada",
+        "rejected": "Recusada"
+      }
+    },
+    "cancel": {
+      "title": "Cancelar a NF-e",
+      "description": "O cancelamento é enviado à SEFAZ e não pode ser desfeito. Só vale dentro do prazo da SEFAZ.",
+      "label": "Motivo do cancelamento",
+      "submit": "Cancelar a nota"
+    },
+    "correction": {
+      "title": "Carta de correção",
+      "description": "Serve para corrigir texto, como o endereço de entrega. Não muda valores, impostos, dados do destinatário nem datas.",
+      "label": "O que deve ser corrigido",
+      "submit": "Enviar a carta"
+    },
+    "reason": {
+      "hint": "Escreva de {min} a {max} caracteres.",
+      "length": "O texto precisa ter de {min} a {max} caracteres.",
+      "failed": "Não foi possível enviar. Tente de novo.",
+      "back": "Voltar"
+    },
+    "form": {
+      "homologation": "Em teste (homologação): a nota emitida aqui não tem valor fiscal.",
+      "productionLocked": "A NF-e em produção ainda não está liberada. Troque para TESTE para emitir notas sem valor fiscal.",
+      "productionLockedNfce": "A NFC-e em produção ainda não está liberada. Troque para TESTE para emitir notas sem valor fiscal.",
+      "failed": "Não foi possível enviar a nota. Tente de novo.",
+      "fixFields": "Corrija os campos marcados e tente de novo.",
+      "validate": "Validar",
+      "validOk": "Tudo certo com os dados. A chave da nota seria {key}. Nada foi enviado.",
+      "issue": "Emitir NF-e",
+      "resubmit": "Reenviar NF-e",
+      "issuer": "Quem emite",
+      "company": "Empresa",
+      "companyChoose": "Escolha a empresa",
+      "natOp": "Natureza da operação",
+      "natOpHint": "Se deixar em branco, usa a da empresa.",
+      "recipient": "Destinatário",
+      "name": "Nome",
+      "taxId": "CPF ou CNPJ",
+      "taxIdHint": "Digite o CPF ou CNPJ: se for um cliente já salvo ou um CNPJ, o resto é preenchido sozinho.",
+      "indIeDest": "Inscrição estadual do destinatário",
+      "indIeDestHint": "Escolha “Não contribuinte” para quem não tem inscrição estadual (a maioria das pessoas).",
+      "ie9": "Não contribuinte",
+      "ie1": "Contribuinte (tem inscrição estadual)",
+      "ie2": "Isento",
+      "stateRegistration": "Inscrição estadual",
+      "email": "E-mail",
+      "emailHint": "Se informar, o destinatário recebe o XML e o DANFE por e-mail.",
+      "street": "Rua",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro",
+      "zip": "CEP",
+      "city": "Cidade",
+      "state": "UF",
+      "cityCode": "Código IBGE",
+      "cityCodeHint": "7 dígitos",
+      "taxNotice": "O Corvo não calcula imposto. Informe o CFOP, o NCM e o CSOSN de cada item, como seu contador orientou.",
+      "totalPreview": "Total dos itens (a conta final é feita pelo Corvo)",
+      "items": {
+        "title": "Itens",
+        "item": "Item {number}",
+        "code": "Código do produto",
+        "description": "Descrição",
+        "ncm": "NCM",
+        "ncmHint": "8 dígitos que o seu contador informou.",
+        "cfop": "CFOP",
+        "cfopHint": "Escolhido pelo estado do destinatário: 5102 no mesmo estado, 6102 em outro. Dá para mudar.",
+        "csosn": "CSOSN",
+        "csosnHint": "Se não escolher, usa o da empresa.",
+        "csosnDefault": "Padrão da empresa",
+        "unit": "Unidade",
+        "quantity": "Quantidade",
+        "unitPrice": "Preço unitário",
+        "add": "Adicionar item",
+        "remove": "Remover o item {number}",
+        "removeShort": "Remover item",
+        "codeHint": "Se deixar em branco, o Corvo usa ITEM-1, ITEM-2...",
+        "codePlaceholder": "ITEM-{number}",
+        "optional": "opcional",
+        "descriptionPlaceholder": "Ex.: Camiseta algodão tam. M",
+        "ncmPlaceholder": "ex.: 6109.10.00",
+        "ncmLookup": "Não sabe o NCM? Pesquise no portal do governo",
+        "csosnDefaultWith": "Padrão da empresa ({csosn})",
+        "lineTotal": "Total do item",
+        "useSaved": "Usar um produto de notas anteriores"
+      },
+      "payments": {
+        "title": "Pagamento",
+        "means": "Forma de pagamento",
+        "amount": "Valor pago",
+        "add": "Adicionar pagamento",
+        "remove": "Remover o pagamento {number}",
+        "change": "Troco",
+        "changeHint": "Só se o cliente pagou a mais em dinheiro.",
+        "amountAuto": "Já preenchido com o total da nota.",
+        "balanceOk": "Pagamento confere com o total: {total}",
+        "balanceDiffers": "O pagamento ({paid}, já descontado o troco) é diferente do total da nota ({total})."
+      },
+      "paymentMeans": {
+        "17": "Pix",
+        "01": "Dinheiro",
+        "03": "Cartão de crédito",
+        "04": "Cartão de débito",
+        "15": "Boleto",
+        "99": "Outros"
+      },
+      "additionalInfo": "Informações adicionais",
+      "sendEmail": "Enviar o XML e o DANFE ao destinatário por e-mail quando a nota for autorizada",
+      "optional": "opcional",
+      "natOpPlaceholder": "Venda de mercadoria",
+      "taxIdPlaceholder": "000.000.000-00 ou 00.000.000/0000-00",
+      "namePlaceholder": "Nome da pessoa ou razão social",
+      "stateRegistrationPlaceholder": "ex.: {example}",
+      "emailPlaceholder": "cliente@email.com",
+      "zipHint": "Preenche rua, bairro e cidade sozinho.",
+      "streetPlaceholder": "Rua das Flores",
+      "complementPlaceholder": "Sala 2, apto 31...",
+      "districtPlaceholder": "Centro",
+      "cityPlaceholder": "São Paulo",
+      "cityCodeKnown": "Município (código IBGE {code}) preenchido pelo CEP.",
+      "cityCodeChange": "alterar",
+      "autofilled": {
+        "customer": "Preenchido com o cliente salvo. Confira os dados.",
+        "cnpj": "Preenchido com os dados públicos do CNPJ. Confira os dados.",
+        "cep": "Endereço preenchido pelo CEP. Confira os dados."
+      },
+      "additionalInfoPlaceholder": "Ex.: pedido nº 123, entrega combinada para sexta."
+    },
+    "gaps": {
+      "title": "Números pulados",
+      "subtitle": "Números de NF-e que ficaram sem nota. Os que nunca serão usados precisam ser inutilizados na SEFAZ.",
+      "open": "Números pulados",
+      "back": "Voltar às notas",
+      "loading": "Procurando números pulados…",
+      "failed": "Não foi possível carregar os números pulados.",
+      "none": "Nenhum número pulado.",
+      "noneHint": "A numeração das suas notas está em sequência.",
+      "seriesNumbers": "Série {series} · números {range}",
+      "inutilize": "Inutilizar faixa",
+      "dialogTitle": "Inutilizar números",
+      "dialogDescription": "Série {series}, números {range}. Eles nunca mais poderão ser usados em uma nota.",
+      "justification": "Por que esses números não serão usados",
+      "confirm": "Inutilizar",
+      "requested": "Pedido de inutilização enviado. Ele aparece abaixo quando a SEFAZ responder.",
+      "requests": "Pedidos de inutilização",
+      "status": {
+        "pending": "Enviando",
+        "homologada": "Aceito pela SEFAZ",
+        "rejected": "Recusado"
+      }
+    },
+    "consumer": {
+      "issue": "Emitir NFC-e",
+      "resubmit": "Enviar NFC-e de novo",
+      "tip": "A NFC-e pode ser cancelada em até 30 minutos depois da autorização e não tem carta de correção.",
+      "indPres": "Como foi a venda?",
+      "indPresHint": "Na maioria das vezes é “Presencial, na loja”.",
+      "indPres1": "Presencial, na loja",
+      "indPres4": "Entrega em domicílio",
+      "indPres5": "Presencial, fora da loja",
+      "items": "O que foi vendido",
+      "consumerOptional": "Consumidor (opcional)",
+      "consumerRequired": "Consumidor (obrigatório na entrega)",
+      "taxIdHint": "Só se o cliente pedir o CPF na nota. Vendas acima do limite do estado exigem a identificação.",
+      "emailHint": "Se você informar, o cliente recebe o XML e o DANFCE por e-mail.",
+      "sendEmail": "Enviar o XML e o DANFCE ao cliente por e-mail quando a nota for autorizada",
+      "required": "Preencha este campo.",
+      "deliveryNeeds": "Na venda com entrega, informe o CPF ou CNPJ do consumidor, o nome e o endereço.",
+      "cardBrand": "Bandeira do cartão",
+      "cardBrandNone": "Não informar",
+      "cardHint": "Deixe vazio se a maquininha não conversa com o seu sistema.",
+      "cardAuth": "Número da autorização",
+      "cardAuthPlaceholder": "Ex.: 123456",
+      "cardCnpj": "CNPJ da operadora do cartão",
+      "cardCnpjHint": "Só em pagamento integrado, junto com a autorização.",
+      "brands": {
+        "01": "Visa",
+        "02": "Mastercard",
+        "03": "American Express",
+        "04": "Sorocred",
+        "05": "Diners Club",
+        "06": "Elo",
+        "07": "Hipercard",
+        "08": "Aura",
+        "09": "Cabal",
+        "99": "Outra"
+      },
+      "typeTitle": "Que nota você quer emitir?",
+      "typeNfe": "NF-e (venda para empresa ou pessoa, com destinatário)",
+      "typeNfce": "Venda ao consumidor (NFC-e)",
+      "title": "Nova venda ao consumidor",
+      "subtitle": "Itens, forma de pagamento e, se o cliente pedir, o CPF. Nada é enviado quando você valida.",
+      "resubmitTitle": "Corrigir e reenviar a NFC-e",
+      "resubmitSubtitle": "Corrija o que a SEFAZ recusou e envie de novo. A nota mantém o mesmo número."
+    }
+  },
   "Admin": {
     "title": "Admin",
     "navLabel": "Seções do admin",
@@ -3861,10 +4275,392 @@
       },
       "actions": {
         "credit_grant": "Deu notas avulsas",
-        "user_viewed": "Abriu um usuário"
+        "user_viewed": "Abriu um usuário",
+        "nfe_access_changed": "Mudou a liberação da NF-e",
+        "nfce_access_set": "Mudou a liberação da NFC-e",
+        "svc_forced_exit": "Saiu da contingência (SVC)"
       },
       "success": "Feito",
       "failure": "Falhou"
+    },
+    "svc": {
+      "title": "NF-e na contingência (SVC)",
+      "empty": "Nenhum estado está na contingência. As NF-e saem pela SEFAZ de cada estado.",
+      "uf": "Estado",
+      "env": "Ambiente",
+      "live": "Produção",
+      "test": "Homologação",
+      "authority": "SEFAZ Virtual",
+      "since": "Desde",
+      "exit": "Sair da SVC",
+      "exitTitle": "Sair da SVC: {uf}",
+      "exitDescription": "As NF-e de {uf} voltam a sair pela SEFAZ de origem. Use só se ela já voltou. As notas já emitidas na contingência continuam válidas.",
+      "reason": "Motivo",
+      "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
+      "cancel": "Cancelar",
+      "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
+      "errorNotFound": "Esse estado já não está na contingência.",
+      "errorGeneric": "Não foi possível sair da contingência. Nada foi mudado. Tente de novo."
+    }
+  },
+  "IntegrationsPage": {
+    "meta": {
+      "title": "Integrações de pagamento e infoprodutos",
+      "description": "Conecte Mercado Pago, Stripe, Asaas, Pagar.me, Woovi, AbacatePay, PushinPay, Hotmart, Kiwify, Eduzz ou Monetizze. Pagou, a Corvo emite a nota. Reembolsou, ela cancela."
+    },
+    "crumb": "Integrações",
+    "hero": {
+      "eyebrow": "Integrações · {count} plataformas",
+      "title": "Conecte onde você recebe. A nota sai a cada venda paga.",
+      "lead": "Copie um endereço, cole na sua plataforma e pronto. Pagou, a Corvo emite. Reembolsou, a Corvo cancela, se você ligar essa regra.",
+      "cta": "Conectar minha plataforma",
+      "how": "Como funciona"
+    },
+    "list": {
+      "title": "Todas as integrações",
+      "groupLabel": "Filtrar por tipo",
+      "connect": "Conectar {name}",
+      "cancelNote": "O cancelamento automático é uma regra que você liga em cada conexão."
+    },
+    "filters": {
+      "all": "Todas ({count})",
+      "pay": "Pagamentos e Pix ({count})",
+      "info": "Infoprodutos ({count})"
+    },
+    "groups": {
+      "pay": {
+        "title": "Pagamentos e Pix",
+        "hint": "Gateways e contas de cobrança"
+      },
+      "info": {
+        "title": "Infoprodutos",
+        "hint": "Cursos, e-books e assinaturas digitais"
+      }
+    },
+    "platforms": {
+      "mercadopago": {
+        "pays": "Pagamentos",
+        "emit": "Pagamento aprovado: emite a nota",
+        "cancel": "Reembolso: cancela a nota. Chargeback: a venda fica marcada para você decidir",
+        "extra": "Com o Access Token, busca CPF/CNPJ, e-mail e itens do pagamento (só consulta)",
+        "note": "Assinatura x-signature"
+      },
+      "stripe": {
+        "pays": "Cobranças",
+        "emit": "Cobrança paga (charge.succeeded): emite a nota",
+        "cancel": "Reembolso: cancela a nota. Disputa: a venda fica marcada para você decidir",
+        "extra": "Chave restrita opcional, só de leitura, para buscar CPF/CNPJ, e-mail e itens",
+        "note": "Assinatura do webhook (whsec)"
+      },
+      "asaas": {
+        "pays": "Pix, boleto e cartão",
+        "emit": "Pagamento recebido ou confirmado: emite a nota",
+        "cancel": "Reembolso: cancela a nota. Chargeback pedido: a venda fica marcada para você decidir",
+        "extra": "Desligue a nota do próprio Asaas para ela não sair duas vezes",
+        "note": "Token gerado pela Corvo"
+      },
+      "pagarme": {
+        "pays": "Pedidos",
+        "emit": "Pedido pago: emite a nota",
+        "cancel": "Reembolso ou pedido cancelado: cancela a nota. Chargeback: a venda fica marcada",
+        "extra": "Reembolso parcial é ignorado",
+        "note": "Usuário e senha do webhook"
+      },
+      "woovi": {
+        "pays": "Cobranças Pix",
+        "emit": "Cobrança paga: emite a nota",
+        "cancel": "Devolução total do Pix: cancela a nota. Devolução parcial é ignorada",
+        "extra": "Se a cobrança não traz CPF/CNPJ, usa os dados de quem pagou o Pix",
+        "note": "Token gerado pela Corvo"
+      },
+      "abacatepay": {
+        "pays": "Pix, cartão e boleto",
+        "emit": "Pagamento concluído (checkout ou transparente): emite a nota",
+        "cancel": "Reembolso: cancela a nota. Disputa: a venda fica marcada para você decidir",
+        "extra": "Com a chave de API, busca o CPF/CNPJ completo e o nome dos produtos",
+        "note": "Segredo gerado pela Corvo"
+      },
+      "pushinpay": {
+        "pays": "Pix, boleto e Pix recorrente",
+        "emit": "Cobrança paga: emite a nota",
+        "cancel": "Cobrança cancelada depois de paga: cancela a nota",
+        "extra": "A PushinPay não manda o e-mail do comprador: a nota não vai por e-mail ao cliente sozinha",
+        "note": "Segredo e token gerados pela Corvo"
+      },
+      "hotmart": {
+        "pays": "Compras",
+        "emit": "Compra aprovada ou completa: emite a nota",
+        "cancel": "Reembolso ou chargeback: cancela a nota. Protesto: a venda fica marcada",
+        "extra": "Nota pelo valor total ou só pela sua parte, sem afiliados e coprodutores",
+        "note": "Hottok"
+      },
+      "kiwify": {
+        "pays": "Pedidos",
+        "emit": "Compra aprovada: emite a nota",
+        "cancel": "Reembolso: cancela a nota. Chargeback: a venda fica marcada para você decidir",
+        "extra": "Nota pelo valor total ou só pela sua parte",
+        "note": "Token do webhook"
+      },
+      "eduzz": {
+        "pays": "Faturas",
+        "emit": "Fatura paga: emite a nota",
+        "cancel": "Reembolso, chargeback ou fatura cancelada: cancela a nota",
+        "extra": "Nota pelo valor total ou só pela sua parte",
+        "note": "Chave secreta (x-signature)"
+      },
+      "monetizze": {
+        "pays": "Vendas",
+        "emit": "Venda finalizada ou completa: emite a nota",
+        "cancel": "Venda devolvida: cancela a nota",
+        "extra": "Nota pelo valor total ou só pela sua parte",
+        "note": "Chave única"
+      }
+    },
+    "how": {
+      "title": "Como funciona",
+      "steps": {
+        "choose": {
+          "title": "Escolha a plataforma e a empresa",
+          "body": "Se a plataforma pedir, cole a chave de API. A Corvo só consulta os dados da venda."
+        },
+        "paste": {
+          "title": "Cole o endereço do webhook",
+          "body": "A Corvo mostra o endereço e, quando precisa, o token ou o segredo. O passo a passo de cada plataforma aparece na tela."
+        },
+        "done": {
+          "title": "Venda e pronto",
+          "body": "Cada pagamento aprovado vira uma nota. O cliente recebe por e-mail quando a plataforma informa o e-mail dele."
+        }
+      }
+    },
+    "behaviors": {
+      "title": "O que acontece em cada caso",
+      "items": {
+        "refund": {
+          "title": "Reembolso cancela a nota",
+          "body": "Quando a plataforma avisa o reembolso, a Corvo cancela a nota, se você ligar essa regra."
+        },
+        "dispute": {
+          "title": "Chargeback e disputa",
+          "body": "Na maioria das plataformas a venda só fica marcada e você decide. Na Hotmart e na Eduzz, o chargeback conta como reembolso."
+        },
+        "pending": {
+          "title": "Faltou CPF ou CNPJ",
+          "body": "A venda espera em Vendas pendentes até você completar. Depois, a nota sai."
+        },
+        "share": {
+          "title": "Total ou só a sua parte",
+          "body": "Em Hotmart, Kiwify, Eduzz e Monetizze você escolhe: nota pelo valor total ou só pela sua parte."
+        },
+        "once": {
+          "title": "Nunca em dobro",
+          "body": "O mesmo aviso chegando duas vezes gera uma nota só."
+        }
+      }
+    },
+    "contribute": {
+      "eyebrow": "Open source",
+      "title": "Faltou a sua plataforma? Faça a integração com a gente.",
+      "body": "A Corvo é open source (AGPL-3.0). Cada integração é um conector pequeno, sempre no mesmo formato: ele recebe o aviso da plataforma e diz o que é venda, reembolso ou contestação. O resto, da emissão ao cancelamento, a Corvo já faz. Mandou o PR, entrou para todo mundo.",
+      "example": "Ver os conectores no GitHub",
+      "guide": "Como contribuir",
+      "steps": {
+        "copy": {
+          "title": "Copie um conector parecido",
+          "body": "Hotmart e Kiwify para infoprodutos; Stripe e Mercado Pago para pagamentos."
+        },
+        "test": {
+          "title": "Teste com os exemplos da documentação",
+          "body": "Os avisos de exemplo da plataforma viram os testes do conector."
+        },
+        "pr": {
+          "title": "Abra um pull request",
+          "body": "A gente revisa, junta e a integração aparece aqui nesta página."
+        }
+      }
+    },
+    "missing": {
+      "title": "Sua plataforma não está aqui?",
+      "body": "Emita pela API com uma chamada, ou diga qual integração você quer a seguir.",
+      "api": "Ver a API",
+      "request": "Pedir uma integração",
+      "subject": "Quero uma integração na Corvo"
+    }
+  },
+  "NfePage": {
+    "meta": {
+      "title": "NF-e por API: nota de produto em uma chamada",
+      "description": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em teste (homologação)."
+    },
+    "crumb": "NF-e",
+    "hero": {
+      "eyebrow": "NF-e · modelo 55",
+      "title": "Nota de produto em uma chamada de API.",
+      "lead": "Venda para empresa ou pessoa com DANFE, carta de correção e cancelamento. Mesma chave de API e mesmo crédito da NFS-e.",
+      "cta": "Começar grátis",
+      "docs": "Ler a documentação",
+      "scope": "Para empresas do Simples Nacional e MEI. Você informa CFOP, NCM e CSOSN como o seu contador orienta.",
+      "note": "Disponível em teste (homologação). Produção em breve.",
+      "release": "Funciona em todos os estados, sem configurar nada: é só cadastrar a empresa."
+    },
+    "code": {
+      "label": "Exemplo de chamada da API",
+      "result": "status: queued → autorizada · DANFE pronto"
+    },
+    "features": {
+      "title": "O que a NF-e da Corvo faz",
+      "items": {
+        "danfe": {
+          "title": "DANFE pronto",
+          "body": "O DANFE em PDF e o XML autorizado, por link temporário ou por e-mail ao destinatário."
+        },
+        "validate": {
+          "title": "Validar antes de enviar",
+          "body": "Confira a nota contra as regras e o layout oficial sem enviar nada à SEFAZ e sem gastar crédito."
+        },
+        "autofill": {
+          "title": "Preenchimento no painel",
+          "body": "Digite o CNPJ ou o CEP e o resto vem sozinho. Clientes já usados ficam salvos."
+        },
+        "correction": {
+          "title": "Carta de correção",
+          "body": "Corrija texto e outros dados permitidos sem cancelar a nota. Valores, impostos e as partes não mudam."
+        },
+        "svc": {
+          "title": "Contingência SVC",
+          "body": "Se a SEFAZ do estado cai e o resto do governo segue no ar, a Corvo envia pela SEFAZ Virtual de Contingência, sozinha."
+        },
+        "webhooks": {
+          "title": "Webhooks e histórico",
+          "body": "Cada mudança chega no seu sistema e fica no histórico da nota. Uma recusa da SEFAZ vem com o código e o motivo."
+        }
+      }
+    },
+    "lifecycle": {
+      "title": "Da emissão ao cancelamento, tudo pela API e pelo painel",
+      "steps": {
+        "validate": {
+          "title": "Validar",
+          "body": "Todos os problemas de uma vez."
+        },
+        "issue": {
+          "title": "Emitir",
+          "body": "Fila, envio e autorização."
+        },
+        "download": {
+          "title": "Baixar",
+          "body": "DANFE e XML assinados."
+        },
+        "correct": {
+          "title": "Corrigir",
+          "body": "Carta de correção (CC-e)."
+        },
+        "cancel": {
+          "title": "Cancelar",
+          "body": "Com a justificativa."
+        }
+      }
+    },
+    "credit": {
+      "title": "O mesmo crédito da NFS-e",
+      "body": "Cada NF-e autorizada usa um crédito do seu plano, como a NFS-e. Rejeitada ou descartada, o crédito volta. Cancelar uma nota já autorizada não devolve. Em teste, é grátis.",
+      "plans": "Ver os planos",
+      "other": "Vende no balcão? Conheça a NFC-e"
+    }
+  },
+  "NfcePage": {
+    "meta": {
+      "title": "NFC-e por API: o cupom fiscal do seu caixa",
+      "description": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em teste (homologação), começando por SP."
+    },
+    "crumb": "NFC-e",
+    "hero": {
+      "eyebrow": "NFC-e · cupom fiscal · modelo 65",
+      "title": "O cupom fiscal do seu caixa, sem impressora fiscal.",
+      "lead": "Venda no balcão ou no delivery, mande o pedido para a API e receba o cupom com QR Code. SEFAZ fora do ar? Emita off-line e envie depois.",
+      "cta": "Começar grátis",
+      "docs": "Ler a documentação",
+      "scope": "CPF do consumidor é opcional. Para empresas do Simples Nacional e MEI, com a inscrição estadual credenciada para NFC-e.",
+      "note": "Disponível em teste (homologação). Produção em breve.",
+      "release": "Começa por São Paulo. Os outros estados chegam em breve."
+    },
+    "receipt": {
+      "label": "Exemplo de cupom NFC-e",
+      "store": "[SUA LOJA LTDA]",
+      "doc": "DANFE NFC-e · Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica",
+      "item": "2 UN Café expresso",
+      "total": "Total R$",
+      "cash": "Dinheiro",
+      "change": "Troco",
+      "check": "Consulte pela chave de acesso no site da SEFAZ",
+      "protocol": "Protocolo de autorização · data e hora"
+    },
+    "features": {
+      "title": "Feita para o caixa",
+      "items": {
+        "print": {
+          "title": "Cupom em 80 mm e A4",
+          "body": "Para a impressora térmica do caixa ou para mandar por e-mail ao cliente."
+        },
+        "qr": {
+          "title": "QR Code na nota",
+          "body": "O consumidor confere a compra no site da SEFAZ apontando a câmera."
+        },
+        "offline": {
+          "title": "Contingência off-line",
+          "body": "Sem resposta da SEFAZ, a Corvo numera, assina e responde na hora. A nota vai à SEFAZ depois, em até 24 horas."
+        },
+        "payment": {
+          "title": "Troco e várias formas de pagamento",
+          "body": "Dinheiro, Pix, cartão com bandeira e mais de uma forma na mesma venda."
+        },
+        "delivery": {
+          "title": "Delivery",
+          "body": "Venda com entrega leva o endereço do consumidor na nota."
+        },
+        "cancel": {
+          "title": "Cancelar pela API",
+          "body": "Venda desfeita no caixa? Cancele com a justificativa."
+        }
+      }
+    },
+    "compare": {
+      "title": "NF-e ou NFC-e?",
+      "caption": "Diferenças entre NFC-e e NF-e",
+      "head": {
+        "what": "O que muda",
+        "nfce": "NFC-e",
+        "nfe": "NF-e"
+      },
+      "rows": {
+        "for": {
+          "label": "Para quem",
+          "nfce": "Consumidor final",
+          "nfe": "Empresa ou pessoa"
+        },
+        "where": {
+          "label": "Onde",
+          "nfce": "Balcão, PDV, delivery",
+          "nfe": "Loja virtual, atacado, B2B"
+        },
+        "recipient": {
+          "label": "Destinatário",
+          "nfce": "Opcional",
+          "nfe": "Obrigatório, com endereço"
+        },
+        "doc": {
+          "label": "Documento",
+          "nfce": "Cupom com QR Code",
+          "nfe": "DANFE"
+        },
+        "correction": {
+          "label": "Carta de correção",
+          "nfce": "Não existe: cancela e emite de novo",
+          "nfe": "Sim"
+        }
+      },
+      "start": "Começar grátis",
+      "other": "Conhecer a NF-e"
     }
   }
 }

@@ -1,4 +1,5 @@
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
+import type { AuthorityReachabilityStore } from '@/modules/portal-reachability/authority-reachability.store';
 import type { PortalReachabilityStore } from '@/modules/portal-reachability/reachability.store';
 import type { FiscalPortalBreaker } from '../application/fiscal-portal-breaker';
 import type { InvoiceReviewService } from '../application/invoice-review.service';
@@ -12,15 +13,20 @@ describe('GET /fiscal-portal/status', () => {
       since: null,
       retryAt: null,
     }),
+    authorities: jest.fn().mockResolvedValue([]),
   };
   const request = {
     authContext: { environment: 'live', apiKeyEnvironment: 'live' },
   } as unknown as RequestWithAuthContext;
-  const build = (reachability: Partial<PortalReachabilityStore>) =>
+  const build = (
+    reachability: Partial<PortalReachabilityStore>,
+    probed: Partial<AuthorityReachabilityStore> = { all: async () => [] },
+  ) =>
     new InvoiceReviewController(
       {} as InvoiceReviewService,
       breaker as unknown as FiscalPortalBreaker,
       reachability as PortalReachabilityStore,
+      probed as AuthorityReachabilityStore,
     );
 
   it('adds what the connection tests see to the breaker status', async () => {
@@ -32,7 +38,11 @@ describe('GET /fiscal-portal/status', () => {
     const controller = build({ current: async () => connection } as never);
     const answer = await controller.portalStatus(request);
     expect(answer).toEqual({
-      data: expect.objectContaining({ available: true, connection }),
+      data: expect.objectContaining({
+        available: true,
+        connection: { ...connection, authorities: [] },
+        authorities: [],
+      }),
     });
   });
 
@@ -46,7 +56,47 @@ describe('GET /fiscal-portal/status', () => {
     expect(answer).toEqual({
       data: expect.objectContaining({
         available: true,
-        connection: { state: 'ok', since: null, ourSide: false },
+        connection: {
+          state: 'ok',
+          since: null,
+          ourSide: false,
+          authorities: [],
+        },
+      }),
+    });
+  });
+
+  it('lists what each SEFAZ answered to the last probe', async () => {
+    const row = {
+      authority: 'nfe-sp-2',
+      reachable: false,
+      checkedAt: '2026-11-26T15:00:00.000Z',
+    };
+    const controller = build(
+      { current: async () => ({ state: 'ok', since: null, ourSide: false }) },
+      { all: async () => [row] },
+    );
+    const answer = await controller.portalStatus(request);
+    expect(answer).toEqual({
+      data: expect.objectContaining({
+        connection: expect.objectContaining({ authorities: [row] }),
+      }),
+    });
+  });
+
+  it('answers with an empty list, not a 500, when Redis is down', async () => {
+    const controller = build(
+      { current: async () => ({ state: 'ok', since: null, ourSide: false }) },
+      {
+        all: async () => {
+          throw new Error('redis down');
+        },
+      },
+    );
+    const answer = await controller.portalStatus(request);
+    expect(answer).toEqual({
+      data: expect.objectContaining({
+        connection: expect.objectContaining({ authorities: [] }),
       }),
     });
   });

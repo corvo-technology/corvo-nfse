@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiHideProperty,
+  ApiProperty,
+  ApiPropertyOptional,
+} from '@nestjs/swagger';
 import { CursorQuery } from '@/shared/http/pagination';
 import {
   IsBoolean,
@@ -16,9 +20,18 @@ import {
   MaxLength,
   MinLength,
   Matches,
+  Validate,
+  ValidatorConstraint,
+  type ValidationArguments,
+  type ValidatorConstraintInterface,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { INVOICE_STATUSES, type InvoiceStatus } from '../domain/invoice-status';
+import {
+  INVOICE_LIST_TYPES,
+  type InvoiceListType,
+} from '@/modules/fiscal-core/domain/invoice-type';
+import { NFE_STATUSES } from '@/modules/nfe/domain/nfe-status';
 import { INVOICE_ORIGINS, type InvoiceOrigin } from '../domain/invoice-origin';
 import {
   CANCELLATION_DESCRIPTION_MAX,
@@ -284,6 +297,19 @@ export class InvoiceOptionsDto {
 }
 
 export class CreateInvoiceDto {
+  /** `POST /invoices` with `type: "nfe"` is an NF-e: its own DTO validates it (see the controller). */
+  static readonly bypassValidation = (value: unknown): boolean =>
+    typeof value === 'object' &&
+    value !== null &&
+    ((value as { type?: unknown }).type === 'nfe' ||
+      (value as { type?: unknown }).type === 'nfce');
+
+  /** Documented on `NfseInvoiceRequest`; the NFS-e is the default, so it can be left out. */
+  @ApiHideProperty()
+  @IsOptional()
+  @IsIn(['nfse'])
+  type?: 'nfse';
+
   @ApiPropertyOptional({
     format: 'uuid',
     description:
@@ -400,11 +426,54 @@ export class GetDownloadUrlDto {
   format!: 'pdf' | 'xml';
 }
 
+/**
+ * `status` of `GET /invoices`: the NFS-e states by default (the answer to a wrong one is what it
+ * always was), the NF-e states with `type=nfe`, the states of both with `type=all`. Reported as
+ * `isIn` so the 400 reads the same.
+ */
+@ValidatorConstraint({ name: 'isIn' })
+class IsStatusOfType implements ValidatorConstraintInterface {
+  private allowed(args: ValidationArguments): readonly string[] {
+    const type = (args.object as { type?: InvoiceListType }).type;
+    if (type === 'nfe' || type === 'nfce') return NFE_STATUSES;
+    if (type === 'all') return [...INVOICE_STATUSES, ...NFE_STATUSES];
+    return INVOICE_STATUSES;
+  }
+  validate(value: unknown, args: ValidationArguments): boolean {
+    return this.allowed(args).includes(value as string);
+  }
+  defaultMessage(args: ValidationArguments): string {
+    return `${args.property} must be one of the following values: ${this.allowed(args).join(', ')}`;
+  }
+}
+
+export class InvoicePdfQuery {
+  @ApiPropertyOptional({
+    enum: ['80mm', 'a4'],
+    default: '80mm',
+    description:
+      'Paper of the NFC-e cupom (DANFCE): `80mm` (default, thermal-printer width) or `a4`. NFS-e and NF-e ignore it.',
+  })
+  @IsOptional()
+  @IsIn(['80mm', 'a4'])
+  layout?: 'a4' | '80mm';
+}
+
 export class ListInvoicesQuery extends CursorQuery {
+  @ApiPropertyOptional({
+    enum: INVOICE_LIST_TYPES,
+    default: 'nfse',
+    description:
+      '`nfse` (default) lists NFS-e. `nfe` lists NF-e and `nfce` lists NFC-e (filters: `companyId`, `status`). `all` lists every type in one summary shape (`companyId` and `status` only).',
+  })
+  @IsOptional()
+  @IsIn(INVOICE_LIST_TYPES)
+  type?: InvoiceListType;
+
   @IsOptional() @IsUUID() companyId?: string;
 
   @IsOptional()
-  @IsIn(INVOICE_STATUSES)
+  @Validate(IsStatusOfType)
   status?: InvoiceStatus;
 
   @IsOptional() @IsDateString() from?: string;

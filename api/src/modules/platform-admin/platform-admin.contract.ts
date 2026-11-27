@@ -131,10 +131,25 @@ export type PlatformAttention = {
   }[];
 };
 
+/** One UF whose NF-e goes through the SVC right now. */
+export type PlatformSvcState = {
+  uf: string;
+  tpAmb: 1 | 2;
+  authority: 'SVCAN' | 'SVCRS';
+  enteredAt: string | null;
+  dhCont: string | null;
+};
+
 export type PlatformAuditEvent = {
   id: string;
   actorEmail: string;
-  action: 'credit_grant' | 'user_viewed';
+  action:
+    | 'credit_grant'
+    | 'user_viewed'
+    // Old events: the release no longer exists, but the audit log keeps what was done.
+    | 'nfe_access_changed'
+    | 'nfce_access_set'
+    | 'svc_forced_exit';
   targetTenantId: string | null;
   targetUserId: string | null;
   reason: string | null;

@@ -8,6 +8,13 @@ import {
   ScheduleResponseDto,
   ScheduleRunResponseDto,
 } from '@/modules/invoice-schedule/http/schedule.dto';
+import {
+  CancelNfeDto,
+  CorrectNfeDto,
+  InutilizeNfeDto,
+} from '@/modules/nfe/http/nfe-event.dto';
+import { NfceRequestDto } from '@/modules/nfce/http/nfce.dto';
+import { NfeRequestDto } from '@/modules/nfe/http/nfe.dto';
 import { createOpenApiDocument } from './setup';
 import { toPublicDocument, type OpenApiDocument } from './public-document';
 
@@ -73,7 +80,15 @@ export async function generatePublicDocument(
     return toPublicDocument(
       createOpenApiDocument(app, version, {
         standardResponses: false,
-        extraModels: [ScheduleResponseDto, ScheduleRunResponseDto],
+        extraModels: [
+          ScheduleResponseDto,
+          ScheduleRunResponseDto,
+          NfeRequestDto,
+          NfceRequestDto,
+          CancelNfeDto,
+          CorrectNfeDto,
+          InutilizeNfeDto,
+        ],
       }),
       apiPrefix,
     );

@@ -4,11 +4,12 @@ import type { DocsTree } from "../types";
 import { importsPage } from "../imports-page";
 import { companyToolsBlocks, creditsPreviewBlock, invoiceToolsBlocks } from "../reference-extras";
 import { municipalitiesPage } from "../municipalities-page";
+import { nfePages } from "../nfe-pages";
 
 const enWithRetiredCredits: DocsTree = {
   chrome: {
     homeLabel: "Introduction",
-    groups: { gettingStarted: "Getting Started", reference: "Reference", guides: "Guides" },
+    groups: { gettingStarted: "Getting Started", reference: "Reference", guides: "Guides", nfe: "NF-e (products)" },
     copy: {
       copy: "Copy",
       copied: "Copied",
@@ -2793,6 +2794,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     },
     imports: importsPage("en"),
     municipalities: municipalitiesPage("en"),
+    ...nfePages("en"),
     "payment-integrations": {
       title: "Payment integrations",
       description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart or Kiwify and issue the NFS-e automatically for every confirmed payment.",
@@ -3377,6 +3379,25 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         {
           "kind": "text",
           "body": "The simplest call is `company_tax_id` plus `amount`: the customer is optional (omit it for an invoice without tomador; if you send one, `tax_id` is required), the competence date defaults to today, the service code comes from the company or falls back to `100901` (LC 116 item 10.09) and the description from the service code. Use `company_get` for one CNPJ and `billing_usage` before issuing. The A1 certificate can be sent over MCP only if you tick the `nfse:certificates` permission; without it, upload through the dashboard or the API. Tool failures come back as a result with `isError: true` and the message as text, so the agent can read and fix them."
+        },
+        {
+          "kind": "heading",
+          "level": 2,
+          "body": "NF-e (products)"
+        },
+        {
+          "kind": "text",
+          "body": "For every account (test mode, no tax value; live answers `NFE_PRODUCTION_DISABLED` until production is turned on), the tools `nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` and `nfse_download_pdf` take `type`: `nfse` (default, nothing changes), `nfe` or `nfce` (sale to the consumer, also test mode). In `nfse_list`, `type: \"all\"` lists NFS-e, NF-e and NFC-e together. With `type: \"nfce\"` the NFC-e body goes in the `nfe` object of `nfse_issue` (no `natOp`, the consumer CPF is optional); the NFC-e has no correction letter and can only be cancelled within 30 minutes. With `type: \"nfe\"` use `invoice_id` (not the access key). `nfse_issue` with `nfe` needs `company_id`, the `nfe` object (the same body as `POST /v1/invoices`, without `companyId`) and `idempotency_key`; `nfse_cancel` uses only `description` as the justification. Corvo does not calculate taxes: the agent informs CFOP, NCM and CSOSN."
+        },
+        {
+          "kind": "list",
+          "items": [
+            "`nfe_validate` (`nfse:write`): dry-run, returns the problems field by field and never the XML. Takes `type` (`nfe` or `nfce`). Run it before issuing.",
+            "`nfe_settings_get` (`nfse:read`) and `nfe_settings_update` (`nfse:write`): IE, CRT, series and defaults of the company, and what is missing to issue.",
+            "`nfe_correct` (`nfse:write`): correction letter for an authorized NF-e (on a NFC-e it answers `INVOICE_OPERATION_NOT_SUPPORTED`).",
+            "`nfe_number_gaps` (`nfse:read`) and `nfe_inutilize` (`nfse:write`): skipped numbers and the inutilization of a range, with `model` 55 (NF-e, default) or 65 (NFC-e); ask the person to confirm before inutilizing. `nfe_settings_update` also sets `nfce_default_series`, the NFC-e series.",
+            "These six show in the tool list for every account; cancelling, correcting and inutilizing need a role with `nfe.documents.manage`, issuing and validating `nfe.documents.issue`."
+          ]
         },
         {
           "kind": "heading",

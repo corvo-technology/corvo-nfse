@@ -244,6 +244,12 @@ function apiErrorSchema(): Json {
         'x-known-values': [...API_ERROR_CODES],
       },
       message: { type: 'string', example: 'Request validation failed' },
+      type: {
+        type: 'string',
+        enum: ['communication', 'validation', 'configuration'],
+        description:
+          'Only on NF-e errors: who has to act. `validation`: fix the fields in `details`. `configuration`: complete the company or wait for the release. `communication`: the SEFAZ did not answer; Corvo retries or checks by itself.',
+      },
       details: {
         description:
           'Extra data. For `ERROR_VALIDATION`: a list of `{ field, code, message }`.',
@@ -507,6 +513,8 @@ export function toPublicDocument(
             (name: string) => name !== property,
           );
       }
+      const json = operation.requestBody?.content?.['application/json'];
+      if (json && contract.requestBody) json.schema = contract.requestBody;
       const multipart = operation.requestBody?.content?.['multipart/form-data'];
       if (multipart && contract.multipart)
         multipart.schema = contract.multipart;

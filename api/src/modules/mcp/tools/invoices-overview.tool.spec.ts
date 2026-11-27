@@ -51,6 +51,43 @@ describe('invoices_overview tool', () => {
     }
   });
 
+  it('shows an NF-e and an NFC-e as a short line with its type', async () => {
+    const get = jest.fn().mockResolvedValue({
+      counts: { authorized: 2, rejected: 0, processing: 0 },
+      dailyActivity: [],
+      recentInvoices: [
+        {
+          id: 'nfe-1',
+          type: 'nfe',
+          companyId: 'co-1',
+          environment: 'test',
+          status: 'authorized',
+          number: 7,
+          accessKey: 'k'.repeat(44),
+          amount: '150.00',
+          recipientName: 'Loja X',
+          externalId: 'ext-secret',
+          authorizedAt: null,
+          createdAt: new Date('2026-11-27T10:00:00Z'),
+        },
+      ],
+    });
+    const result = await createInvoicesOverviewHandler({ get })({}, ctx);
+    expect(result.recentInvoices).toEqual([
+      {
+        type: 'nfe',
+        id: 'nfe-1',
+        company_id: 'co-1',
+        status: 'authorized',
+        number: 7,
+        amount: '150.00',
+        customer_name: 'Loja X',
+        authorized_at: null,
+        created_at: new Date('2026-11-27T10:00:00Z'),
+      },
+    ]);
+  });
+
   it('defaults to 7 days and rejects an unknown period', async () => {
     const get = jest
       .fn()

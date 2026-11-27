@@ -4,15 +4,17 @@ import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import { toDetailedInvoice } from './public-shapes';
+import { TYPE_PROPERTY } from './nfe.tools';
 import { invalidInput } from './tool-input-errors';
 
 export const NFSE_GET_TOOL = {
   name: 'nfse_get',
   description:
-    'Get one NFS-e by its internal invoice id (the id returned by nfse_issue and nfse_list), including status, amounts, customer and the events timeline (every status change with its reason and time). Use it to explain why a note was rejected or what happened to it. To look a note up by access key use nfse_query. Fails when the id does not exist in this workspace and environment.',
+    'Get one NFS-e by its internal invoice id (the id returned by nfse_issue and nfse_list), including status, amounts, customer and the events timeline (every status change with its reason and time). Use it to explain why a note was rejected or what happened to it. To look a note up by access key use nfse_query. Fails when the id does not exist in this workspace and environment. With type "nfe" or "nfce" it returns the NF-e or NFC-e and its timeline (states and fiscal events); the NFC-e also has qrCode and urlChave.',
   inputSchema: {
     type: 'object',
     properties: {
+      type: TYPE_PROPERTY,
       invoice_id: {
         type: 'string',
         description: 'Internal invoice id (UUID).',

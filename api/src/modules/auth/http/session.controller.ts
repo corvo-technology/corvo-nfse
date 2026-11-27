@@ -23,6 +23,7 @@ import { extractCookie } from '../application/cookie-reader';
 import { CookieSessionService } from '../application/cookie-session.service';
 import { CsrfGuard } from '../application/csrf.guard';
 import { SwitchTenantDto } from '../application/auth.dto';
+import { NfeEmissionPreconditions } from '@/modules/fiscal-core/application/nfe-emission-preconditions';
 import { PlatformAdminPolicy } from '../application/platform-admin.policy';
 import type { AuthSession } from '../domain/auth-session';
 
@@ -43,7 +44,16 @@ export class SessionController {
     private readonly cookies: CookiePolicyService,
     private readonly users: AuthUserService,
     private readonly platformAdmin: PlatformAdminPolicy,
+    private readonly nfe: NfeEmissionPreconditions,
   ) {}
+
+  /**
+   * What the app needs to know about the product, nothing about the tenant: whether NF-e and NFC-e
+   * can be issued in production (the one release switch left, `NFE_PRODUCTION_ENABLED`).
+   */
+  private features() {
+    return { nfeProduction: this.nfe.productionEnabled() };
+  }
 
   /** Who is signed in, so the app can greet them and ask for a name when there is none. */
   private async profile(authUserId: string) {
@@ -69,6 +79,7 @@ export class SessionController {
       activeTenantId: session.activeTenantId,
       availableTenants: context.availableTenants,
       permissions: context.permissions,
+      features: this.features(),
       expiresAt: session.expiresAt.toISOString(),
       csrfToken: this.sessions.generateCsrfToken(session.id),
     });
@@ -107,6 +118,7 @@ export class SessionController {
       activeTenantId: updated.activeTenantId,
       availableTenants: context.availableTenants,
       permissions: context.permissions,
+      features: this.features(),
       expiresAt: updated.expiresAt.toISOString(),
       csrfToken: this.sessions.generateCsrfToken(updated.id),
     });

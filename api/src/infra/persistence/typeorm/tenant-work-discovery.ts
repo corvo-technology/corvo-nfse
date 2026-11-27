@@ -13,6 +13,7 @@ import { CertificateOrmEntity } from '@/modules/certificate/infra/certificate.or
 import { CompanyOrmEntity } from '@/modules/company/infra/company.orm-entity';
 import { WebhookDeliveryOrmEntity } from '@/modules/webhooks-config/infra/webhook-delivery.orm-entity';
 import { AccountAuditEventOrmEntity } from '@/modules/account-audit/infra/account-audit-event.orm-entity';
+import { NfeNumberSequenceOrmEntity } from '@/modules/nfe/infra/nfe-number-sequence.orm-entity';
 import { PaymentIntentOrmEntity } from '@/modules/billing/infra/payment-intent.orm-entity';
 import { previousMonth } from '@/modules/invoice/application/package/package-month';
 import { brtMonthWindow } from '@/modules/lifecycle-emails/brt-time';
@@ -28,6 +29,7 @@ export type TenantWork =
   | 'billing-reconciliation'
   | 'accountant-package'
   | 'account-audit-retention'
+  | 'nfe-number-gaps'
   | 'lifecycle-monthly-summary'
   | 'lifecycle-payment-pending';
 
@@ -113,6 +115,11 @@ export class TenantWorkDiscovery {
           .getRepository(AccountAuditEventOrmEntity)
           .createQueryBuilder('work')
           .where("work.occurred_at < now() - interval '365 days'");
+      } else if (kind === 'nfe-number-gaps') {
+        query = this.database
+          .getRepository(NfeNumberSequenceOrmEntity)
+          .createQueryBuilder('work')
+          .where('work.current_number > 0');
       } else if (kind === 'portal-sync') {
         // Workspaces with a certificate that can still sign: the only ones the portal answers.
         owner = 'company.tenant_id';

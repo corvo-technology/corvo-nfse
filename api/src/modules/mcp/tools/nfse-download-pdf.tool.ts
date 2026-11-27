@@ -6,22 +6,32 @@ import { executionEnvironment } from '@/modules/auth/execution-environment.guard
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
 import { NfseDownloadPdfInput } from '../dto/tool-input.dto';
 import { findInvoiceByAccessKey } from './nfse-query.tool';
+import { TYPE_PROPERTY } from './nfe.tools';
 
 export const NFSE_DOWNLOAD_PDF_TOOL = {
   name: 'nfse_download_pdf',
   description:
-    'Get the PDF of an authorized NFS-e invoice. By default it returns a temporary signed download link (valid for one hour), the same as nfse_get_download_url: the link is preferred, because the PDF itself is large for an agent to carry. Pass inline: true only when you really need the file content as a base64-encoded string.',
+    'Get the PDF of an authorized NFS-e invoice. By default it returns a temporary signed download link (valid for one hour), the same as nfse_get_download_url: the link is preferred, because the PDF itself is large for an agent to carry. Pass inline: true only when you really need the file content as a base64-encoded string. With type "nfe" or "nfce" send invoice_id (the DANFE or DANFCE comes only as a link).',
   inputSchema: {
     type: 'object',
     properties: {
-      access_key: { type: 'string', description: 'The NFS-e access key' },
+      type: TYPE_PROPERTY,
+      invoice_id: {
+        type: 'string',
+        description:
+          'UUID of the NF-e or NFC-e. Only with type "nfe" or "nfce".',
+      },
+      access_key: {
+        type: 'string',
+        description: 'The NFS-e access key (required for NFS-e)',
+      },
       inline: {
         type: 'boolean',
         description:
           'true returns pdf_base64 instead of a link. Default false (link).',
       },
     },
-    required: ['access_key'],
+    required: [],
   },
 } as const;
 

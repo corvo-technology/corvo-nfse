@@ -29,7 +29,10 @@ export function toPage<T>(body: { data: T[]; pagination?: { limit?: number; hasM
 export interface AvailableTenant { tenantId: string; membershipId: string; role: string; establishmentName: string }
 export interface AuthContext { authUserId: string; activeTenantId: string; role: string; permissions: string[]; availableTenants: AvailableTenant[] }
 export interface Profile { name: string; email: string }
-export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; isPlatformAdmin?: boolean; expiresAt: string; csrfToken: string }
+/** What the workspace may use besides the basics; today only NF-e (released per account by the platform). */
+/** What the app needs about the product: whether NF-e and NFC-e can be issued in production (the one release switch). */
+export interface SessionFeatures { nfeProduction: boolean }
+export interface SessionPayload { status: "authenticated"; context: AuthContext; profile?: Profile; activeTenantId: string; availableTenants: AvailableTenant[]; permissions: string[]; isPlatformAdmin?: boolean; features?: SessionFeatures; expiresAt: string; csrfToken: string }
 export interface MagicLinkChallenge { challengeId: string; expiresAt: string; resendAvailableAt: string }
 export type OAuthProvider = "google" | "github";
 export type OAuthProviders = Record<OAuthProvider, boolean>;
@@ -213,6 +216,18 @@ export function adaptInvoice(props: InvoiceWire): Invoice {
   // Anonymous consumer invoices have no customer snapshot (the tomador is omitted from the DPS).
   return { ...props, customerName: props.customerSnapshot?.name ?? "", customerTaxId: props.customerSnapshot?.taxId ?? props.customerSnapshot?.foreign?.taxId ?? "", serviceDescription: props.serviceSnapshot.description };
 }
+/** An NF-e or NFC-e in the overview: a short line, shown in the same table as the NFS-e. */
+interface OverviewNfeWire { id: string; type: "nfe" | "nfce"; companyId: string; status: string; number: number | null; accessKey: string | null; amount: string | null; recipientName: string | null; externalId: string | null; authorizedAt: string | null; createdAt: string }
+// Statuses of the NF-e that the invoice table does not know fall in the closest one it knows.
+const NFE_TO_INVOICE_STATUS: Record<string, InvoiceStatus> = { denied: "rejected", contingency_pending: "processing", discarded: "cancelled" };
+export function adaptOverviewNfe(wire: OverviewNfeWire): Invoice {
+  return {
+    type: wire.type, id: wire.id, tenantId: "", companyId: wire.companyId, externalId: wire.externalId, accessKey: wire.accessKey,
+    nfseNumber: wire.number, status: NFE_TO_INVOICE_STATUS[wire.status] ?? (wire.status as InvoiceStatus), amount: Number(wire.amount ?? 0),
+    customerName: wire.recipientName ?? "", customerTaxId: "", serviceDescription: "", customerSnapshot: null,
+    serviceSnapshot: { description: "" } as Invoice["serviceSnapshot"], competenceDate: wire.createdAt, authorizedAt: wire.authorizedAt, createdAt: wire.createdAt, updatedAt: wire.createdAt,
+  };
+}
 export interface InvoiceQuery extends PageParams { companyId?: string; status?: InvoiceStatus; from?: string; to?: string; externalId?: string; customerTaxId?: string; origin?: InvoiceOriginKind }
 export type OverviewPeriod = "7d" | "30d";
 export interface InvoiceOverview {
@@ -251,8 +266,8 @@ export const invoicePackages = {
 };
 export const invoices = {
   overview: async (period: OverviewPeriod = "7d", signal?: AbortSignal): Promise<InvoiceOverview> => {
-    const result = unwrap(await request<Envelope<Omit<InvoiceOverview, "recentInvoices"> & { recentInvoices: InvoiceWire[] }>>(`/invoices/overview${query({ period })}`, { signal }));
-    return { ...result, recentInvoices: result.recentInvoices.map(adaptInvoice) };
+    const result = unwrap(await request<Envelope<Omit<InvoiceOverview, "recentInvoices"> & { recentInvoices: (InvoiceWire | OverviewNfeWire)[] }>>(`/invoices/overview${query({ period })}`, { signal }));
+    return { ...result, recentInvoices: result.recentInvoices.map((item) => (item.type === "nfe" || item.type === "nfce" ? adaptOverviewNfe(item as OverviewNfeWire) : adaptInvoice(item as InvoiceWire))) };
   },
   /** `environment` overrides the active one for this call only (used to look at both environments). */
   list: async (params: InvoiceQuery = {}, signal?: AbortSignal, environment?: FiscalEnvironment): Promise<Page<Invoice>> => { const page = toPage(await request<ListBody<InvoiceBody>>(`/invoices${query(params)}`, { signal, ...(environment ? { headers: { "X-Corvo-Environment": environment } } : {}) })); return { ...page, items: page.items.map(adaptInvoice) }; },

@@ -16,10 +16,27 @@ export interface OverviewRange {
   end: Date;
   timezone: string;
 }
+/** A recent NF-e or NFC-e: the short line of the document, not the whole note. */
+export interface OverviewNfeItem {
+  id: string;
+  type: 'nfe' | 'nfce';
+  companyId: string;
+  environment: string;
+  status: string;
+  number: number | null;
+  accessKey: string | null;
+  amount: string | null;
+  recipientName: string | null;
+  externalId: string | null;
+  authorizedAt: Date | null;
+  createdAt: Date;
+}
+/** An NFS-e is the full invoice (its JSON has `type: "nfse"`); NF-e and NFC-e are short lines. */
+export type OverviewRecent = Invoice | OverviewNfeItem;
 export interface InvoiceOverviewRead {
   counts: OverviewCounts;
   dailyActivity: OverviewDay[];
-  recentInvoices: Invoice[];
+  recentInvoices: OverviewRecent[];
 }
 export const INVOICE_OVERVIEW_REPOSITORY = Symbol(
   'INVOICE_OVERVIEW_REPOSITORY',

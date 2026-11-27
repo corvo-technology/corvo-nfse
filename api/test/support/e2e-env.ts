@@ -32,3 +32,5 @@ process.env.DATABASE_URL = e2eDatabaseUrl;
 process.env.DB_SCHEMA = 'corvo';
 // The dashboard-origin checks (cookie + CSRF flows) need the dashboard origin allowed.
 process.env.CORS_ORIGINS ??= 'http://localhost:4000';
+// The NF-e simulator answers instead of a SEFAZ (no certificate needed for a `test` company).
+process.env.NFE_TEST_PROVIDER = 'fake';
