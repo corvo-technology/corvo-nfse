@@ -15,6 +15,11 @@ export type ApplicationErrorOptions = {
   message?: string;
   safeDetails?: Readonly<Record<string, SafeErrorDetail>>;
   retryable?: boolean;
+  /**
+   * The failure is part of normal operation (an outside service did not answer and the caller
+   * may try again): the answer keeps its own message and nothing is reported to Sentry.
+   */
+  expected?: boolean;
   cause?: unknown;
 };
 
@@ -28,6 +33,7 @@ export class ApplicationError extends Error {
   readonly safeMessage: string;
   readonly safeDetails?: Readonly<Record<string, SafeErrorDetail>>;
   readonly retryable: boolean;
+  readonly expected: boolean;
 
   constructor(options: ApplicationErrorOptions) {
     super(options.message ?? options.safeMessage, { cause: options.cause });
@@ -37,6 +43,7 @@ export class ApplicationError extends Error {
     this.safeMessage = options.safeMessage;
     this.safeDetails = options.safeDetails;
     this.retryable = options.retryable ?? false;
+    this.expected = options.expected ?? false;
   }
 }
 

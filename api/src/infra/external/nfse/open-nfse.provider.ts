@@ -28,6 +28,8 @@ import {
   ReceitaRejectionError,
   ValidationError,
   NotFoundError,
+  HttpStatusError,
+  fetchDpsStatus,
   JustificativaCancelamento,
   parseNfseXml,
   type PendingEvent,
@@ -61,6 +63,15 @@ const CANCELLATION_REASON: Record<
   other: JustificativaCancelamento.Outros,
 };
 
+/** The portal says the DPS id is malformed (400, E2400): the form of the id is wrong, not the DPS. */
+function isMalformedDpsId(error: unknown): boolean {
+  return (
+    error instanceof HttpStatusError &&
+    error.status === 400 &&
+    (error.body ?? '').includes('E2400')
+  );
+}
+
 @Injectable()
 export class OpenNfseProvider
   implements FiscalProvider, MunicipalityAgreementPort
@@ -70,6 +81,8 @@ export class OpenNfseProvider
   private readonly homologationOnly: boolean;
   private readonly configuredLayout: ConfiguredDpsLayout;
   private readonly layoutPolicy: DpsLayoutPolicy;
+  /** Sefin environments whose DPS lookup takes the 42 digits without the "DPS" prefix (see `dpsStatus`). */
+  private readonly dpsIdWithoutPrefix = new Set<SefinEnvironment>();
 
   constructor(
     @InjectDataSource() private readonly database: DataSource,
@@ -427,8 +440,10 @@ export class OpenNfseProvider
       if (pending?.kind === 'emission') {
         const { idDps } = pending;
         try {
-          const status = await this.gov(payload.environment, 'sefin', () =>
-            client.fetchDpsStatus(idDps),
+          const status = await this.dpsStatus(
+            client,
+            idDps,
+            payload.environment,
           );
           return this.result(
             await this.gov(payload.environment, 'sefin', () =>
@@ -533,6 +548,53 @@ export class OpenNfseProvider
       await client.close();
     }
   }
+  /**
+   * The DPS lookup (`GET /dps/{id}`). The Sefin of the Produção Restrita (1.6.0) refuses the id with
+   * the "DPS" prefix (400 E2400 "O ID da DPS deve conter 42 números") and wants only the 42 digits,
+   * while the production one may still take the prefix. The form that works is remembered per
+   * environment; when the portal answers E2400 the other form is asked once. Nothing is guessed:
+   * a 404 still means "no note" and any other failure is raised as before.
+   */
+  private async dpsStatus(
+    client: NfseClient,
+    idDps: string,
+    environment: 'test' | 'live',
+  ) {
+    const sefin = this.sefinFor(environment);
+    const digitsFirst = this.dpsIdWithoutPrefix.has(sefin);
+    const ask = (digits: boolean) =>
+      this.gov(environment, 'sefin', () =>
+        digits
+          ? this.fetchDpsStatusDigits(client, idDps)
+          : client.fetchDpsStatus(idDps),
+      );
+    try {
+      return await ask(digitsFirst);
+    } catch (error) {
+      if (!isMalformedDpsId(error)) throw error;
+    }
+    const status = await ask(!digitsFirst);
+    if (digitsFirst) this.dpsIdWithoutPrefix.delete(sefin);
+    else this.dpsIdWithoutPrefix.add(sefin);
+    return status;
+  }
+
+  /** Same lookup with the 42 digits only (the lib's own client always sends the "DPS" prefix). */
+  private async fetchDpsStatusDigits(client: NfseClient, idDps: string) {
+    const { sefin } = await (
+      client as unknown as {
+        ensureState(): Promise<{ sefin: { get<T>(path: string): Promise<T> } }>;
+      }
+    ).ensureState();
+    return fetchDpsStatus(
+      {
+        get: <T>(path: string) =>
+          sefin.get<T>(path.replace('/dps/DPS', '/dps/')),
+      } as never,
+      idDps,
+    );
+  }
+
   async queryByDps(
     idDps: string,
     credentials: IIssuePayload,
@@ -544,8 +606,10 @@ export class OpenNfseProvider
       await this.routeFor(credentials),
     );
     try {
-      const status = await this.gov(credentials.environment, 'sefin', () =>
-        client.fetchDpsStatus(idDps),
+      const status = await this.dpsStatus(
+        client,
+        idDps,
+        credentials.environment,
       );
       const note = await this.gov(credentials.environment, 'sefin', () =>
         client.fetchByChave(status.chaveAcesso),

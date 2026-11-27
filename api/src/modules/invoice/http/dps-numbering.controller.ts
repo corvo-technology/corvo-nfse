@@ -8,7 +8,6 @@ import {
   ParseUUIDPipe,
   Post,
   Req,
-  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
@@ -21,7 +20,9 @@ import { RequirePermission } from '@/modules/auth/require-permission.decorator';
 import { ApiKeyEndpoint } from '@/modules/auth/api-key-endpoint.decorator';
 import type { RequestWithAuthContext } from '@/modules/auth/auth-context';
 import { data } from '@/shared/http/response';
+import { ApplicationError } from '@/shared/errors/application-error';
 import {
+  DPS_NUMBERING_CHECK_UNAVAILABLE,
   DpsNumberingService,
   NumberingCheckUnavailableError,
 } from '../application/dps-numbering.service';
@@ -85,9 +86,14 @@ export class DpsNumberingController {
       });
     } catch (error) {
       if (error instanceof NumberingCheckUnavailableError)
-        throw new ServiceUnavailableException({
-          code: 'DPS_NUMBERING_CHECK_UNAVAILABLE',
-          message: error.message,
+        // The portal not answering is expected: 503 with its own message, not a Sentry error.
+        throw new ApplicationError({
+          code: DPS_NUMBERING_CHECK_UNAVAILABLE,
+          kind: 'dependency',
+          retryable: true,
+          expected: true,
+          safeMessage: error.message,
+          cause: error,
         });
       throw error;
     }
