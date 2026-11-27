@@ -92,6 +92,8 @@ const routes: [RegExp, string[]][] = [
   [/^platform\/users\/[^/]+$/, ["GET"]],
   [/^platform\/tenants\/[^/]+\/credit-grants$/, ["POST"]],
   [/^platform\/tenants\/[^/]+\/nfe-access$/, ["PUT"]],
+  [/^platform\/contingency$/, ["GET"]],
+  [/^platform\/contingency\/[A-Za-z]{2}\/[12]\/exit$/, ["POST"]],
   [/^health\/(live|ready)$/, ["GET"]],
 ];
 // Session plus the short-lived social sign-in state cookie.

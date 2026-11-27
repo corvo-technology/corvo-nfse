@@ -4154,7 +4154,8 @@
         "credit_grant": "Deu notas avulsas",
         "user_viewed": "Abriu um usuário",
         "nfe_access_changed": "Mudou a liberação da NF-e",
-        "nfce_access_set": "Mudou a liberação da NFC-e"
+        "nfce_access_set": "Mudou a liberação da NFC-e",
+        "svc_forced_exit": "Saiu da contingência (SVC)"
       },
       "success": "Feito",
       "failure": "Falhou"
@@ -4174,6 +4175,25 @@
       "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
       "errorNotFound": "Este espaço não foi encontrado.",
       "errorGeneric": "Não foi possível mudar a liberação. Nada foi gravado. Tente de novo."
+    },
+    "svc": {
+      "title": "NF-e na contingência (SVC)",
+      "empty": "Nenhum estado está na contingência. As NF-e saem pela SEFAZ de cada estado.",
+      "uf": "Estado",
+      "env": "Ambiente",
+      "live": "Produção",
+      "test": "Homologação",
+      "authority": "SEFAZ Virtual",
+      "since": "Desde",
+      "exit": "Sair da SVC",
+      "exitTitle": "Sair da SVC: {uf}",
+      "exitDescription": "As NF-e de {uf} voltam a sair pela SEFAZ de origem. Use só se ela já voltou. As notas já emitidas na contingência continuam válidas.",
+      "reason": "Motivo",
+      "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
+      "cancel": "Cancelar",
+      "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
+      "errorNotFound": "Esse estado já não está na contingência.",
+      "errorGeneric": "Não foi possível sair da contingência. Nada foi mudado. Tente de novo."
     }
   }
 }

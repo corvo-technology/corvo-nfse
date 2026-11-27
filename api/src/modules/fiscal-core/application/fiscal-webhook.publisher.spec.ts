@@ -67,4 +67,58 @@ describe('FiscalWebhookPublisher', () => {
       publisher.publish(ref, 'nfe.document.denied', {}),
     ).resolves.toBeUndefined();
   });
+
+  it('publishes an event that belongs to no document, to the active subscriptions only', async () => {
+    const outbox = { enqueue: jest.fn() };
+    const webhooks = {
+      findByTenantIdAndEvent: jest.fn().mockResolvedValue([
+        { id: 'cfg-1', active: true, url: 'https://a.test', secret: 's1' },
+        { id: 'cfg-2', active: false, url: 'https://b.test', secret: 's2' },
+      ]),
+    };
+    const publisher = new FiscalWebhookPublisher(
+      webhooks as never,
+      outbox as never,
+    );
+
+    await publisher.publishTenantEvent(
+      ref.tenantId,
+      'test',
+      'nfe.contingency.entered',
+      { uf: 'SP', authority: 'SVCAN' },
+    );
+
+    expect(webhooks.findByTenantIdAndEvent).toHaveBeenCalledWith(
+      ref.tenantId,
+      'nfe.contingency.entered',
+      'test',
+    );
+    expect(outbox.enqueue).toHaveBeenCalledTimes(1);
+    const sent = (outbox.enqueue.mock.calls as unknown[][])[0][0];
+    expect(sent).toMatchObject({
+      tenantId: ref.tenantId,
+      eventType: 'nfe.contingency.entered',
+      payload: {
+        type: 'nfe.contingency.entered',
+        data: { environment: 'test', uf: 'SP', authority: 'SVCAN' },
+      },
+    });
+  });
+
+  it('never throws when the tenant event cannot be queued', async () => {
+    const publisher = new FiscalWebhookPublisher(
+      {
+        findByTenantIdAndEvent: jest.fn().mockRejectedValue(new Error('x')),
+      } as never,
+      { enqueue: jest.fn() } as never,
+    );
+    await expect(
+      publisher.publishTenantEvent(
+        ref.tenantId,
+        'test',
+        'nfe.contingency.exited',
+        {},
+      ),
+    ).resolves.toBeUndefined();
+  });
 });

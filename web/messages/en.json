@@ -4154,7 +4154,8 @@
         "credit_grant": "Gave extra invoices",
         "user_viewed": "Opened a user",
         "nfe_access_changed": "Changed NF-e release",
-        "nfce_access_set": "Changed NFC-e release"
+        "nfce_access_set": "Changed NFC-e release",
+        "svc_forced_exit": "Left the SVC contingency"
       },
       "success": "Done",
       "failure": "Failed"
@@ -4174,6 +4175,25 @@
       "errorReason": "The reason must have 5 to 500 characters.",
       "errorNotFound": "This workspace was not found.",
       "errorGeneric": "Could not change the release. Nothing was saved. Try again."
+    },
+    "svc": {
+      "title": "NF-e in contingency (SVC)",
+      "empty": "No state is in contingency. NF-e go out through each state's own SEFAZ.",
+      "uf": "State",
+      "env": "Environment",
+      "live": "Production",
+      "test": "Homologation",
+      "authority": "Virtual SEFAZ",
+      "since": "Since",
+      "exit": "Leave the SVC",
+      "exitTitle": "Leave the SVC: {uf}",
+      "exitDescription": "The NF-e of {uf} go out through the origin SEFAZ again. Use it only when it is back. Notes already issued in contingency stay valid.",
+      "reason": "Reason",
+      "reasonHint": "Write 5 to 500 characters. It is kept in the history.",
+      "cancel": "Cancel",
+      "errorReason": "The reason must have 5 to 500 characters.",
+      "errorNotFound": "That state is no longer in contingency.",
+      "errorGeneric": "Could not leave the contingency. Nothing was changed. Try again."
     }
   }
 }

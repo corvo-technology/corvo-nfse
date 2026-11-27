@@ -15,6 +15,7 @@ import { FiscalDocumentRegistry } from '@/modules/fiscal-core/application/fiscal
 import { FiscalWebhookPublisher } from '@/modules/fiscal-core/application/fiscal-webhook.publisher';
 import { OutboxService } from '@/modules/invoice/application/outbox.service';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
+import { EmailModule } from '@/modules/email/email.module';
 import { WebhooksConfigModule } from '@/modules/webhooks-config/webhooks-config.module';
 import { NfeCancelHandler } from './application/nfe-cancel.handler';
 import { NfeCancelService } from './application/nfe-cancel.service';
@@ -40,16 +41,25 @@ import { NfeReconcileHandler } from './application/nfe-reconcile.handler';
 import { NfeSendEmailHandler } from './application/nfe-send-email.handler';
 import { NfeResubmitService } from './application/nfe-resubmit.service';
 import { NfeSefazAccess } from './application/nfe-sefaz-access';
+import { NfeSvcAnnouncer } from './application/nfe-svc.announcer';
+import {
+  NfeSvcSwitchService,
+  SEFAZ_STATUS,
+} from './application/nfe-svc-switch.service';
+import { ReachabilitySefazStatus } from './application/reachability-sefaz-status';
 import { NfeTransitionService } from './application/nfe-transition.service';
 import { NfeValidateService } from './application/nfe-validate.service';
 import { INfeDocumentRepository } from './domain/nfe-document.repository';
 import { INfeNumberPreview } from './domain/nfe-number-preview';
 import { NfeInvoiceRoutes } from './http/nfe-invoice.routes';
 import { NfeNumberGapsScheduler } from './jobs/nfe-number-gaps.scheduler';
+import { NfeSvcSwitchScheduler } from './jobs/nfe-svc-switch.scheduler';
 import { NfeDocumentEventOrmEntity } from './infra/nfe-document-event.orm-entity';
 import { NfeDocumentHistoryOrmEntity } from './infra/nfe-document-history.orm-entity';
 import { NfeDocumentItemOrmEntity } from './infra/nfe-document-item.orm-entity';
 import { NfeDocumentOrmEntity } from './infra/nfe-document.orm-entity';
+import { NfeContingencyStateOrmEntity } from './infra/nfe-contingency-state.orm-entity';
+import { TypeormNfeContingencyStates } from './infra/typeorm-nfe-contingency-states';
 import { NfeInutilizationOrmEntity } from './infra/nfe-inutilization.orm-entity';
 import { NfeNumberSequenceOrmEntity } from './infra/nfe-number-sequence.orm-entity';
 import { TypeOrmNfeDocumentRepository } from './infra/typeorm-nfe-document.repository';
@@ -82,6 +92,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     WebhooksConfigModule,
     BillingUsageModule,
     CreditsModule,
+    EmailModule,
     TypeOrmModule.forFeature([
       NfeDocumentOrmEntity,
       NfeDocumentItemOrmEntity,
@@ -89,6 +100,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
       NfeNumberSequenceOrmEntity,
       NfeDocumentEventOrmEntity,
       NfeInutilizationOrmEntity,
+      NfeContingencyStateOrmEntity,
     ]),
   ],
   // No controllers: `/v1/invoices` serves NF-e through `NfeInvoiceRoutes`, registered in the router.
@@ -117,6 +129,11 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfeTimelineService,
     NfeNumberGapsScheduler,
     NfeNumberGapsQuery,
+    NfeSvcSwitchScheduler,
+    NfeSvcSwitchService,
+    NfeSvcAnnouncer,
+    TypeormNfeContingencyStates,
+    { provide: SEFAZ_STATUS, useClass: ReachabilitySefazStatus },
     TypeormNfeEvents,
     TypeormNfeInutilizations,
     NfePrepareDocumentsHandler,
@@ -153,6 +170,8 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfeInutilizeService,
     TypeormNfeInutilizations,
     NfeNumberGapsQuery,
+    NfeSvcSwitchService,
+    TypeormNfeContingencyStates,
   ],
 })
 export class NfeModule implements OnModuleInit {

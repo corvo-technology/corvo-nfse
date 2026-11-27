@@ -64,8 +64,8 @@ describe('WebhookEvent Types', () => {
     });
 
     it('the NF-e events are only an addition: nfe.document.* and nfe.inutilization.*', () => {
-      const nfe = PUBLIC_WEBHOOK_EVENT_TYPES.filter((type) =>
-        type.startsWith('nfe.'),
+      const nfe = PUBLIC_WEBHOOK_EVENT_TYPES.filter(
+        (type) => type.startsWith('nfe.') && !type.includes('.contingency.'),
       );
       expect(nfe).toHaveLength(14);
       for (const eventType of nfe)
@@ -104,6 +104,15 @@ describe('WebhookEvent Types', () => {
       expect(PUBLIC_WEBHOOK_EVENT_TYPES).not.toContain(
         'nfce.document.corrected',
       );
+    });
+  });
+
+  describe('NF-e contingency Webhook Event Types', () => {
+    it('adds the SVC events at the end, after every older one', () => {
+      expect(PUBLIC_WEBHOOK_EVENT_TYPES.slice(-2)).toEqual([
+        'nfe.contingency.entered',
+        'nfe.contingency.exited',
+      ]);
     });
   });
 

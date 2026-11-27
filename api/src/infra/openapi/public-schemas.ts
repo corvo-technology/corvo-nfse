@@ -1056,6 +1056,8 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       'nfce.inutilization.completed',
       'nfce.inutilization.rejected',
       'nfce.contingency.deadline_near',
+      'nfe.contingency.entered',
+      'nfe.contingency.exited',
     ],
   }),
   Webhook: obj({
