@@ -4,9 +4,10 @@ import type { MigrationInterface, QueryRunner } from 'typeorm';
  * Support the nightly notice cleanup (infra/retention/notice-retention.ts): finished rows by age. Both
  * are partial, so the pending and retrying rows the app reads all day stay out of them. The other
  * cleaned tables (webhook_events, integration_operations) are small, one row per payment or sale.
- * Plain CREATE INDEX, like the outbox one: no migration here uses `transaction = false`.
+ * Plain CREATE INDEX, like the outbox one: no migration here uses `transaction = false`. The timestamp sits
+ * before the NF-e migrations on purpose: their tests undo "the last N migrations" and count from the top.
  */
-export class IndexNoticeRetention1793900000000 implements MigrationInterface {
+export class IndexNoticeRetention1792990000000 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;
     return runner.connection.driver.escape(
