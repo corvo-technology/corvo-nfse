@@ -15245,6 +15245,33 @@
           },
           "connection": {
             "properties": {
+              "authorities": {
+                "description": "What the last connection probe saw for each enabled SEFAZ authority; empty when none is enabled or the data is not available.",
+                "items": {
+                  "properties": {
+                    "authority": {
+                      "description": "An enabled SEFAZ authority and environment, named like the breaker list above.",
+                      "example": "nfe-sp-2",
+                      "type": "string"
+                    },
+                    "checkedAt": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "reachable": {
+                      "description": "True when the last TCP probe reached its host.",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "authority",
+                    "reachable",
+                    "checkedAt"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
               "ourSide": {
                 "description": "True when the trouble is on the Corvo side, not the portal.",
                 "type": "boolean"
@@ -15269,7 +15296,8 @@
             "required": [
               "state",
               "since",
-              "ourSide"
+              "ourSide",
+              "authorities"
             ],
             "type": "object"
           },

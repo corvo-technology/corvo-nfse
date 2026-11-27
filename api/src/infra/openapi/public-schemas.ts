@@ -789,6 +789,23 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         description:
           'True when the trouble is on the Corvo side, not the portal.',
       }),
+      authorities: array(
+        obj({
+          authority: str({
+            example: 'nfe-sp-2',
+            description:
+              'An enabled SEFAZ authority and environment, named like the breaker list above.',
+          }),
+          reachable: bool({
+            description: 'True when the last TCP probe reached its host.',
+          }),
+          checkedAt: dateTime(),
+        }),
+        {
+          description:
+            'What the last connection probe saw for each enabled SEFAZ authority; empty when none is enabled or the data is not available.',
+        },
+      ),
     }),
   }),
   Certificate: obj(
