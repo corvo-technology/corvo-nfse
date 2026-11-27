@@ -4,6 +4,8 @@ import { isSeoLocale } from "@/lib/seo";
 
 export const dynamic = "force-static";
 export const dynamicParams = false;
+/** The FAQ in it depends on NFE_PRODUCTION_ENABLED, read at runtime: look again every minute. */
+export const revalidate = 60;
 
 export function generateStaticParams() {
   return [{ locale: "en" }, { locale: "pt" }];

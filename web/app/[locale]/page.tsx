@@ -8,6 +8,9 @@ import { SITE_COPY, SITE_URL, pageMetadata, pageUrl, seoLocale } from "@/lib/seo
 
 type Props = { params: Promise<{ locale: string }> };
 
+/** The FAQ answer about NF-e and NFC-e depends on NFE_PRODUCTION_ENABLED, read at runtime: look again every minute. */
+export const revalidate = 60;
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = seoLocale((await params).locale);
   const copy = SITE_COPY[locale];

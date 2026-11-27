@@ -3352,7 +3352,8 @@
       },
       "types": {
         "q": "Which types of invoice does Corvo issue?",
-        "a": "NFS-e (service invoice, on the national standard), NF-e (goods invoice, model 55) and NFC-e (retail receipt, model 65). All three use the same API call (POST /v1/invoices, with the type field), the same key and the same credit. NF-e and NFC-e are in test mode (homologação); production is coming soon.",
+        "a": "NFS-e (service invoice, on the national standard), NF-e (goods invoice, model 55) and NFC-e (retail receipt, model 65). All three use the same API call (POST /v1/invoices, with the type field), the same key and the same credit. NF-e and NFC-e are in test mode (homologação); production is coming soon. AI agents can issue all three through MCP as well.",
+        "aLive": "NFS-e (service invoice, on the national standard), NF-e (goods invoice, model 55) and NFC-e (retail receipt, model 65). All three use the same API call (POST /v1/invoices, with the type field), the same key and the same credit. NF-e and NFC-e issue in production, with tax value. AI agents can issue all three through MCP as well.",
         "link": "Learn about NF-e",
         "link2": "Learn about NFC-e"
       },
@@ -4496,7 +4497,8 @@
   "NfePage": {
     "meta": {
       "title": "NF-e API: goods invoice in one call",
-      "description": "Issue NF-e (model 55) with the Corvo API: DANFE, correction letter, cancellation and the same credit as the NFS-e. Available in test mode (homologação)."
+      "description": "Issue NF-e (model 55) with the Corvo API: DANFE, correction letter, cancellation and the same credit as the NFS-e. Available in test mode (homologação).",
+      "descriptionLive": "Issue NF-e (model 55) with the Corvo API: DANFE, correction letter, cancellation and the same credit as the NFS-e. Available in production."
     },
     "crumb": "NF-e",
     "hero": {
@@ -4507,6 +4509,7 @@
       "docs": "Read the documentation",
       "scope": "For Simples Nacional and MEI companies. You give the CFOP, NCM and CSOSN as your accountant tells you.",
       "note": "Available in test mode (homologação). Production coming soon.",
+      "noteLive": "Available in production, with tax value.",
       "release": "Works in every state with nothing to set up: just register the company."
     },
     "code": {
@@ -4543,7 +4546,8 @@
       }
     },
     "lifecycle": {
-      "title": "From issuing to cancelling, all through the API and the dashboard",
+      "title": "From issuing to cancelling: through the API, the dashboard or an AI agent (MCP)",
+      "mcpHint": "AI agents use the MCP tools at each step. The NFC-e works the same way, with type \"nfce\" (it has no correction letter).",
       "steps": {
         "validate": {
           "title": "Validate",
@@ -4577,7 +4581,8 @@
   "NfcePage": {
     "meta": {
       "title": "NFC-e API: the tax receipt for your register",
-      "description": "Issue NFC-e (model 65) with the Corvo API: QR Code, 80 mm or A4 receipt and offline contingency. Available in test mode (homologação), starting with SP."
+      "description": "Issue NFC-e (model 65) with the Corvo API: QR Code, 80 mm or A4 receipt and offline contingency. Available in test mode (homologação), starting with SP.",
+      "descriptionLive": "Issue NFC-e (model 65) with the Corvo API: QR Code, 80 mm or A4 receipt and offline contingency. Available in production, starting with SP."
     },
     "crumb": "NFC-e",
     "hero": {
@@ -4588,6 +4593,7 @@
       "docs": "Read the documentation",
       "scope": "The consumer's CPF is optional. For Simples Nacional and MEI companies, with the state registration accredited for NFC-e.",
       "note": "Available in test mode (homologação). Production coming soon.",
+      "noteLive": "Available in production, with tax value.",
       "release": "Starts with São Paulo. Other states are coming soon."
     },
     "receipt": {

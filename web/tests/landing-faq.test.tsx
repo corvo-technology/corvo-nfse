@@ -64,6 +64,22 @@ describe("landing FAQ", () => {
     expect([...types.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/${locale}/nf-e`, `/${locale}/nfc-e`]);
   });
 
+  it.each(["pt", "en"] as const)("the types answer follows NFE_PRODUCTION_ENABLED, in the page, the schema and llms.txt, in %s", (locale) => {
+    const answer = () => [...wrap(locale).container.querySelectorAll("details")][2].querySelector("p")!.textContent!;
+    expect(answer()).toMatch(/homologação/);
+    expect(faqMarkdown(locale)).toMatch(/homologação/);
+    cleanup();
+    vi.stubEnv("NFE_PRODUCTION_ENABLED", "true");
+    try {
+      expect(answer()).not.toMatch(/homologação|soon|em breve/);
+      expect(answer()).toMatch(/MCP/);
+      expect(faqMarkdown(locale)).not.toMatch(/homologação/);
+      expect(JSON.stringify(faqPageJsonLd(locale))).not.toMatch(/homologação/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it.each(["pt", "en"] as const)("the SDK answer also covers the MCP server, with its own link, in %s", (locale) => {
     const { container } = wrap(locale);
     const sdks = [...container.querySelectorAll("details")][5];

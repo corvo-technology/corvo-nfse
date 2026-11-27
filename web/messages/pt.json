@@ -3352,7 +3352,8 @@
       },
       "types": {
         "q": "Quais tipos de nota a Corvo emite?",
-        "a": "NFS-e (nota de serviço, pelo padrão nacional), NF-e (nota de produto, modelo 55) e NFC-e (cupom fiscal do caixa, modelo 65). Os três usam a mesma chamada da API (POST /v1/invoices, com o campo type), a mesma chave e o mesmo crédito. A NF-e e a NFC-e estão em teste (homologação); a produção chega em breve.",
+        "a": "NFS-e (nota de serviço, pelo padrão nacional), NF-e (nota de produto, modelo 55) e NFC-e (cupom fiscal do caixa, modelo 65). Os três usam a mesma chamada da API (POST /v1/invoices, com o campo type), a mesma chave e o mesmo crédito. A NF-e e a NFC-e estão em teste (homologação); a produção chega em breve. Agentes de IA também emitem todas pelo MCP.",
+        "aLive": "NFS-e (nota de serviço, pelo padrão nacional), NF-e (nota de produto, modelo 55) e NFC-e (cupom fiscal do caixa, modelo 65). Os três usam a mesma chamada da API (POST /v1/invoices, com o campo type), a mesma chave e o mesmo crédito. A NF-e e a NFC-e já emitem em produção, com valor fiscal. Agentes de IA também emitem todas pelo MCP.",
         "link": "Conhecer a NF-e",
         "link2": "Conhecer a NFC-e"
       },
@@ -4496,7 +4497,8 @@
   "NfePage": {
     "meta": {
       "title": "NF-e por API: nota de produto em uma chamada",
-      "description": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em teste (homologação)."
+      "description": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em teste (homologação).",
+      "descriptionLive": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em produção."
     },
     "crumb": "NF-e",
     "hero": {
@@ -4507,6 +4509,7 @@
       "docs": "Ler a documentação",
       "scope": "Para empresas do Simples Nacional e MEI. Você informa CFOP, NCM e CSOSN como o seu contador orienta.",
       "note": "Disponível em teste (homologação). Produção em breve.",
+      "noteLive": "Disponível em produção, com valor fiscal.",
       "release": "Funciona em todos os estados, sem configurar nada: é só cadastrar a empresa."
     },
     "code": {
@@ -4543,7 +4546,8 @@
       }
     },
     "lifecycle": {
-      "title": "Da emissão ao cancelamento, tudo pela API e pelo painel",
+      "title": "Da emissão ao cancelamento: pela API, pelo painel ou por agente de IA (MCP)",
+      "mcpHint": "Agentes de IA usam as ferramentas do MCP em cada passo. Para NFC-e é o mesmo caminho, com type \"nfce\" (ela não tem carta de correção).",
       "steps": {
         "validate": {
           "title": "Validar",
@@ -4577,7 +4581,8 @@
   "NfcePage": {
     "meta": {
       "title": "NFC-e por API: o cupom fiscal do seu caixa",
-      "description": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em teste (homologação), começando por SP."
+      "description": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em teste (homologação), começando por SP.",
+      "descriptionLive": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em produção, começando por SP."
     },
     "crumb": "NFC-e",
     "hero": {
@@ -4588,6 +4593,7 @@
       "docs": "Ler a documentação",
       "scope": "CPF do consumidor é opcional. Para empresas do Simples Nacional e MEI, com a inscrição estadual credenciada para NFC-e.",
       "note": "Disponível em teste (homologação). Produção em breve.",
+      "noteLive": "Disponível em produção, com valor fiscal.",
       "release": "Começa por São Paulo. Os outros estados chegam em breve."
     },
     "receipt": {

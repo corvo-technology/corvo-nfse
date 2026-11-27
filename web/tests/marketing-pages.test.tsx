@@ -111,6 +111,46 @@ describe("NF-e and NFC-e pages", () => {
     expect(html.match(/<h1/g)).toHaveLength(1);
   });
 
+  it("NF-e: each lifecycle step shows the API route and the MCP tool that does it", async () => {
+    const html = renderToStaticMarkup(await NfePage(params("pt")));
+    for (const tool of ["nfe_validate", "nfse_issue", "nfse_get_download_url", "nfe_correct", "nfse_cancel"]) expect(html).toContain(`MCP: ${tool}`);
+    expect(html).toContain("por agente de IA (MCP)");
+    expect(renderToStaticMarkup(await NfePage(params("en")))).toContain("an AI agent (MCP)");
+  });
+
+  it("shows the production note instead of the test note when NFE_PRODUCTION_ENABLED is on", async () => {
+    vi.stubEnv("NFE_PRODUCTION_ENABLED", "true");
+    try {
+      for (const page of [NfePage, NfcePage]) {
+        const html = renderToStaticMarkup(await page(params("pt")));
+        expect(html).toContain("Disponível em produção, com valor fiscal.");
+        expect(html).not.toContain("Produção em breve");
+        expect(html).not.toContain("Disponível em teste (homologação)");
+        expect(renderToStaticMarkup(await page(params("en")))).toContain("Available in production, with tax value.");
+      }
+      expect(String((await nfeMeta(params("pt"))).description)).toContain("Disponível em produção.");
+      expect(String((await nfceMeta(params("en"))).description)).not.toContain("test mode");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("keeps the test note when NFE_PRODUCTION_ENABLED is off or missing", async () => {
+    for (const value of [undefined, "false", ""]) {
+      vi.stubEnv("NFE_PRODUCTION_ENABLED", value as string);
+      expect(renderToStaticMarkup(await NfePage(params("pt")))).toContain("Produção em breve.");
+      expect(String((await nfceMeta(params("pt"))).description)).toContain("teste (homologação)");
+    }
+    vi.unstubAllEnvs();
+  });
+
+  it("revalidates, so the switch is read again at runtime instead of frozen at build", async () => {
+    for (const path of ["@/app/[locale]/nf-e/page", "@/app/[locale]/nfc-e/page", "@/app/[locale]/page"]) {
+      expect((await import(path)).revalidate).toBeGreaterThan(0);
+      expect((await import(path)).revalidate).toBeLessThanOrEqual(3600);
+    }
+  });
+
   it("both have English copy and canonical URLs", async () => {
     expect(renderToStaticMarkup(await NfePage(params("en")))).toContain("Available in test mode (homologação). Production coming soon.");
     expect(renderToStaticMarkup(await NfcePage(params("en")))).toContain("Available in test mode (homologação). Production coming soon.");
