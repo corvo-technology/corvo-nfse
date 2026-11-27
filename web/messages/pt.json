@@ -3521,7 +3521,7 @@
       "title": "Corrigir cliente",
       "optional": "opcional",
       "emailHint": "Fica salvo para preencher o formulário. Deixe vazio para apagar.",
-      "note": "A correção vale para as próximas notas. As notas já emitidas não mudam.",
+      "note": "A correção vale para as próximas notas e não é mais trocada por dados de outras notas. As notas já emitidas não mudam.",
       "save": "Salvar",
       "nameRequired": "Informe o nome.",
       "failed": "Não foi possível salvar o cliente."

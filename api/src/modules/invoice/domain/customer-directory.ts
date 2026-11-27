@@ -40,8 +40,9 @@ export abstract class CustomerDirectory {
   ): Promise<SavedCustomer | null>;
 
   /**
-   * Saves or refreshes the customer of an accepted invoice. The name always follows the
-   * latest invoice; an email already saved is kept when the invoice carries none.
+   * Saves the customer of an accepted invoice. Automatic sources (invoices, imports,
+   * schedules, integrations) only create the customer or fill an empty field: a saved name
+   * or email is never replaced. Only `update` (an explicit edit) changes existing values.
    */
   abstract remember(
     scope: CustomerScope,
