@@ -1057,6 +1057,9 @@
     "cookiePreferences": "Preferências de cookies",
     "blog": "Blog",
     "github": "GitHub",
+    "integrations": "Integrações",
+    "nfe": "NF-e",
+    "nfce": "NFC-e",
     "license": "Código aberto · AGPL-3.0"
   },
   "CookieConsent": {
@@ -3316,7 +3319,8 @@
     "platforms": {
       "woovi": "Cobranças Pix",
       "abacatepay": "Pix, cartão e boleto",
-      "soon": "Mais plataformas a caminho."
+      "moreLead": "+ Mercado Pago, Stripe, Hotmart e mais {count}.",
+      "moreCta": "Ver todas as integrações"
     },
     "invoice": {
       "status": "Emitida",
@@ -4324,6 +4328,345 @@
       "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
       "errorNotFound": "Esse estado já não está na contingência.",
       "errorGeneric": "Não foi possível sair da contingência. Nada foi mudado. Tente de novo."
+    }
+  },
+  "IntegrationsPage": {
+    "meta": {
+      "title": "Integrações de pagamento e infoprodutos",
+      "description": "Conecte Mercado Pago, Stripe, Asaas, Pagar.me, Woovi, AbacatePay, PushinPay, Hotmart, Kiwify, Eduzz ou Monetizze. Pagou, a Corvo emite a nota. Reembolsou, ela cancela."
+    },
+    "crumb": "Integrações",
+    "hero": {
+      "eyebrow": "Integrações · {count} plataformas",
+      "title": "Conecte onde você recebe. A nota sai a cada venda paga.",
+      "lead": "Copie um endereço, cole na sua plataforma e pronto. Pagou, a Corvo emite. Reembolsou, a Corvo cancela, se você ligar essa regra.",
+      "cta": "Conectar minha plataforma",
+      "how": "Como funciona"
+    },
+    "list": {
+      "title": "Todas as integrações",
+      "groupLabel": "Filtrar por tipo",
+      "connect": "Conectar {name}",
+      "cancelNote": "O cancelamento automático é uma regra que você liga em cada conexão."
+    },
+    "filters": {
+      "all": "Todas ({count})",
+      "pay": "Pagamentos e Pix ({count})",
+      "info": "Infoprodutos ({count})"
+    },
+    "groups": {
+      "pay": {
+        "title": "Pagamentos e Pix",
+        "hint": "Gateways e contas de cobrança"
+      },
+      "info": {
+        "title": "Infoprodutos",
+        "hint": "Cursos, e-books e assinaturas digitais"
+      }
+    },
+    "platforms": {
+      "mercadopago": {
+        "pays": "Pagamentos",
+        "emit": "Pagamento aprovado: emite a nota",
+        "cancel": "Reembolso: cancela a nota. Chargeback: a venda fica marcada para você decidir",
+        "extra": "Com o Access Token, busca CPF/CNPJ, e-mail e itens do pagamento (só consulta)",
+        "note": "Assinatura x-signature"
+      },
+      "stripe": {
+        "pays": "Cobranças",
+        "emit": "Cobrança paga (charge.succeeded): emite a nota",
+        "cancel": "Reembolso: cancela a nota. Disputa: a venda fica marcada para você decidir",
+        "extra": "Chave restrita opcional, só de leitura, para buscar CPF/CNPJ, e-mail e itens",
+        "note": "Assinatura do webhook (whsec)"
+      },
+      "asaas": {
+        "pays": "Pix, boleto e cartão",
+        "emit": "Pagamento recebido ou confirmado: emite a nota",
+        "cancel": "Reembolso: cancela a nota. Chargeback pedido: a venda fica marcada para você decidir",
+        "extra": "Desligue a nota do próprio Asaas para ela não sair duas vezes",
+        "note": "Token gerado pela Corvo"
+      },
+      "pagarme": {
+        "pays": "Pedidos",
+        "emit": "Pedido pago: emite a nota",
+        "cancel": "Reembolso ou pedido cancelado: cancela a nota. Chargeback: a venda fica marcada",
+        "extra": "Reembolso parcial é ignorado",
+        "note": "Usuário e senha do webhook"
+      },
+      "woovi": {
+        "pays": "Cobranças Pix",
+        "emit": "Cobrança paga: emite a nota",
+        "cancel": "Devolução total do Pix: cancela a nota. Devolução parcial é ignorada",
+        "extra": "Se a cobrança não traz CPF/CNPJ, usa os dados de quem pagou o Pix",
+        "note": "Token gerado pela Corvo"
+      },
+      "abacatepay": {
+        "pays": "Pix, cartão e boleto",
+        "emit": "Pagamento concluído (checkout ou transparente): emite a nota",
+        "cancel": "Reembolso: cancela a nota. Disputa: a venda fica marcada para você decidir",
+        "extra": "Com a chave de API, busca o CPF/CNPJ completo e o nome dos produtos",
+        "note": "Segredo gerado pela Corvo"
+      },
+      "pushinpay": {
+        "pays": "Pix, boleto e Pix recorrente",
+        "emit": "Cobrança paga: emite a nota",
+        "cancel": "Cobrança cancelada depois de paga: cancela a nota",
+        "extra": "A PushinPay não manda o e-mail do comprador: a nota não vai por e-mail ao cliente sozinha",
+        "note": "Segredo e token gerados pela Corvo"
+      },
+      "hotmart": {
+        "pays": "Compras",
+        "emit": "Compra aprovada ou completa: emite a nota",
+        "cancel": "Reembolso ou chargeback: cancela a nota. Protesto: a venda fica marcada",
+        "extra": "Nota pelo valor total ou só pela sua parte, sem afiliados e coprodutores",
+        "note": "Hottok"
+      },
+      "kiwify": {
+        "pays": "Pedidos",
+        "emit": "Compra aprovada: emite a nota",
+        "cancel": "Reembolso: cancela a nota. Chargeback: a venda fica marcada para você decidir",
+        "extra": "Nota pelo valor total ou só pela sua parte",
+        "note": "Token do webhook"
+      },
+      "eduzz": {
+        "pays": "Faturas",
+        "emit": "Fatura paga: emite a nota",
+        "cancel": "Reembolso, chargeback ou fatura cancelada: cancela a nota",
+        "extra": "Nota pelo valor total ou só pela sua parte",
+        "note": "Chave secreta (x-signature)"
+      },
+      "monetizze": {
+        "pays": "Vendas",
+        "emit": "Venda finalizada ou completa: emite a nota",
+        "cancel": "Venda devolvida: cancela a nota",
+        "extra": "Nota pelo valor total ou só pela sua parte",
+        "note": "Chave única"
+      }
+    },
+    "how": {
+      "title": "Como funciona",
+      "steps": {
+        "choose": {
+          "title": "Escolha a plataforma e a empresa",
+          "body": "Se a plataforma pedir, cole a chave de API. A Corvo só consulta os dados da venda."
+        },
+        "paste": {
+          "title": "Cole o endereço do webhook",
+          "body": "A Corvo mostra o endereço e, quando precisa, o token ou o segredo. O passo a passo de cada plataforma aparece na tela."
+        },
+        "done": {
+          "title": "Venda e pronto",
+          "body": "Cada pagamento aprovado vira uma nota. O cliente recebe por e-mail quando a plataforma informa o e-mail dele."
+        }
+      }
+    },
+    "behaviors": {
+      "title": "O que acontece em cada caso",
+      "items": {
+        "refund": {
+          "title": "Reembolso cancela a nota",
+          "body": "Quando a plataforma avisa o reembolso, a Corvo cancela a nota, se você ligar essa regra."
+        },
+        "dispute": {
+          "title": "Chargeback e disputa",
+          "body": "Na maioria das plataformas a venda só fica marcada e você decide. Na Hotmart e na Eduzz, o chargeback conta como reembolso."
+        },
+        "pending": {
+          "title": "Faltou CPF ou CNPJ",
+          "body": "A venda espera em Vendas pendentes até você completar. Depois, a nota sai."
+        },
+        "share": {
+          "title": "Total ou só a sua parte",
+          "body": "Em Hotmart, Kiwify, Eduzz e Monetizze você escolhe: nota pelo valor total ou só pela sua parte."
+        },
+        "once": {
+          "title": "Nunca em dobro",
+          "body": "O mesmo aviso chegando duas vezes gera uma nota só."
+        }
+      }
+    },
+    "missing": {
+      "title": "Sua plataforma não está aqui?",
+      "body": "Emita pela API com uma chamada, ou diga qual integração você quer a seguir.",
+      "api": "Ver a API",
+      "request": "Pedir uma integração",
+      "subject": "Quero uma integração na Corvo"
+    }
+  },
+  "NfePage": {
+    "meta": {
+      "title": "NF-e por API: nota de produto em uma chamada",
+      "description": "Emita NF-e (modelo 55) pela API da Corvo, com DANFE, carta de correção, cancelamento e o mesmo crédito da NFS-e. Disponível em teste (homologação)."
+    },
+    "crumb": "NF-e",
+    "hero": {
+      "eyebrow": "NF-e · modelo 55",
+      "title": "Nota de produto em uma chamada de API.",
+      "lead": "Venda para empresa ou pessoa com DANFE, carta de correção e cancelamento. Mesma chave de API e mesmo crédito da NFS-e.",
+      "cta": "Começar grátis",
+      "docs": "Ler a documentação",
+      "scope": "Para empresas do Simples Nacional e MEI. Você informa CFOP, NCM e CSOSN como o seu contador orienta.",
+      "note": "Disponível em teste (homologação). Produção em breve.",
+      "release": "A NF-e é liberada conta por conta: fale com a Corvo para liberar a sua."
+    },
+    "code": {
+      "label": "Exemplo de chamada da API",
+      "result": "{ \"status\": \"queued\" } → autorizada · DANFE pronto"
+    },
+    "features": {
+      "title": "O que a NF-e da Corvo faz",
+      "items": {
+        "danfe": {
+          "title": "DANFE pronto",
+          "body": "O DANFE em PDF e o XML autorizado, por link temporário ou por e-mail ao destinatário."
+        },
+        "validate": {
+          "title": "Validar antes de enviar",
+          "body": "Confira a nota contra as regras e o layout oficial sem enviar nada à SEFAZ e sem gastar crédito."
+        },
+        "autofill": {
+          "title": "Preenchimento no painel",
+          "body": "Digite o CNPJ ou o CEP e o resto vem sozinho. Clientes já usados ficam salvos."
+        },
+        "correction": {
+          "title": "Carta de correção",
+          "body": "Corrija texto e outros dados permitidos sem cancelar a nota. Valores, impostos e as partes não mudam."
+        },
+        "svc": {
+          "title": "Contingência SVC",
+          "body": "Se a SEFAZ do estado cai e o resto do governo segue no ar, a Corvo envia pela SEFAZ Virtual de Contingência, sozinha."
+        },
+        "webhooks": {
+          "title": "Webhooks e histórico",
+          "body": "Cada mudança chega no seu sistema e fica no histórico da nota. Uma recusa da SEFAZ vem com o código e o motivo."
+        }
+      }
+    },
+    "lifecycle": {
+      "title": "Da emissão ao cancelamento, tudo pela API e pelo painel",
+      "steps": {
+        "validate": {
+          "title": "Validar",
+          "body": "Todos os problemas de uma vez."
+        },
+        "issue": {
+          "title": "Emitir",
+          "body": "Fila, envio e autorização."
+        },
+        "download": {
+          "title": "Baixar",
+          "body": "DANFE e XML assinados."
+        },
+        "correct": {
+          "title": "Corrigir",
+          "body": "Carta de correção (CC-e)."
+        },
+        "cancel": {
+          "title": "Cancelar",
+          "body": "Com a justificativa."
+        }
+      }
+    },
+    "credit": {
+      "title": "O mesmo crédito da NFS-e",
+      "body": "Cada NF-e autorizada usa um crédito do seu plano, como a NFS-e. Rejeitada ou descartada, o crédito volta. Cancelar uma nota já autorizada não devolve. Em teste, é grátis.",
+      "plans": "Ver os planos",
+      "other": "Vende no balcão? Conheça a NFC-e"
+    }
+  },
+  "NfcePage": {
+    "meta": {
+      "title": "NFC-e por API: o cupom fiscal do seu caixa",
+      "description": "Emita NFC-e (modelo 65) pela API da Corvo, com QR Code, cupom em 80 mm ou A4 e contingência off-line. Disponível em teste (homologação), começando por SP."
+    },
+    "crumb": "NFC-e",
+    "hero": {
+      "eyebrow": "NFC-e · cupom fiscal · modelo 65",
+      "title": "O cupom fiscal do seu caixa, sem impressora fiscal.",
+      "lead": "Venda no balcão ou no delivery, mande o pedido para a API e receba o cupom com QR Code. SEFAZ fora do ar? Emita off-line e envie depois.",
+      "cta": "Começar grátis",
+      "docs": "Ler a documentação",
+      "scope": "CPF do consumidor é opcional. Para empresas do Simples Nacional e MEI, com a inscrição estadual credenciada para NFC-e.",
+      "note": "Disponível em teste (homologação). Produção em breve.",
+      "release": "Começa por São Paulo. A liberação é feita conta por conta: fale com a Corvo."
+    },
+    "receipt": {
+      "label": "Exemplo de cupom NFC-e",
+      "store": "[SUA LOJA LTDA]",
+      "doc": "DANFE NFC-e · Documento Auxiliar da Nota Fiscal de Consumidor Eletrônica",
+      "item": "2 UN Café expresso",
+      "total": "Total R$",
+      "cash": "Dinheiro",
+      "change": "Troco",
+      "check": "Consulte pela chave de acesso no site da SEFAZ",
+      "protocol": "Protocolo de autorização · data e hora"
+    },
+    "features": {
+      "title": "Feita para o caixa",
+      "items": {
+        "print": {
+          "title": "Cupom em 80 mm e A4",
+          "body": "Para a impressora térmica do caixa ou para mandar por e-mail ao cliente."
+        },
+        "qr": {
+          "title": "QR Code na nota",
+          "body": "O consumidor confere a compra no site da SEFAZ apontando a câmera."
+        },
+        "offline": {
+          "title": "Contingência off-line",
+          "body": "Sem resposta da SEFAZ, a Corvo numera, assina e responde na hora. A nota vai à SEFAZ depois, em até 24 horas."
+        },
+        "payment": {
+          "title": "Troco e várias formas de pagamento",
+          "body": "Dinheiro, Pix, cartão com bandeira e mais de uma forma na mesma venda."
+        },
+        "delivery": {
+          "title": "Delivery",
+          "body": "Venda com entrega leva o endereço do consumidor na nota."
+        },
+        "cancel": {
+          "title": "Cancelar pela API",
+          "body": "Venda desfeita no caixa? Cancele com a justificativa."
+        }
+      }
+    },
+    "compare": {
+      "title": "NF-e ou NFC-e?",
+      "caption": "Diferenças entre NFC-e e NF-e",
+      "head": {
+        "what": "O que muda",
+        "nfce": "NFC-e",
+        "nfe": "NF-e"
+      },
+      "rows": {
+        "for": {
+          "label": "Para quem",
+          "nfce": "Consumidor final",
+          "nfe": "Empresa ou pessoa"
+        },
+        "where": {
+          "label": "Onde",
+          "nfce": "Balcão, PDV, delivery",
+          "nfe": "Loja virtual, atacado, B2B"
+        },
+        "recipient": {
+          "label": "Destinatário",
+          "nfce": "Opcional",
+          "nfe": "Obrigatório, com endereço"
+        },
+        "doc": {
+          "label": "Documento",
+          "nfce": "Cupom com QR Code",
+          "nfe": "DANFE"
+        },
+        "correction": {
+          "label": "Carta de correção",
+          "nfce": "Não existe: cancela e emite de novo",
+          "nfe": "Sim"
+        }
+      },
+      "start": "Começar grátis",
+      "other": "Conhecer a NF-e"
     }
   }
 }
