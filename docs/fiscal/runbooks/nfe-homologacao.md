@@ -1,6 +1,6 @@
 # NF-e em homologação (runbook)
 
-Roteiro de homologação da NF-e: status do serviço, spike, eventos, como liberar um cliente e um estado, e o roteiro completo de aceite (SP e uma UF da SVRS).
+Roteiro de homologação da NF-e: status do serviço, spike, eventos, o que liga a NF-e (nada em teste; só a produção tem interruptor), e o roteiro completo de aceite (SP e uma UF da SVRS).
 
 A NFC-e (venda ao consumidor, modelo 65) tem o runbook dela: [`nfce-homologacao.md`](./nfce-homologacao.md).
 

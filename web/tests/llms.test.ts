@@ -18,6 +18,22 @@ describe("llms.txt and llms-full.txt", () => {
     });
   }
 
+  it("describes NFS-e, NF-e and NFC-e, and follows the production switch", () => {
+    const previous = process.env.NFE_PRODUCTION_ENABLED;
+    try {
+      delete process.env.NFE_PRODUCTION_ENABLED;
+      expect(buildLlmsTxt("en")).toContain("NFC-e (retail, model 65)");
+      expect(buildLlmsTxt("en")).toContain("production is coming soon");
+      expect(buildLlmsTxt("pt")).toContain("a produção chega em breve");
+      process.env.NFE_PRODUCTION_ENABLED = "true";
+      expect(buildLlmsTxt("en")).toContain("NF-e and NFC-e issue in production");
+      expect(buildLlmsTxt("pt")).toContain("A NF-e e a NFC-e emitem em produção");
+    } finally {
+      if (previous === undefined) delete process.env.NFE_PRODUCTION_ENABLED;
+      else process.env.NFE_PRODUCTION_ENABLED = previous;
+    }
+  });
+
   it("cross-links the two languages and uses the Maven coordinate from the Java SDK pom", () => {
     expect(buildLlmsTxt("en")).toContain("https://www.corvo.tech/pt/llms.txt");
     expect(buildLlmsTxt("pt")).toContain("https://www.corvo.tech/llms.txt");

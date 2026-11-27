@@ -1,6 +1,6 @@
-# FiscalEngine — Limitações e cenários não homologados (Plano 2 / Spec 2)
+# Limitações fiscais e cenários não homologados
 
-Data: 2026-10-14 · Escopo: núcleo da FiscalEngine (`feat/fiscal-engine-core`).
+Este documento lista o que o Corvo ainda **não cobre** ou **não homologou**. As seções 1 a 6 são da NFS-e (FiscalEngine); a seção 7 é a NF-e e a NFC-e. Os "Planos" e "Specs" citados nas seções antigas são etapas de construção já entregues; o que vale é o que está escrito em cada linha.
 
 Este documento registra, de forma explícita, o que **ainda não foi homologado**
 neste estágio e quais decisões seguem pendentes de confirmação humana. Nada
@@ -16,7 +16,7 @@ aqui foi validado contra a **Calculadora RTC oficial** nem contra o ambiente de
 | **ISS com regime `FIXED`** | Não exercitado | O resolvedor de ISS trata `NORMAL`/`EXEMPT`; o caso `FIXED` (alíquota fixa municipal) precisa da tabela/alíquota do município e de homologação contra o município de referência. |
 | **Salão-parceiro (`PARTNER_SALON`)** | `FISCAL_REVIEW_REQUIRED` | A regra do Ato Conjunto RFB/CGIBS nº 4/2026 para salões de beleza com parceiros exige conferência das alíneas/ofícios específicos. O motor marca revisão manual em vez de presumir classificação. |
 | **Dedução declarada pelo emitente (`deduction`)** | Implementado, **não homologado** | O emitente informa em `deduction` um valor a abater da base do ISS. Ele vai na DPS em `vDedRed/vDR` (validada contra o schema RTC v1.01) e a base do ISS passa a ser `gross − discount − deduction`. A base das retenções federais **não** muda. O Corvo não confere se a dedução é permitida para o serviço ou município. Ver `docs/fiscal/declared-deduction.md`. |
-| **Mercadorias / operação `GOODS`/`MIXED`** | `OPERATION_DOCUMENT_UNSUPPORTED` | O Plano 2 cobre **serviços** (LC 116). Operações com mercadoria (`GOODS`) ou mistas (`MIXED`) exigem o módulo de produtos/NCM e ficam bloqueadas até um plano específico. |
+| **Mercadorias / operação `GOODS`/`MIXED` na NFS-e** | `OPERATION_DOCUMENT_UNSUPPORTED` | A NFS-e cobre **serviços** (LC 116). Operação com mercadoria ou mista não vira NFS-e: a mercadoria é emitida como NF-e ou NFC-e (seção 7). |
 
 ## 2. O que NÃO foi homologado nesta etapa
 
@@ -99,6 +99,19 @@ Regra de MEI/Simples a partir de 01/01/2027, checagem de adesão do município a
 - Simples que optar pelo regime regular em 2027, GOODS/MIXED e demais limitações acima continuam valendo.
 - Perfis de serviço usam `service-tax-profiles`, nome real do contrato atual;
   o plano original citava `fiscal-services`. Não foi criada rota alternativa.
+
+## 7. NF-e (modelo 55) e NFC-e (modelo 65)
+
+Elas usam as mesmas rotas `/v1/invoices` (`type: "nfe"` ou `type: "nfce"`). Os roteiros estão em [`runbooks/nfe-homologacao.md`](runbooks/nfe-homologacao.md), [`runbooks/nfce-homologacao.md`](runbooks/nfce-homologacao.md) e [`runbooks/nfe-svc.md`](runbooks/nfe-svc.md).
+
+| Tema | Situação |
+| --- | --- |
+| Ambiente | Só **teste (homologação)** para toda conta. A produção responde `422 NFE_PRODUCTION_DISABLED` até `NFE_PRODUCTION_ENABLED=true` (interruptor único, lido pela API, pelo worker e pelo site). Nenhuma nota emitida em teste tem valor fiscal. |
+| Quem emite | Só empresas do Simples Nacional e MEI (CRT 1 ou 4), com CSOSN 102 ou 400. Outros regimes e outros CSOSN ficam fora. |
+| Impostos | O Corvo **não calcula** imposto de NF-e nem de NFC-e. Quem emite informa CFOP, NCM e CSOSN de cada item, como o contador orientou. |
+| Estados | NF-e: todos, pela SEFAZ do estado ou pela SVRS. NFC-e: só os estados que têm endereço cadastrado no código, hoje **SP**; outro estado responde `422 UF_NOT_ENABLED`. |
+| NFC-e | Sem CSC (usa o QR Code v3 online). A IE da empresa precisa estar credenciada na SEFAZ para emitir NFC-e. Não existe carta de correção. Contingência off-line existe (`tpEmis` 9). |
+| Homologação | O spike contra a SEFAZ depende de um certificado A1 de uma empresa com Inscrição Estadual e deve ser rodado pelo dono do projeto: veja [`nfe-spike.md`](nfe-spike.md). Antes de ligar a produção, o roteiro de aceite dos runbooks precisa estar preenchido. |
 
 ## Calculadora do Simples Nacional: quando revisitar
 

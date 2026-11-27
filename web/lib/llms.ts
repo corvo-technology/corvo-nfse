@@ -3,6 +3,7 @@ import { blogUrl, postUrl } from "@/lib/blog/seo";
 import { DOC_GROUPS, getDocsTree } from "@/lib/docs/registry";
 import { sectionToMarkdown } from "@/lib/docs/to-markdown";
 import { faqMarkdown } from "@/lib/landing-faq";
+import { nfeProductionEnabled } from "@/lib/nfe-availability";
 import { SITE_COPY, SITE_URL, type SeoLocale, pageUrl } from "@/lib/seo";
 
 /**
@@ -11,11 +12,25 @@ import { SITE_COPY, SITE_URL, type SeoLocale, pageUrl } from "@/lib/seo";
  */
 
 /** Product summary and quick facts (English, unchanged from the former public/llms.txt). */
-const EN_INTRO = `# Corvo
+const enTypes = (live: boolean) =>
+  `Corvo covers NFS-e (services, on the national standard), NF-e (goods, model 55) and NFC-e (retail, model 65). All three use the same \`/v1/invoices\` routes, the same key and the same credit: send \`type: "nfe"\` or \`type: "nfce"\` (see the NF-e docs pages); a request without \`type\` is an NFS-e. ${
+    live
+      ? "NF-e and NFC-e issue in production, with tax value."
+      : "NF-e and NFC-e run in test mode (homologação) for now, with no fiscal value; production is coming soon."
+  } They are for Simples Nacional and MEI companies, and Corvo does not calculate their taxes: you send the CFOP, the NCM and the CSOSN of each item.`;
+
+const ptTypes = (live: boolean) =>
+  `A Corvo cobre NFS-e (serviços, no padrão nacional), NF-e (mercadorias, modelo 55) e NFC-e (varejo, modelo 65). As três usam as mesmas rotas \`/v1/invoices\`, a mesma chave e o mesmo crédito: envie \`type: "nfe"\` ou \`type: "nfce"\` (veja as páginas de NF-e da documentação); uma chamada sem \`type\` é NFS-e. ${
+    live
+      ? "A NF-e e a NFC-e emitem em produção, com valor fiscal."
+      : "A NF-e e a NFC-e estão em teste (homologação) por enquanto, sem valor fiscal; a produção chega em breve."
+  } Valem para empresas do Simples Nacional e MEI, e a Corvo não calcula os impostos delas: você informa o CFOP, o NCM e o CSOSN de cada item.`;
+
+const enIntro = (live: boolean) => `# Corvo
 
 > Corvo is a REST API and MCP server to issue Brazilian service invoices (NFS-e) on the national standard. It is built for developers, SaaS products, ERPs and AI agents that need to issue notes for MEI and Simples Nacional companies without learning the tax integration.
 
-Corvo registers issuer companies, stores their A1 certificates, calculates taxes before issuing, issues the NFS-e asynchronously, tracks every status change and delivers XML and PDF by link, webhook or email. Corvo covers NFS-e (services). NF-e (goods, model 55) exists only in test mode (homologação), for Simples Nacional companies in every state, in accounts where it was released; it uses the same \`/v1/invoices\` routes with \`type: "nfe"\` (see the NF-e docs pages) and Corvo does not calculate its taxes. NFC-e (retail) is not covered.
+Corvo registers issuer companies, stores their A1 certificates, calculates taxes before issuing, issues the NFS-e asynchronously, tracks every status change and delivers XML and PDF by link, webhook or email. ${enTypes(live)}
 
 ## Quick facts
 
@@ -43,11 +58,11 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 - Multi-company: one account can hold many issuer companies, each with its own certificate.
 - Pricing: the first 5 invoices are free (no plan needed, no credit card) and the sandbox is always free. Plans Solo, Equipe, Empresa and Escala (monthly, or annual with 30% off) and single invoices at R$ 0,99 are public at \`GET https://api.corvo.tech/v1/plans\`. There is no overage billing.`;
 
-const PT_INTRO = `# Corvo
+const ptIntro = (live: boolean) => `# Corvo
 
 > ${SITE_COPY.pt.tagline}
 
-A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tributos antes de emitir, emite a NFS-e de forma assíncrona, acompanha cada mudança de status e entrega XML e PDF por link, webhook ou e-mail. A Corvo cobre NFS-e (serviços). A NF-e (mercadorias, modelo 55) existe só em teste (homologação), para empresas do Simples Nacional de todos os estados, nas contas em que foi liberada; usa as mesmas rotas \`/v1/invoices\` com \`type: "nfe"\` (veja as páginas de NF-e da documentação) e a Corvo não calcula os impostos dela. A NFC-e (varejo) não é coberta.
+A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tributos antes de emitir, emite a NFS-e de forma assíncrona, acompanha cada mudança de status e entrega XML e PDF por link, webhook ou e-mail. ${ptTypes(live)}
 
 ## Fatos rápidos
 
@@ -146,7 +161,7 @@ export function buildLlmsTxt(locale: SeoLocale): string {
     `- ${labels.legal}`,
   ];
   return [
-    locale === "en" ? EN_INTRO : PT_INTRO,
+    (locale === "en" ? enIntro : ptIntro)(nfeProductionEnabled()),
     `## ${labels.docs}\n\n${docs.join("\n")}`,
     `## ${locale === "en" ? "Guides (blog, in Portuguese)" : "Guias (blog)"}\n\n${blogGuides(locale).join("\n")}`,
     `## ${labels.faq}\n\n${faqMarkdown(locale)}`,

@@ -1,11 +1,11 @@
-# Spike da NF-e (PR 2/7)
+# Spike da NF-e
 
 **Resultado do spike: PENDENTE da execução do dono.** O código foi escrito e testado sem rede (SOAP
 simulado, schemas oficiais, assinatura verificada). Nada foi enviado à SEFAZ, porque isso exige um
 certificado A1 de uma empresa com Inscrição Estadual. Enquanto as tabelas abaixo não forem
-preenchidas, a pilha de PRs não deve passar do PR 3.
+preenchidas, a NF-e não deve ir para produção.
 
-Se o spike falhar, a pilha para e a seção 5.1 da spec é reaberta (ver "Se falhar").
+Se o spike falhar, a produção continua desligada até o problema ser entendido (ver "Se falhar").
 
 ## O que o dono precisa ter
 
@@ -91,7 +91,7 @@ cStat que podem aparecer e o que significam:
 | 203 | Emissor não habilitado. | A IE não está credenciada em homologação (item 2 acima). |
 | 225 | Falha no schema do lote. | Bug nosso: o XSD local passou e a SEFAZ não. Anotar a mensagem completa. |
 | 280 / 285 / 290 | Problema no certificado transmissor ou de assinatura. | Conferir a validade e a cadeia do certificado. |
-| 297 | Assinatura difere do calculado. | Bug nosso na assinatura (C14N/SHA-1). Parar e reabrir a spec 5.1. |
+| 297 | Assinatura difere do calculado. | Bug nosso na assinatura (C14N/SHA-1). Parar: não ligar a produção até corrigir. |
 | 539 / 204 | Duplicidade. | Troque `NFE_SPIKE_NUMBER`. |
 | 778 | NCM inexistente. | Troque `NFE_SPIKE_NCM` (ou é o `reject-ncm` funcionando). |
 
@@ -102,7 +102,7 @@ que o mTLS falhou.
 ## Perguntas que o spike responde
 
 Preencha depois de rodar (data, UF, resultado). Itens que dependem de PRs futuros ficam
-`[pendente: PR4/PR5]`.
+`[pendente: rodar o runbook]`.
 
 | # | Pergunta | SP | SVRS (UF: ___) |
 |---|---|---|---|
@@ -112,9 +112,9 @@ Preencha depois de rodar (data, UF, resultado). Itens que dependem de PRs futuro
 | 4 | cStat da autorização (esperado 100) | PENDENTE | PENDENTE |
 | 5 | `PISOutr` e `COFINSOutr` com CST 49 zerados são aceitos? | PENDENTE | PENDENTE |
 | 6 | Mesmo `nNF` com `cNF` novo é aceito depois de uma rejeição? (rode com `NFE_SPIKE_SCENARIO=reject-ncm` e depois sem, com o mesmo `NFE_SPIKE_NUMBER`) | PENDENTE | PENDENTE |
-| 7 | A consulta pela chave devolve `procEventoNFe`? (o PR 5 já usa essa resposta para conciliar eventos; o roteiro está no runbook) | [pendente: rodar o runbook do PR5] | [pendente: rodar o runbook do PR5] |
-| 8 | Quais cStat de denegação aparecem na prática? | [pendente: PR4/PR5] | [pendente: PR4/PR5] |
-| 9 | Regra do dígito verificador da chave com CNPJ alfanumérico | [pendente: PR4/PR5] | [pendente: PR4/PR5] |
+| 7 | A consulta pela chave devolve `procEventoNFe`? (a conciliação de eventos já usa essa resposta; o roteiro está no runbook) | [pendente: rodar o runbook] | [pendente: rodar o runbook] |
+| 8 | Quais cStat de denegação aparecem na prática? | [pendente: rodar o runbook] | [pendente: rodar o runbook] |
+| 9 | Regra do dígito verificador da chave com CNPJ alfanumérico | [pendente: rodar o runbook] | [pendente: rodar o runbook] |
 | 10 | As URLs de `endpoints.ts` respondem como esperado? | PENDENTE | PENDENTE |
 
 ## O que foi verificado neste PR, sem a SEFAZ
@@ -145,7 +145,7 @@ Preencha depois de rodar (data, UF, resultado). Itens que dependem de PRs futuro
 
 ## Se falhar
 
-Parar a pilha e reabrir a spec 5.1 antes do PR 3. Casos típicos e o plano:
+Não ligar a produção da NF-e até resolver. Casos típicos e o plano:
 
 - **mTLS** (status não passa): conferir a cadeia; testar `ca` com a cadeia do servidor
   (`openssl s_client -showcerts`).

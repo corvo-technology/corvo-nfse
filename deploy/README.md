@@ -6,9 +6,11 @@ This directory contains the Dockerfiles for the API, worker, and web application
 | --- | --- |
 | `docker-compose.yml` | Production stack with external S3 storage. |
 | `docker-compose.local.yml` | Local override that adds LocalStack for testing. |
+| `docker-compose.dokploy.yml` | Production stack for Dokploy: no Caddy and no published ports (Dokploy routes the domains). Keep it in sync with `docker-compose.yml`. |
 | `.env.example` | Production configuration template. Sets `DEPLOYMENT_MODE=self_hosted` (billing off). |
 | `.env.local.example` | Local configuration template. |
-| `Caddyfile` | Optional HTTPS proxy for a VPS without its own hosting proxy. |
+| `Caddyfile` | Optional HTTPS proxy for a VPS without its own hosting proxy (`--profile proxy` of `docker-compose.yml`). |
+| `Dockerfile.api`, `Dockerfile.web`, `Dockerfile.rtc` | Images for the API and worker (same image), the dashboard, and the tax calculator. |
 
 From the repository root, run `node scripts/setup-env.mjs` to generate the env files. Follow [the self-hosting guide](../SELF_HOSTING.md) to start either environment.
 
@@ -22,7 +24,7 @@ From the repository root, run `node scripts/setup-env.mjs` to generate the env f
 
 ## Data cleanup
 
-The worker runs a daily purge (04:00, São Paulo) of finished outbox rows. It starts as a dry run: with `DATA_RETENTION_ENABLED=false` (the default) it only counts and logs what it would delete (log lines with `event=data_retention`, fields `rule`, `matched`, `deleted`). After a week of logs, set `DATA_RETENTION_ENABLED=true` on the worker to delete. Rules: `api/src/modules/invoice/infra/typeorm-outbox-retention.ts`.
+The worker runs a daily purge (04:00, São Paulo) of old data: finished outbox rows (14 days; failed ones 90; test ones 3), webhook deliveries Corvo sent to your customers (the body is erased after 30 days; final failures are deleted after 90) and the notices received from sales and payment platforms (body erased after 30 days; finished sales have the buyer data erased after 90). It starts as a dry run: with `DATA_RETENTION_ENABLED=false` (the default) it only counts and logs what it would delete (log lines with `event=data_retention`, fields `rule`, `matched`, `deleted`). After a week of logs, set `DATA_RETENTION_ENABLED=true` on the worker to delete. Rules: `api/src/modules/invoice/infra/typeorm-outbox-retention.ts` and `api/src/infra/retention/notice-retention.ts`.
 
 New Redis jobs expire by themselves. Jobs created before that change stay forever; clean them once after updating (inside the running container, from the repository root). The first command is a dry run that only counts; the second deletes old finished jobs:
 
