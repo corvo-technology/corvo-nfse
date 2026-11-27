@@ -59,6 +59,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text).toContain(term);
   });
 
+  it("documents how to connect Asaas", () => {
+    for (const term of ["access_token", "asaas-access-token", "PAYMENT_RECEIVED", "PAYMENT_CONFIRMED", "PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "asaas:<", "api-sandbox.asaas.com"])
+      expect(text).toContain(term);
+  });
+
   it("authenticates the examples with X-API-Key, like the rest of the API", () => {
     expect(text).toContain("X-API-Key");
     expect(text).not.toContain("Authorization: Bearer");

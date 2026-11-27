@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify ou Asaas e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2866,6 +2866,21 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Valor da nota: `total` usa o valor pago (`full_price`); `mine` (\"minha parte\") desconta as comissões de coprodutor e afiliado. Se as comissões não vierem no aviso, a venda vai para atenção e não emite.",
             "Reembolso (`PURCHASE_REFUNDED`) e chargeback (`PURCHASE_CHARGEBACK`) cancelam a nota só se a regra tiver o cancelamento automático ligado; reembolso parcial é ignorado. Protesto (`PURCHASE_PROTEST`) só sinaliza a venda, sem cancelar.",
             "A Hotmart não informa o ambiente no aviso: vale o ambiente escolhido na conexão. Os campos dos avisos ainda precisam ser confirmados com um aviso real.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Asaas" },
+        {
+          kind: "list",
+          items: [
+            "Credencial: `access_token`, a chave de API do Asaas (opcional, mas recomendada; em Integrações > Chaves de API). A Corvo usa a chave só para consultar o cliente da cobrança (`GET /v3/customers/{id}`): nome, CPF/CNPJ, e-mail e endereço. A Corvo gera o `webhookToken`, exibido uma única vez ao criar a conexão. Copie e guarde esse token e o `webhookUrl`.",
+            "Passo a passo: (1) no Asaas, em Integrações > Webhooks, crie um webhook de Cobranças com o `webhookUrl`; (2) cole o `webhookToken` em \"Token de autenticação\"; (3) marque os eventos `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_REFUNDED` e `PAYMENT_CHARGEBACK_REQUESTED`; (4) faça uma cobrança de teste no sandbox (use uma conexão `test`, que consulta `api-sandbox.asaas.com`).",
+            "O Asaas não assina o aviso: a Corvo confere o cabeçalho `asaas-access-token` com o `webhookToken` em tempo constante. O token que a Corvo gera tem 32 caracteres, o mínimo que o Asaas aceita.",
+            "Mantenha desligada a emissão de nota fiscal do próprio Asaas, senão a nota sai duas vezes.",
+            "Cada cobrança paga vira uma nota, identificada por `asaas:<id da cobrança>`. `PAYMENT_CONFIRMED` (pago, saldo ainda não disponível) e `PAYMENT_RECEIVED` (saldo disponível) são a mesma venda e nunca geram nota dobrada. Funciona com Pix, boleto e cartão. O valor da nota é o `value` da cobrança.",
+            "O aviso só traz o código do cliente. Com a chave, a Corvo busca nome, CPF/CNPJ, e-mail e endereço. Sem a chave, ou se o cliente não tiver CPF/CNPJ, a venda fica pendente (`customer_tax_id_missing`) ou sai sem tomador se a regra tiver `allowAnonymousCustomer`. Sem e-mail, a nota sai sem envio.",
+            "A descrição do serviço na nota é a `description` da cobrança; sem ela, vale a da regra ou o padrão da empresa. Só BRL.",
+            "Reembolso: `PAYMENT_REFUNDED` (total) liga à venda pelo código da cobrança e cancela a nota só se a regra tiver o cancelamento automático ligado; `PAYMENT_PARTIALLY_REFUNDED` é ignorado. `PAYMENT_CHARGEBACK_REQUESTED` só sinaliza a venda, sem cancelar. Os demais eventos são ignorados.",
+            "Os avisos foram montados dos exemplos da documentação do Asaas e ainda precisam ser confirmados com uma venda real.",
           ],
         },
         { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },

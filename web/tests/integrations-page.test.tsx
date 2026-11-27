@@ -27,6 +27,7 @@ const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credential
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true, optional: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true, optional: true, afterUrl: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, webhookEvents: ["charge.succeeded", "charge.refunded"], supportedFlows: ["charge"] };
 const kiwify = { id: "kiwify", name: "Kiwify", version: "1", credentialFields: [{ key: "token", label: "Webhook token", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Create a webhook on Kiwify without affiliations or co-productions." }, supportedFlows: ["order"] };
 const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
+const asaas = { id: "asaas", name: "Asaas", version: "1", credentialFields: [{ key: "access_token", label: "Asaas API key", secret: true, optional: true }, { key: "webhookToken", label: "Webhook token (asaas-access-token header)", secret: true, generate: true, revealOnce: true }], webhookInstructions: { pt: "pt", en: "Create a Charges webhook on Asaas and keep Asaas invoice issuing off." }, webhookEvents: ["PAYMENT_RECEIVED"], supportedFlows: ["pix"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -394,6 +395,25 @@ describe("Connect page", () => {
     mocks.providers.mockResolvedValue([woovi, abacate, stripe, kiwify]);
     wrap(<NewIntegrationPage />);
     expect(await screen.findByText("Approved sales on Kiwify.")).toBeTruthy();
+  });
+
+  it("Asaas has an optional API key, shows the generated token once and lists Asaas among the platforms", async () => {
+    mocks.providers.mockResolvedValue([woovi, asaas]);
+    mocks.create.mockResolvedValue(connection({ provider: "asaas", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", secrets: { webhookToken: "TK-ASAAS" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=asaas";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Company that issues the invoice/);
+    expect(screen.getByLabelText(/Asaas API key/)).toBeTruthy();
+    expect(screen.queryByLabelText(/Webhook token/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "asaas", credentials: {} }));
+    expect(screen.getByText("TK-ASAAS")).toBeTruthy();
+    expect(screen.getByText(/keep Asaas invoice issuing off/)).toBeTruthy();
   });
 
   it("Hotmart asks for the hottok, offers the invoice amount option (total by default) and shows the guide", async () => {

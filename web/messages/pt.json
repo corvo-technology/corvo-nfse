@@ -19,6 +19,7 @@
       "stripe": "Venda (Stripe)",
       "kiwify": "Venda (Kiwify)",
       "hotmart": "Venda (Hotmart)",
+      "asaas": "Venda (Asaas)",
       "generic": "Venda pela integração"
     }
   },
@@ -2928,6 +2929,7 @@
       "stripe": "Cartão, Pix e boleto pagos no Stripe.",
       "kiwify": "Vendas aprovadas na Kiwify.",
       "hotmart": "Compras de produtos digitais pagas na Hotmart.",
+      "asaas": "Pix, boleto e cartão pagos no Asaas.",
       "other": "Pagamentos confirmados."
     },
     "status": {
@@ -2956,7 +2958,8 @@
         }
       },
       "hints": {
-        "apiKey": "Opcional. Não use a chave secreta (sk_). Crie uma chave restrita (rk_) só de leitura: a Corvo só consulta CPF/CNPJ, e-mail e itens da venda; não consegue cobrar, estornar nem alterar nada. Sem ela, vendas sem CPF/CNPJ vão para \"Vendas pendentes\"."
+        "apiKey": "Opcional. Não use a chave secreta (sk_). Crie uma chave restrita (rk_) só de leitura: a Corvo só consulta CPF/CNPJ, e-mail e itens da venda; não consegue cobrar, estornar nem alterar nada. Sem ela, vendas sem CPF/CNPJ vão para \"Vendas pendentes\".",
+        "access_token": "Opcional, mas recomendado. Crie a chave em Integrações > Chaves de API do Asaas. A Corvo só consulta o cliente da cobrança (nome, CPF/CNPJ, e-mail e endereço); não cria, cobra nem altera nada. Sem ela, as vendas ficam sem CPF/CNPJ e vão para \"Vendas pendentes\"."
       },
       "awaitingSecret": {
         "title": "Falta ligar o webhook",
