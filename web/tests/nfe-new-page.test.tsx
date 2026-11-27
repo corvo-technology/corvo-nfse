@@ -6,9 +6,9 @@ import NewNfePage from "@/app/(dashboard)/app/nfe/new/page";
 import type { NfeDocument } from "@/lib/nfe";
 import messages from "@/messages/en.json";
 
-const state = vi.hoisted(() => ({ params: new URLSearchParams(), nfe: true, nfce: true, doc: null as unknown }));
+const state = vi.hoisted(() => ({ params: new URLSearchParams(), doc: null as unknown }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => state.params, useRouter: () => ({ push: vi.fn() }) }));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ features: { nfe: state.nfe, nfce: state.nfce }, can: () => true }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ features: { nfeProduction: false }, fiscalEnvironment: "test", can: () => true }) }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   collectAll: async () => [{ id: "c1", legalName: "Acme Ltda", tradeName: "Acme" }],
@@ -18,18 +18,11 @@ vi.mock("@/lib/nfe", async (original) => ({ ...(await original<typeof import("@/
 
 const renderPage = () => render(<NextIntlClientProvider locale="en" messages={messages}><NewNfePage /></NextIntlClientProvider>);
 
-beforeEach(() => { state.params = new URLSearchParams(); state.nfe = true; state.nfce = true; state.doc = null; });
+beforeEach(() => { state.params = new URLSearchParams(); state.doc = null; });
 afterEach(cleanup);
 
 describe("New NF-e / NFC-e page", () => {
-  it("with only NF-e released there is no chooser and the NF-e form is shown", async () => {
-    state.nfce = false;
-    renderPage();
-    await screen.findByRole("button", { name: "Issue NF-e" });
-    expect(screen.queryByRole("radiogroup")).toBeNull();
-  });
-
-  it("with both released: chooser on top, NF-e first; picking the consumer sale shows the quick form", async () => {
+  it("chooser on top, NF-e first; picking the consumer sale shows the quick form", async () => {
     renderPage();
     await screen.findByRole("button", { name: "Issue NF-e" });
     expect(screen.getByRole("radiogroup", { name: "Which note do you want to issue?" })).toBeTruthy();
@@ -42,13 +35,6 @@ describe("New NF-e / NFC-e page", () => {
     state.params = new URLSearchParams("type=nfce");
     renderPage();
     await screen.findByRole("button", { name: "Issue NFC-e" });
-  });
-
-  it("with only NFC-e released it shows the quick form without a chooser", async () => {
-    state.nfe = false;
-    renderPage();
-    await screen.findByRole("button", { name: "Issue NFC-e" });
-    expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 
   it("fixing a rejected NFC-e opens the quick form on that note", async () => {

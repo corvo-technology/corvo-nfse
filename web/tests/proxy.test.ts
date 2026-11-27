@@ -240,14 +240,12 @@ it("forwards the NF-e routes of /invoices with the exact methods, and the Idempo
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
-it("forwards the platform admin NF-e release with PUT only", async () => {
+it("no longer forwards the removed per-workspace NF-e release", async () => {
   fetchMock.mockImplementation(async () => new Response("{}", { status: 200 }));
   const headers = { Origin: "http://localhost:4000", "sec-fetch-site": "same-origin", "Content-Type": "application/json" };
   const route = "platform/tenants/t1/nfe-access";
   const put = await PUT(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method: "PUT", headers, body: "{}" }), context(route));
-  expect(put.status).toBe(200);
-  const post = await POST(new NextRequest(`http://localhost:4000/api/proxy/v1/${route}`, { method: "POST", headers, body: "{}" }), context(route));
-  expect(post.status).toBe(404);
+  expect(put.status).toBe(404);
 });
 
 it("forwards the SVC list with GET and leaving it with POST, nothing else", async () => {

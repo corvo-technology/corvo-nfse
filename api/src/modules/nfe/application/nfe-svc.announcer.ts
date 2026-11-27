@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { EmailService } from '@/modules/email/application/email.service';
-import { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
 import { FiscalWebhookPublisher } from '@/modules/fiscal-core/application/fiscal-webhook.publisher';
 import type { Uf } from '@/modules/fiscal-core/domain/ports/authority.port';
 import { opsAlertEmails } from '@/modules/portal-reachability/portal-reachability.monitor';
@@ -25,7 +24,7 @@ export interface SvcTransition {
 
 /**
  * Tells about a change of the SVC of one UF (decision 17 of the plan): a webhook to every workspace
- * with NF-e released and at least one company in that UF in that environment, and an e-mail to the
+ * with at least one company in that UF in that environment, and an e-mail to the
  * platform operator. Both are best-effort: the fiscal state is already committed.
  */
 @Injectable()
@@ -34,7 +33,6 @@ export class NfeSvcAnnouncer {
 
   constructor(
     private readonly audience: TypeormNfeSvcAudience,
-    private readonly policy: NfeAccessPolicy,
     private readonly webhooks: FiscalWebhookPublisher,
     private readonly email: EmailService,
     private readonly config: ConfigService,
@@ -73,7 +71,6 @@ export class NfeSvcAnnouncer {
         change.uf,
         change.tpAmb,
       )) {
-        if (!(await this.policy.isEnabled(tenantId))) continue;
         await runWithTenant(tenantId, () =>
           this.webhooks.publishTenantEvent(tenantId, environment, type, {
             uf: change.uf,

@@ -41,8 +41,6 @@ const DASHBOARD_CALLS: [Method, string][] = [
   ["GET", "invoices/number-gaps"],
   ["GET", "companies/c1/nfe-settings"],
   ["PUT", "companies/c1/nfe-settings"],
-  ["PUT", "platform/tenants/t1/nfe-access"],
-  ["PUT", "platform/tenants/t1/nfce-access"],
   ["GET", "platform/contingency"],
   ["POST", "platform/contingency/SP/2/exit"],
 ];
@@ -52,14 +50,10 @@ it.each(DASHBOARD_CALLS)("repassa %s %s", async (method, route) => {
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
+/** The release of NF-e and NFC-e per workspace is gone: its admin routes are not forwarded any more. */
 it.each([
-  ["GET", "platform/tenants/t1/nfce-access"],
-  ["POST", "platform/tenants/t1/nfce-access"],
-  ["DELETE", "platform/tenants/t1/nfce-access"],
-  ["PUT", "platform/tenants/t1/nfce-access/extra"],
-  ["PUT", "platform/tenants/t1/nfce-accessx"],
-  ["PUT", "platform/tenants/t1/x/nfce-access"],
-  ["PUT", "platform/tenants/nfce-access"],
+  ["PUT", "platform/tenants/t1/nfe-access"],
+  ["PUT", "platform/tenants/t1/nfce-access"],
 ] as const)("%s %s dá 404", async (method, route) => {
   expect((await call(method, route)).status).toBe(404);
   expect(fetchMock).not.toHaveBeenCalled();

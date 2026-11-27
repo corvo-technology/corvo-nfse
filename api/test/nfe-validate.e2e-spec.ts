@@ -3,8 +3,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
-import type { CachePort } from '@/infra/redis/cache.port';
-import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import {
   apiKeyHeader,
   closeE2eApp,
@@ -100,24 +98,7 @@ describe('POST /v1/invoices/validate (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  it('answers 404 while the tenant is not released', async () => {
-    const res = await validate(body({ companyId }));
-    expect(res.status).toBe(404);
-    expect(res.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
-  });
-
-  describe('with the tenant released', () => {
-    beforeAll(async () => {
-      await db.query(
-        `UPDATE "${schema}".tenants SET nfe_enabled_at = NOW() WHERE id = $1`,
-        [tenantId],
-      );
-      // The 404 above was cached for a minute.
-      await ctx.moduleFixture
-        .get<CachePort>(CACHE_PORT)
-        .delete(`nfe:enabled:${tenantId}`);
-    });
-
+  describe('with no release to ask for', () => {
     it('answers 422 COMPANY_NFE_INCOMPLETE while the company has no IE', async () => {
       const res = await validate(body({ companyId }));
       expect(res.status).toBe(422);
@@ -131,27 +112,13 @@ describe('POST /v1/invoices/validate (e2e)', () => {
       expect(fields).not.toContain('crt');
     });
 
-    it('answers 422 UF_NOT_ENABLED while the UF has no row, before anything is numbered', async () => {
-      await request(ctx.app.getHttpServer())
-        .put(`/v1/companies/${companyId}/nfe-settings`)
-        .set(apiKeyHeader(key))
-        .send({ stateRegistration: '110042490114', crt: 1 })
-        .expect(200);
-      const res = await validate(body({ companyId }));
-      expect(res.status).toBe(422);
-      expect(res.body).toMatchObject({
-        code: 'ERROR_UF_NOT_ENABLED',
-        type: 'configuration',
-      });
-      expect(await count('nfe_number_sequences')).toBe(0);
-    });
-
-    describe('with the UF released', () => {
+    describe('with the company complete', () => {
       beforeAll(async () => {
-        await db.query(
-          `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-           VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md')`,
-        );
+        await request(ctx.app.getHttpServer())
+          .put(`/v1/companies/${companyId}/nfe-settings`)
+          .set(apiKeyHeader(key))
+          .send({ stateRegistration: '110042490114', crt: 1 })
+          .expect(200);
       });
 
       it('answers 200 with the preview key, and saves nothing', async () => {

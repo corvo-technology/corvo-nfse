@@ -9,7 +9,7 @@ import messages from "@/messages/en.json";
 import { TENANT_ROLE_PERMISSIONS } from "../../api/src/modules/auth/domain/permission";
 
 type Role = keyof typeof TENANT_ROLE_PERMISSIONS;
-const state = vi.hoisted(() => ({ role: "admin" as string, pathname: "/app", nfe: true }));
+const state = vi.hoisted(() => ({ role: "admin" as string, pathname: "/app" }));
 
 vi.mock("next/navigation", () => ({ usePathname: () => state.pathname, useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
 vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), billing: { plan: vi.fn().mockResolvedValue(null) } }));
@@ -22,7 +22,7 @@ vi.mock("@/lib/auth", async () => {
       const granted = new Set<string>(roles[state.role as Role]);
       return {
         status: "authenticated", isAuthenticated: true, isLoading: false, tenantId: "t1", fiscalEnvironment: "test", isPlatformAdmin: false,
-        features: { nfe: state.nfe }, refreshSession: vi.fn(), can: (permission: string) => granted.has(permission),
+        features: { nfeProduction: false }, refreshSession: vi.fn(), can: (permission: string) => granted.has(permission),
       };
     },
   };
@@ -31,7 +31,7 @@ vi.mock("@/lib/auth", async () => {
 const wrap = (node: React.ReactNode) => <NextIntlClientProvider locale="en" messages={messages}>{node}</NextIntlClientProvider>;
 const links = () => screen.getAllByRole("link").map((link) => link.getAttribute("href"));
 
-beforeEach(() => { state.role = "admin"; state.pathname = "/app"; state.nfe = true; });
+beforeEach(() => { state.role = "admin"; state.pathname = "/app"; });
 afterEach(cleanup);
 
 describe("route permissions of the NF-e pages", () => {
@@ -42,49 +42,32 @@ describe("route permissions of the NF-e pages", () => {
     expect(permissionForPath("/app/nfe/new")).toBe("nfe.documents.issue");
   });
 
-  it("the pages are closed while NF-e is not released, whatever the role", () => {
+  it("the NF-e pages need only the permission, with no release", () => {
     const all = () => true;
-    expect(canOpenPath("/app/nfe", all, { nfe: false })).toBe(false);
-    expect(canOpenPath("/app/nfe/new", all, undefined)).toBe(false);
-    expect(canOpenPath("/app/nfe", all, { nfe: true })).toBe(true);
-    // NFC-e alone also opens the pages (they are shared).
-    expect(canOpenPath("/app/nfe/new", all, { nfe: false, nfce: true })).toBe(true);
-    // The NFS-e pages do not depend on the release.
-    expect(canOpenPath("/app/invoices", all, { nfe: false })).toBe(true);
+    expect(canOpenPath("/app/nfe", all)).toBe(true);
+    expect(canOpenPath("/app/nfe/new", all)).toBe(true);
+    expect(canOpenPath("/app/nfe", () => false)).toBe(false);
+    expect(canOpenPath("/app/invoices", all)).toBe(true);
   });
 });
 
 describe("menu", () => {
   const renderMenu = (role: Role) => { state.role = role; render(wrap(<Sidebar activePath="/app" open onClose={() => undefined} />)); return links(); };
 
-  it("shows NF-e only when it was released and the role may view it", () => {
+  it("shows NF-e to every account whose role may view it", () => {
     expect(renderMenu("admin")).toContain("/app/nfe");
-  });
-
-  it("hides NF-e from the menu while it is not released", () => {
-    state.nfe = false;
-    expect(renderMenu("admin")).not.toContain("/app/nfe");
-    expect(links()).toContain("/app/invoices");
   });
 });
 
 describe("page guard", () => {
   const renderAt = (pathname: string) => { state.pathname = pathname; render(wrap(<DashboardLayout><p>page body</p></DashboardLayout>)); };
 
-  it("opens the NF-e page when released", () => {
+  it("opens the NF-e page", () => {
     renderAt("/app/nfe");
     expect(screen.getByText("page body")).toBeTruthy();
   });
 
-  it("shows the no-access screen instead of the NF-e page when it is not released", () => {
-    state.nfe = false;
-    renderAt("/app/nfe/new");
-    expect(screen.queryByText("page body")).toBeNull();
-    expect(screen.getByRole("alert")).toBeTruthy();
-  });
-
-  it("keeps the NFS-e pages open when NF-e is not released", () => {
-    state.nfe = false;
+  it("keeps the NFS-e pages open", () => {
     renderAt("/app/invoices");
     expect(screen.getByText("page body")).toBeTruthy();
   });

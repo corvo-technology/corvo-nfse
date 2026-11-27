@@ -3387,7 +3387,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
         },
         {
           "kind": "text",
-          "body": "For accounts with NF-e released (test mode, no tax value), the tools `nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` and `nfse_download_pdf` take `type`: `nfse` (default, nothing changes), `nfe` or `nfce` (sale to the consumer, also test mode and with its own release). In `nfse_list`, `type: \"all\"` lists NFS-e, NF-e and NFC-e together. With `type: \"nfce\"` the NFC-e body goes in the `nfe` object of `nfse_issue` (no `natOp`, the consumer CPF is optional); the NFC-e has no correction letter and can only be cancelled within 30 minutes. With `type: \"nfe\"` use `invoice_id` (not the access key). `nfse_issue` with `nfe` needs `company_id`, the `nfe` object (the same body as `POST /v1/invoices`, without `companyId`) and `idempotency_key`; `nfse_cancel` uses only `description` as the justification. Corvo does not calculate taxes: the agent informs CFOP, NCM and CSOSN."
+          "body": "For every account (test mode, no tax value; live answers `NFE_PRODUCTION_DISABLED` until production is turned on), the tools `nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` and `nfse_download_pdf` take `type`: `nfse` (default, nothing changes), `nfe` or `nfce` (sale to the consumer, also test mode). In `nfse_list`, `type: \"all\"` lists NFS-e, NF-e and NFC-e together. With `type: \"nfce\"` the NFC-e body goes in the `nfe` object of `nfse_issue` (no `natOp`, the consumer CPF is optional); the NFC-e has no correction letter and can only be cancelled within 30 minutes. With `type: \"nfe\"` use `invoice_id` (not the access key). `nfse_issue` with `nfe` needs `company_id`, the `nfe` object (the same body as `POST /v1/invoices`, without `companyId`) and `idempotency_key`; `nfse_cancel` uses only `description` as the justification. Corvo does not calculate taxes: the agent informs CFOP, NCM and CSOSN."
         },
         {
           "kind": "list",
@@ -3396,7 +3396,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             "`nfe_settings_get` (`nfse:read`) and `nfe_settings_update` (`nfse:write`): IE, CRT, series and defaults of the company, and what is missing to issue.",
             "`nfe_correct` (`nfse:write`): correction letter for an authorized NF-e (on a NFC-e it answers `INVOICE_OPERATION_NOT_SUPPORTED`).",
             "`nfe_number_gaps` (`nfse:read`) and `nfe_inutilize` (`nfse:write`): skipped numbers and the inutilization of a range, with `model` 55 (NF-e, default) or 65 (NFC-e); ask the person to confirm before inutilizing. `nfe_settings_update` also sets `nfce_default_series`, the NFC-e series.",
-            "These six only show in the tool list when NF-e is released for the account; cancelling, correcting and inutilizing need a role with `nfe.documents.manage`, issuing and validating `nfe.documents.issue`."
+            "These six show in the tool list for every account; cancelling, correcting and inutilizing need a role with `nfe.documents.manage`, issuing and validating `nfe.documents.issue`."
           ]
         },
         {

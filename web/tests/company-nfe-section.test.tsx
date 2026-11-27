@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CompanyDetailPage from "@/app/(dashboard)/app/companies/[id]/page";
 import messages from "@/messages/en.json";
 
-const state = vi.hoisted(() => ({ nfe: true, permissions: new Set<string>(), company: {} as Record<string, unknown> }));
+const state = vi.hoisted(() => ({ permissions: new Set<string>(), company: {} as Record<string, unknown> }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "c1" }), useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => state.permissions.has(permission), features: { nfe: state.nfe }, fiscalEnvironment: "test" }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => state.permissions.has(permission), fiscalEnvironment: "test" }) }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   companies: { get: async () => state.company },
@@ -30,14 +30,13 @@ const renderPage = async () => {
 };
 
 beforeEach(() => {
-  state.nfe = true;
   state.permissions = new Set(["nfse.companies.view", "nfe.documents.view", "nfe.documents.manage"]);
   state.company = { id: "c1", legalName: "Acme Ltda", tradeName: "Acme", taxId: "11222333000181", status: "ready", environment: "test", municipalityCode: "3550308", address: { city: "São Paulo", state: "SP" }, taxRegime: "simples", municipalReg: "", defaultServiceCode: "", setupGaps: [] };
 });
 afterEach(cleanup);
 
 describe("NF-e section of the company page", () => {
-  it("shows the NF-e section when NF-e is released and the member may view it", async () => {
+  it("shows the NF-e section for every account whose member may view it", async () => {
     await renderPage();
     expect(screen.getByText("nfe-section manage=true")).toBeTruthy();
   });
@@ -46,12 +45,6 @@ describe("NF-e section of the company page", () => {
     state.permissions = new Set(["nfse.companies.view", "nfe.documents.view"]);
     await renderPage();
     expect(screen.getByText("nfe-section manage=false")).toBeTruthy();
-  });
-
-  it("hides the section while NF-e is not released", async () => {
-    state.nfe = false;
-    await renderPage();
-    expect(screen.queryByText(/nfe-section/)).toBeNull();
   });
 
   it("hides the section from a member without nfe.documents.view", async () => {

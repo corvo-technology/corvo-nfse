@@ -1,6 +1,6 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-/** NFC-e release per tenant (null = off). Also needs the global NFE_ENABLED. */
+/** NFC-e release per tenant (null = off). Dropped by DropNfeReleaseGates1793800000000: NF-e and NFC-e are open to every workspace. */
 export class AddTenantNfceEnabledAt1793600000000 implements MigrationInterface {
   private schema(runner: QueryRunner): string {
     const options = runner.connection.options;

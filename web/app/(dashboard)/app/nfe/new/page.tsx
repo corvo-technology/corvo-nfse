@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { collectAll, companies as companiesApi } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { getNfe, type NfeDocument, type NfeKind } from "@/lib/nfe";
 import { emptyForm, fromDocument, type NfeFormState } from "@/lib/nfe-form";
 import { emptyNfceForm, fromNfceDocument } from "@/lib/nfce-form";
@@ -21,17 +20,14 @@ export default function NewNfePage() {
 
 /**
  * A new NF-e or consumer sale (NFC-e), or (with `?resubmit=<id>`) a rejected note filled in to be
- * fixed and sent again. The chooser shows only where both are released; `?type=nfce` opens on the sale.
+ * fixed and sent again. The chooser lets the person pick one; `?type=nfce` opens on the sale.
  */
 function NewNfe() {
   const t = useTranslations("Nfe.new");
   const tc = useTranslations("Nfe.consumer");
   const apiError = useApiErrorText();
-  const { features } = useAuth();
   const params = useSearchParams();
   const resubmitId = params.get("resubmit") ?? undefined;
-  const nfceOk = features?.nfce === true;
-  const nfeOk = features?.nfe === true;
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [doc, setDoc] = useState<NfeDocument | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -55,9 +51,9 @@ function NewNfe() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the texts change with the language, not with the data
   }, [resubmitId]);
 
-  // The kind is a fact of the note being fixed; otherwise what was released limits the choice.
-  const kind: NfeKind = doc ? doc.type : nfceOk && !nfeOk ? "nfce" : !nfceOk ? "nfe" : chosen;
-  const chooser = !resubmitId && nfceOk && nfeOk;
+  // The kind is a fact of the note being fixed; otherwise the person chooses.
+  const kind: NfeKind = doc ? doc.type : chosen;
+  const chooser = !resubmitId;
   const only = companies && companies.length === 1 ? companies[0].id : "";
   const nfeInitial: NfeFormState | null = loaded ? (doc && doc.type === "nfe" ? fromDocument(doc) : emptyForm(only)) : null;
   const title = kind === "nfce" ? (resubmitId ? tc("resubmitTitle") : tc("title")) : resubmitId ? t("resubmitTitle") : t("title");

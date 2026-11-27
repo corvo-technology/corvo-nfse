@@ -11,6 +11,9 @@ import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), validate: vi.fn(), resubmit: vi.fn(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+const auth = vi.hoisted(() => ({ env: "test" as "test" | "live", nfeProduction: false }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: auth.env, features: { nfeProduction: auth.nfeProduction } }) }));
+beforeEach(() => { auth.env = "test"; auth.nfeProduction = false; });
 vi.mock("@/lib/nfe", async (original) => ({ ...(await original<typeof import("@/lib/nfe")>()), createNfe: mocks.create, validateNfe: mocks.validate, resubmitNfe: mocks.resubmit }));
 
 const companies = [{ id: "c1", legalName: "Acme Ltda", tradeName: "Acme" }] as Company[];
@@ -35,6 +38,30 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("NF-e form", () => {
+  it("in TEST shows the homologação banner and can issue", () => {
+    renderForm();
+    expect(screen.getByText(messages.Nfe.form.homologation)).toBeTruthy();
+    expect(screen.queryByText(messages.Nfe.form.productionLocked)).toBeNull();
+    expect((screen.getByRole("button", { name: "Issue NF-e" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("in LIVE with production off says it is not open, keeps the emit button off and the validation on", () => {
+    auth.env = "live";
+    renderForm();
+    expect(screen.getByText(messages.Nfe.form.productionLocked)).toBeTruthy();
+    expect(screen.queryByText(messages.Nfe.form.homologation)).toBeNull();
+    expect((screen.getByRole("button", { name: "Issue NF-e" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Validate" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("in LIVE with production on shows no homologação banner and can issue", () => {
+    auth.env = "live"; auth.nfeProduction = true;
+    renderForm();
+    expect(screen.queryByText(messages.Nfe.form.homologation)).toBeNull();
+    expect(screen.queryByText(messages.Nfe.form.productionLocked)).toBeNull();
+    expect((screen.getByRole("button", { name: "Issue NF-e" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("marks the NCM field of the second item when the API reports items[1].ncm", async () => {
     mocks.validate.mockRejectedValue(new ApiError(422, "invalid", "NFE_VALIDATION_FAILED", undefined, [{ field: "items[1].ncm", code: "NCM_INVALID", message: "bad ncm" }]));
     renderForm();

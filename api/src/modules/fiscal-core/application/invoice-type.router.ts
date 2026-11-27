@@ -13,7 +13,6 @@ import {
   type InvoiceSummary,
   type InvoiceSummaryQuery,
 } from '../infra/typeorm-invoice-summaries';
-import { NfeAccessPolicy } from './nfe-access.policy';
 import type { InvoiceCall, InvoiceRoutes } from './invoice-routes';
 
 /** The permission each kind of document needs for one operation. */
@@ -52,10 +51,7 @@ export class InvoiceTypeRouter {
   private readonly permissions = new RoutePermissionService();
   private readonly routes = new Map<InvoiceType, InvoiceRoutes>();
 
-  constructor(
-    private readonly access: NfeAccessPolicy,
-    private readonly summaryQuery: TypeormInvoiceSummaries,
-  ) {}
+  constructor(private readonly summaryQuery: TypeormInvoiceSummaries) {}
 
   register(routes: InvoiceRoutes): void {
     if (this.routes.has(routes.type))
@@ -72,14 +68,14 @@ export class InvoiceTypeRouter {
     if (!this.allows(call, gate.nfse)) throw denied(gate.nfse);
   }
 
-  /** The routes of a type the caller asked for: 404 while NF-e is not released, as before. */
-  async forType(
+  /** The routes of a type the caller asked for (404 only when the type has no routes registered). */
+  forType(
     type: Exclude<InvoiceType, 'nfse'>,
     call: InvoiceCall,
     permission: TenantPermission,
-  ): Promise<InvoiceRoutes> {
+  ): InvoiceRoutes {
     const routes = this.routes.get(type);
-    if (!routes || !(await this.access.isEnabled(call.tenantId, type)))
+    if (!routes)
       throw new NotFoundException({
         code: 'RESOURCE_NOT_FOUND',
         message: 'Resource not found',
@@ -97,14 +93,14 @@ export class InvoiceTypeRouter {
     other: (routes: InvoiceRoutes) => Promise<T>,
   ): Promise<T> {
     if (type === 'nfe' || type === 'nfce')
-      return other(await this.forType(type, call, gate.nfe));
+      return other(this.forType(type, call, gate.nfe));
     this.assertNfse(call, gate);
     return nfse();
   }
 
   /**
-   * The routes of the non-NFS-e document that has this id, or null: no such document, NF-e not
-   * released for the workspace, or a key that cannot use that type (it then sees what an NFS-e
+   * The routes of the non-NFS-e document that has this id, or null: no such document, or a key
+   * that cannot use that type (it then sees what an NFS-e
    * key sees, that the id is unknown).
    */
   async owner(
@@ -115,13 +111,12 @@ export class InvoiceTypeRouter {
     if (!this.allows(call, permission)) return null;
     if (this.routes.size === 0) return null;
     for (const routes of this.routes.values()) {
-      if (!(await this.access.isEnabled(call.tenantId, routes.type))) continue;
       if (await routes.owns(id, call)) return routes;
     }
     return null;
   }
 
-  /** By the document that has the id. Only a tenant with NF-e released pays the extra lookup. */
+  /** By the document that has the id. */
   async byId<T>(
     id: string,
     call: InvoiceCall,
@@ -145,11 +140,7 @@ export class InvoiceTypeRouter {
     if (this.allows(call, gate.nfse)) types.push('nfse');
     if (this.allows(call, gate.nfe))
       for (const type of ['nfe', 'nfce'] as const)
-        if (
-          this.routes.has(type) &&
-          (await this.access.isEnabled(call.tenantId, type))
-        )
-          types.push(type);
+        if (this.routes.has(type)) types.push(type);
     if (types.length === 0) throw denied(gate.nfse);
     return this.summaryQuery.list(
       { ...query, types },

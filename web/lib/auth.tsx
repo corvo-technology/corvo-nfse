@@ -6,7 +6,7 @@ import { ApiError, auth, onUnauthorized, setCsrfToken, setFiscalEnvironment, get
 type AuthStatus = "loading" | "authenticated" | "anonymous" | "error";
 interface AuthContextType {
   session: SessionPayload | null; status: AuthStatus; error: string | null;
-  tenantId: string | null; permissions: string[]; features: { nfe: boolean; nfce: boolean }; isPlatformAdmin: boolean; profile: SessionPayload["profile"] | null; isLoading: boolean; isAuthenticated: boolean;
+  tenantId: string | null; permissions: string[]; features: { nfeProduction: boolean }; isPlatformAdmin: boolean; profile: SessionPayload["profile"] | null; isLoading: boolean; isAuthenticated: boolean;
   fiscalEnvironment: "test" | "live"; switchFiscalEnvironment: (env: "test" | "live") => void;
   refreshSession: () => Promise<void>;
   verifyCode: (email: string, challengeId: string, code: string, onVerified?: (isNewUser: boolean) => void) => Promise<void>;
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFiscalEnv(env);
     setFiscalEnvironment(env);
   }, []);
-  return <AuthContext.Provider value={{ session, status, error, tenantId: session?.activeTenantId ?? null, permissions: session?.permissions ?? [], features: { nfe: session?.features?.nfe === true, nfce: session?.features?.nfce === true }, isPlatformAdmin: session?.isPlatformAdmin === true, profile: session?.profile ?? null, isLoading: status === "loading", isAuthenticated: status === "authenticated", fiscalEnvironment, switchFiscalEnvironment, refreshSession, verifyCode, logout, switchTenant, can }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, status, error, tenantId: session?.activeTenantId ?? null, permissions: session?.permissions ?? [], features: { nfeProduction: session?.features?.nfeProduction === true }, isPlatformAdmin: session?.isPlatformAdmin === true, profile: session?.profile ?? null, isLoading: status === "loading", isAuthenticated: status === "authenticated", fiscalEnvironment, switchFiscalEnvironment, refreshSession, verifyCode, logout, switchTenant, can }}>{children}</AuthContext.Provider>;
 }
 export function useAuth() {
   const context = useContext(AuthContext);

@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations();
-  const { isAuthenticated, isLoading, status, refreshSession, tenantId, can, fiscalEnvironment, features } = useAuth();
+  const { isAuthenticated, isLoading, status, refreshSession, tenantId, can, fiscalEnvironment } = useAuth();
   useCompleteRegistration();
 
   // The drawer is tied to the path it was opened on, so navigating closes it
@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           <div className="mx-auto w-full max-w-[1120px] px-4 py-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
             {can("nfse.invoices.view") && <PortalStatusBanner environment={`${tenantId}:${fiscalEnvironment}`} />}
-            <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{canOpenPath(pathname, can, features) ? children : <NoAccess />}</div>
+            <div key={`${tenantId}:${fiscalEnvironment}:${permission ?? "overview"}`}>{canOpenPath(pathname, can) ? children : <NoAccess />}</div>
           </div>
         </main>
       </div>

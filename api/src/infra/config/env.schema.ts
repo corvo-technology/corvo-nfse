@@ -38,9 +38,10 @@ export const envSchema = z
      * company's certificate, no legal validity; `fake` is the in-process simulator, for automated tests.
      */
     NFSE_TEST_PROVIDER: z.enum(['sefin', 'fake']).default('sefin'),
-    /** NF-e (modelo 55) is off until released: this flag AND `tenants.nfe_enabled_at` turn it on per tenant. */
-    NFE_ENABLED: booleanFromEnv.default(false),
-    /** Blocks tpAmb=1 (production) NF-e; only homologation is allowed while false. */
+    /**
+     * The one NF-e / NFC-e switch: blocks tpAmb=1 (production); only homologation is allowed while
+     * false. NF-e and NFC-e in test are open to every workspace and need no flag.
+     */
     NFE_PRODUCTION_ENABLED: booleanFromEnv.default(false),
     /** Where `test` NF-e go: `sefaz` (homologation) or `fake` (in-process simulator, automated tests). */
     NFE_TEST_PROVIDER: z.enum(['sefaz', 'fake']).default('sefaz'),

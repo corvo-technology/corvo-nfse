@@ -10,7 +10,7 @@ Built from `git log --since=2026-10-26` and the diff of the controllers and DTOs
 
 ## Next: NFC-e in test mode (homologação)
 
-NFC-e (consumer sale, model 65) joins the same `/invoices` routes with `type: "nfce"`. It has its own release per account (until then every NFC-e path answers `404`), runs only against the SEFAZ test environment and starts in SP. Nothing about NFS-e or NF-e changed: the NFC-e only adds values and optional fields.
+NFC-e (consumer sale, model 65) joins the same `/invoices` routes with `type: "nfce"`. It is open to every account (no release; production answers `422 NFE_PRODUCTION_DISABLED` until it is turned on), runs only against the SEFAZ test environment and starts in SP. Nothing about NFS-e or NF-e changed: the NFC-e only adds values and optional fields.
 
 - `invoices_create`, `invoices_validate` and `invoices_resubmit` accept the NFC-e body (`recipient` optional, `indPres` 1, 4 or 5, `payments[].card`; no `natOp`); the `202` answer is `{ type: "nfce", id, status, replayed? }`. `invoices_list` takes `type=nfce`, and `type=all` also brings the NFC-e.
 - `invoices_get` of an NFC-e adds `qrCode` and `urlChave`. `invoices_downloadPdf` answers the DANFCE (80 mm cupom); `?layout=a4` answers the same note on an A4 page (the NF-e and the NFS-e ignore `layout`).
@@ -22,7 +22,7 @@ NFC-e (consumer sale, model 65) joins the same `/invoices` routes with `type: "n
 
 ## Next: NF-e in test mode (homologação)
 
-NF-e (goods, model 55) joins the API **inside the existing `/invoices` routes**, chosen by a `type`. It is released account by account (until then every NF-e path answers `404`), runs only against the SEFAZ test environment, and is for Simples Nacional / MEI companies in SP and the SVRS states Corvo released. Corvo does not calculate NF-e taxes: the caller sends CFOP, NCM and CSOSN.
+NF-e (goods, model 55) joins the API **inside the existing `/invoices` routes**, chosen by a `type`. It is open to every account (no release; production answers `422 NFE_PRODUCTION_DISABLED` until it is turned on), runs only against the SEFAZ test environment, and is for Simples Nacional / MEI companies in every state. Corvo does not calculate NF-e taxes: the caller sends CFOP, NCM and CSOSN.
 
 ### Note for SDK and client generators: nothing about NFS-e changed
 
@@ -53,7 +53,7 @@ New events, with `data.documentType: "nfe"` and `data.documentId` instead of `in
 
 ### MCP
 
-`nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` and `nfse_download_pdf` take an optional `type` (`nfse` default, `nfe`; `nfse_list` also `all`); without it they behave exactly as before. New tools, listed only for accounts with NF-e released: `nfe_validate`, `nfe_correct`, `nfe_inutilize`, `nfe_number_gaps`, `nfe_settings_get`, `nfe_settings_update`.
+`nfse_issue`, `nfse_list`, `nfse_get`, `nfse_cancel`, `nfse_review`, `nfse_get_download_url` and `nfse_download_pdf` take an optional `type` (`nfse` default, `nfe`; `nfse_list` also `all`); without it they behave exactly as before. New tools, listed for every account: `nfe_validate`, `nfe_correct`, `nfe_inutilize`, `nfe_number_gaps`, `nfe_settings_get`, `nfe_settings_update`.
 
 ## 0.3.0 (2026-11-24)
 

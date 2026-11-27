@@ -16,7 +16,6 @@ import {
   executionEnvironment,
 } from '@/modules/auth/execution-environment.guard';
 import { RequirePermission } from '@/modules/auth/require-permission.decorator';
-import { NfeRoute } from '@/modules/fiscal-core/http/nfe-enabled.guard';
 import { data } from '@/shared/http/response';
 import {
   CompanyNfeSettingsService,
@@ -25,7 +24,6 @@ import {
 import { UpdateCompanyNfeSettingsDto } from './company-nfe-settings.dto';
 
 @UseGuards(ExecutionEnvironmentGuard)
-@NfeRoute()
 @ApiTags('companies')
 @Controller('companies/:id/nfe-settings')
 export class CompanyNfeSettingsController {

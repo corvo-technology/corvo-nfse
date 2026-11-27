@@ -65,7 +65,7 @@ interface SidebarProps {
 
 export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarProps) {
   const t = useTranslations();
-  const { can, tenantId, isPlatformAdmin, features } = useAuth();
+  const { can, tenantId, isPlatformAdmin } = useAuth();
   const [plan, setPlan] = useState<BillingPlan | null>(null);
   // `can` changes identity on every session refresh (e.g. each window focus);
   // depend on the boolean so the plan is not refetched each time.
@@ -88,7 +88,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
 
   const renderItem = ({ key, href, icon: Icon }: NavItem) => {
     // Same table as the page guard: the menu never shows a page the member cannot open.
-    if (!canOpenPath(href, can, features)) return null;
+    if (!canOpenPath(href, can)) return null;
     if (!billingEnabled && href === "/app/billing") return null;
     const active = isActive(href);
     return (

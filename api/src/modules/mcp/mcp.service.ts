@@ -633,16 +633,13 @@ export class McpService {
   }
 
   /**
-   * Tools that only exist for NF-e and NFC-e. They are listed only for connections whose account
-   * has NF-e or NFC-e released (`nfe_correct`, only with NF-e: the NFC-e has no correction letter),
-   * and every call checks the release and the member permission again.
+   * Tools that only exist for NF-e and NFC-e (`nfe_correct` only for NF-e: the NFC-e has no
+   * correction letter). Every workspace has them; every call checks the member permission.
    */
   private registerNfeTools(): void {
-    const visibleWhen = (ctx: AuthContext) => this.nfe.isEnabledAny(ctx);
     this.server.registerTool(
       NFE_CORRECT_TOOL,
       this.wrapWithScopeCheck(createNfeCorrectHandler(this.nfe), 'nfse:write'),
-      { visibleWhen: (ctx: AuthContext) => this.nfe.isEnabled(ctx) },
     );
     for (const [tool, handler, scope] of [
       [NFE_VALIDATE_TOOL, createNfeValidateHandler(this.nfe), 'nfse:write'],
@@ -659,9 +656,7 @@ export class McpService {
         'nfse:read',
       ],
     ] as const)
-      this.server.registerTool(tool, this.wrapWithScopeCheck(handler, scope), {
-        visibleWhen,
-      });
+      this.server.registerTool(tool, this.wrapWithScopeCheck(handler, scope));
   }
 
   /** Buying credits has no meaning without billing, so self-hosted never lists these. */

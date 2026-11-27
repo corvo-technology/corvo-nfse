@@ -56,7 +56,7 @@ function setup(
   } = {},
 ) {
   const peek = jest.fn().mockResolvedValue({ series: 1, number: 42 });
-  const check = jest.fn().mockResolvedValue(options.blocked ?? null);
+  const check = jest.fn().mockReturnValue(options.blocked ?? null);
   const service = new NfeValidateService(
     new NfePreparation(
       {

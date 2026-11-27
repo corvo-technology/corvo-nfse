@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { TenantWorkDiscovery } from '@/infra/persistence/typeorm/tenant-work-discovery';
-import { NfeAccessPolicy } from '@/modules/fiscal-core/application/nfe-access.policy';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import { observeScheduledTask } from '@/shared/observability/scheduled-task-telemetry';
 import { NfeNumberGapsQuery } from '../infra/typeorm-nfe-number-gaps.query';
@@ -9,7 +8,7 @@ import { NfeNumberGapsQuery } from '../infra/typeorm-nfe-number-gaps.query';
 const ENVIRONMENTS: ExecutionEnvironment[] = ['test', 'live'];
 
 /**
- * Daily look at the numbering gaps of every tenant released for NF-e. It only writes a structured
+ * Daily look at the numbering gaps of every tenant. It only writes a structured
  * log line per company and series with gaps; nothing is inutilized automatically and nobody is
  * e-mailed in this phase (the customer asks for the list or inutilizes from the panel).
  */
@@ -19,7 +18,6 @@ export class NfeNumberGapsScheduler {
 
   constructor(
     private readonly discovery: TenantWorkDiscovery,
-    private readonly policy: NfeAccessPolicy,
     private readonly gaps: NfeNumberGapsQuery,
   ) {}
 
@@ -30,7 +28,6 @@ export class NfeNumberGapsScheduler {
 
   async run(): Promise<void> {
     await this.discovery.visit('nfe-number-gaps', async (tenantId) => {
-      if (!(await this.policy.isEnabled(tenantId))) return;
       for (const environment of ENVIRONMENTS) {
         const found = await this.gaps.list(tenantId, environment);
         const bySeries = new Map<

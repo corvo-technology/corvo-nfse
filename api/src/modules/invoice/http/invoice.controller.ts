@@ -156,7 +156,7 @@ export class InvoiceController {
     if ((bodyType === 'nfe' || bodyType === 'nfce') && this.types) {
       // The validation pipe let it through untouched: NF-e and NFC-e validate their own body.
       const call = this.callOf(req);
-      const routes = await this.types.forType(bodyType, call, ISSUE.nfe);
+      const routes = this.types.forType(bodyType, call, ISSUE.nfe);
       return routes.create(dto, idempotencyKey, call, res!);
     }
     this.types?.assertNfse(this.callOf(req), ISSUE);
@@ -278,10 +278,7 @@ export class InvoiceController {
       const call = this.callOf(req);
       const raw = { ...query } as Record<string, unknown>;
       if (query.type === 'nfe' || query.type === 'nfce')
-        return (await this.types.forType(query.type, call, VIEW.nfe)).list(
-          raw,
-          call,
-        );
+        return this.types.forType(query.type, call, VIEW.nfe).list(raw, call);
       rejectNfseOnlyFilters(raw, 'all');
       return this.types.summaries(
         {

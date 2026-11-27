@@ -10,7 +10,6 @@ import { formatDate } from "@/lib/i18n-helpers";
 import { formatBrl, platformAdmin, type PlatformUserDetail, type PlatformWorkspace } from "@/lib/platform-admin";
 import { useApiErrorText, useInvoiceErrorText } from "@/lib/use-api-error";
 import { GrantCreditsButton } from "@/components/admin/grant-credits-button";
-import { NfeAccessButton } from "@/components/admin/nfe-access-button";
 import { Card } from "@/components/ui/card";
 import { DetailSkeleton } from "@/components/ui/detail-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
@@ -51,8 +50,6 @@ function WorkspaceBlock({ workspace, email, onGranted }: { workspace: PlatformWo
           </div>
           <div className="flex flex-wrap items-start gap-3">
             {billing && workspace.isOwn && <GrantCreditsButton tenantId={workspace.tenantId} email={email} onGranted={onGranted} />}
-            {workspace.isOwn && <NfeAccessButton tenantId={workspace.tenantId} enabledAt={workspace.nfeEnabledAt ?? null} onChanged={onGranted} />}
-            {workspace.isOwn && <NfeAccessButton tenantId={workspace.tenantId} type="nfce" enabledAt={workspace.nfceEnabledAt ?? null} onChanged={onGranted} />}
           </div>
         </div>
 

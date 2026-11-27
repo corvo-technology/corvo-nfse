@@ -39,7 +39,7 @@ export const TYPE_ALL_PROPERTY = {
   ...TYPE_PROPERTY,
   enum: [...INVOICE_TYPES, 'all'],
   description:
-    'Kind of invoice: "nfse" (default), "nfe" (goods), "nfce" (consumer sale) or "all" (NFS-e, NF-e and NFC-e together, newest first; NF-e and NFC-e only when released). With "nfe", "nfce" or "all" only status, company_id, limit and cursor filters apply.',
+    'Kind of invoice: "nfse" (default), "nfe" (goods), "nfce" (consumer sale) or "all" (NFS-e, NF-e and NFC-e together, newest first). With "nfe", "nfce" or "all" only status, company_id, limit and cursor filters apply.',
 } as const;
 
 const NFE_BODY_DESCRIPTION =
@@ -394,7 +394,7 @@ export function createNfeReviewHandler(
 export const NFE_VALIDATE_TOOL = {
   name: 'nfe_validate',
   description:
-    'Dry-run of an NF-e or a NFC-e: checks the data and returns the problems field by field (issues), without numbering, sending or charging anything. Always run it before nfse_issue with type "nfe" or "nfce". The type must be released for the account (homologação only).',
+    'Dry-run of an NF-e or a NFC-e: checks the data and returns the problems field by field (issues), without numbering, sending or charging anything. Always run it before nfse_issue with type "nfe" or "nfce". Homologação (test) only for now.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -518,7 +518,7 @@ export const NFE_SETTINGS_UPDATE_TOOL = {
   },
 } as const;
 
-/** The tools only people with NF-e or NFC-e released see in `tools/list` (`nfe_correct` only with NF-e). */
+/** The tools that exist only for NF-e and NFC-e (`nfe_correct` only with NF-e). */
 export const NFE_ONLY_TOOL_NAMES = [
   NFE_VALIDATE_TOOL.name,
   NFE_CORRECT_TOOL.name,

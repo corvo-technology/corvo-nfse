@@ -11,6 +11,7 @@ import { maskCurrency, maskState, maskTaxId, maskZip } from "@/lib/masks";
 import { rememberProducts } from "@/lib/nfe-products";
 import { emptyPayment, ieExample, issueErrors, paidPreview, PAYMENT_MEANS, suggestedCfop, toCreateInput, toMoneyText, totalsPreview, type NfeFormState, type NfeItemForm } from "@/lib/nfe-form";
 import type { Company } from "@/lib/types";
+import { useAuth } from "@/lib/auth";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { NfeItemsEditor } from "@/components/nfe/nfe-items-editor";
 import { useRecipientAutofill } from "@/components/nfe/use-recipient-autofill";
@@ -36,6 +37,9 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
   const locale = useLocale();
   const router = useRouter();
   const apiError = useApiErrorText();
+  const { fiscalEnvironment, features } = useAuth();
+  // Live notes are not open yet: say it, and keep the emit button off (the dry-run stays).
+  const productionLocked = fiscalEnvironment === "live" && !features.nfeProduction;
   const [form, setForm] = useState<NfeFormState>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
@@ -105,7 +109,8 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
 
   return (
     <form noValidate onSubmit={(event) => { event.preventDefault(); void run("submit"); }} className="flex flex-col gap-6">
-      <p role="note" className="banner">{t("homologation")}</p>
+      {fiscalEnvironment === "test" && <p role="note" className="banner">{t("homologation")}</p>}
+      {productionLocked && <p role="note" className="banner banner-warn">{t("productionLocked")}</p>}
       {banner && <p role="alert" className="banner banner-danger">{banner}</p>}
       {preview && <p role="status" className="banner banner-ok">{t("validOk", { key: preview })}</p>}
 
@@ -188,7 +193,7 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
 
       <div className="flex flex-wrap justify-end gap-3">
         <Button variant="secondary" loading={busy === "validate"} disabled={busy !== null} onClick={() => void run("validate")}>{t("validate")}</Button>
-        <Button type="submit" variant="accent" loading={busy === "submit"} disabled={busy !== null}>{resubmitId ? t("resubmit") : t("issue")}</Button>
+        <Button type="submit" variant="accent" loading={busy === "submit"} disabled={busy !== null || productionLocked}>{resubmitId ? t("resubmit") : t("issue")}</Button>
       </div>
     </form>
   );

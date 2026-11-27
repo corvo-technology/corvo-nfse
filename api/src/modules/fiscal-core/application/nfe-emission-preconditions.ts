@@ -1,13 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Company } from '@/modules/company/domain/company';
 import { nfeReadinessMissing } from '@/modules/company/domain/nfe-readiness';
+import { nfceSupported } from '@/infra/external/nfe/sefaz/supported-authorities';
 import type { NfeSettings } from '@/modules/company/domain/nfe-settings';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
-import {
-  NFE_ENABLED_AUTHORITIES,
-  type NfeEnabledAuthorities,
-} from '../domain/nfe-enabled-authorities';
 
 export type NfePreconditionCode =
   'NFE_PRODUCTION_DISABLED' | 'COMPANY_NFE_INCOMPLETE' | 'UF_NOT_ENABLED';
@@ -48,25 +45,24 @@ function configurationError(
 }
 
 /**
- * Checked before anything is numbered, in this order: production lock, complete company, released
- * UF, for the model of the document (55 NF-e, 65 NFC-e). The NFS-e never goes through here.
+ * Checked before anything is numbered, in this order: production lock (the one switch,
+ * `NFE_PRODUCTION_ENABLED`), complete company, for the model of the document (55 NF-e, 65 NFC-e).
+ * In test (homologação) every workspace may issue, with no release and no table to fill in. The only
+ * UF limit left is a fact of the code: a NFC-e needs the QR Code addresses of its UF (today SP), and
+ * a UF without them answers `UF_NOT_ENABLED`. The NFS-e never goes through here.
  */
 @Injectable()
 export class NfeEmissionPreconditions {
-  constructor(
-    private readonly config: ConfigService,
-    @Inject(NFE_ENABLED_AUTHORITIES)
-    private readonly authorities: NfeEnabledAuthorities,
-  ) {}
+  constructor(private readonly config: ConfigService) {}
 
-  async check(
-    input: NfeEmissionPreconditionsInput,
-  ): Promise<NfePreconditionError | null> {
+  /** Is live (production) emission of NF-e/NFC-e switched on? The only release switch left. */
+  productionEnabled(): boolean {
+    return this.config.get<boolean>('NFE_PRODUCTION_ENABLED') === true;
+  }
+
+  check(input: NfeEmissionPreconditionsInput): NfePreconditionError | null {
     const label = input.model === 65 ? 'NFC-e' : 'NF-e';
-    if (
-      input.environment === 'live' &&
-      this.config.get<boolean>('NFE_PRODUCTION_ENABLED') !== true
-    )
+    if (input.environment === 'live' && !this.productionEnabled())
       return configurationError(
         'NFE_PRODUCTION_DISABLED',
         `${label} em produção ainda não liberada`,
@@ -78,12 +74,15 @@ export class NfeEmissionPreconditions {
         `Complete o cadastro da empresa para emitir ${label}`,
         { missing },
       );
-    const uf = input.company.addressState ?? '';
-    const tpAmb = input.environment === 'live' ? 1 : 2;
-    if (!(await this.authorities.isEnabled(uf, input.model, tpAmb)))
-      return configurationError('UF_NOT_ENABLED', 'UF ainda não liberada', {
-        uf,
-      });
+    if (input.model === 65) {
+      const uf = input.company.addressState ?? '';
+      if (!nfceSupported(uf, input.environment === 'live' ? 1 : 2))
+        return configurationError(
+          'UF_NOT_ENABLED',
+          'NFC-e ainda não disponível para esta UF',
+          { uf },
+        );
+    }
     return null;
   }
 }

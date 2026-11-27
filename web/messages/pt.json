@@ -2134,9 +2134,9 @@
     "insufficient_credits": "Você está sem notas disponíveis. Compre mais notas para emitir.",
     "company_not_ready": "Complete o cadastro fiscal da empresa antes de emitir.",
     "company_not_found": "Empresa não encontrada.",
-    "nfe_production_disabled": "NF-e em produção ainda não liberada.",
+    "nfe_production_disabled": "NF-e e NFC-e em produção ainda não estão liberadas. Use o ambiente de teste.",
     "company_nfe_incomplete": "Complete o cadastro da empresa (endereço, inscrição estadual e regime) para emitir NF-e.",
-    "uf_not_enabled": "A emissão de NF-e ainda não foi liberada para o estado da empresa.",
+    "uf_not_enabled": "A NFC-e ainda não está disponível para o estado da empresa.",
     "state_registration_invalid": "A inscrição estadual não é válida para o estado da empresa. Confira o número e o estado.",
     "nfe_schema_invalid": "O XML da NF-e não passou na validação do layout. Confira os campos e tente de novo.",
     "nfe_validation_failed": "A NF-e tem problemas. Confira os campos indicados e envie de novo.",
@@ -3946,6 +3946,8 @@
     },
     "form": {
       "homologation": "Em teste (homologação): a nota emitida aqui não tem valor fiscal.",
+      "productionLocked": "A NF-e em produção ainda não está liberada. Troque para TESTE para emitir notas sem valor fiscal.",
+      "productionLockedNfce": "A NFC-e em produção ainda não está liberada. Troque para TESTE para emitir notas sem valor fiscal.",
       "failed": "Não foi possível enviar a nota. Tente de novo.",
       "fixFields": "Corrija os campos marcados e tente de novo.",
       "validate": "Validar",
@@ -4244,22 +4246,6 @@
       "errorNotFound": "Este espaço não foi encontrado.",
       "errorGeneric": "Não foi possível dar as notas. Nada foi gravado. Tente de novo."
     },
-    "nfe": {
-      "on": "NF-e liberada para esta conta.",
-      "off": "NF-e ainda não liberada para esta conta.",
-      "enable": "Liberar NF-e",
-      "disable": "Desligar NF-e",
-      "enableTitle": "Liberar NF-e",
-      "disableTitle": "Desligar NF-e",
-      "enableDescription": "A conta passa a ver a NF-e (em teste) no painel, na API e no MCP. Vale também para a chave global NFE_ENABLED.",
-      "disableDescription": "A conta deixa de ver a NF-e no painel, na API e no MCP. As notas já criadas ficam guardadas.",
-      "reason": "Motivo",
-      "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
-      "cancel": "Cancelar",
-      "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
-      "errorNotFound": "Este espaço não foi encontrado.",
-      "errorGeneric": "Não foi possível mudar a liberação. Nada foi gravado. Tente de novo."
-    },
     "attention": {
       "title": "Precisa de atenção",
       "staleInvoices": "Notas paradas há mais de 1 hora",
@@ -4292,22 +4278,6 @@
       },
       "success": "Feito",
       "failure": "Falhou"
-    },
-    "nfce": {
-      "on": "NFC-e liberada para esta conta.",
-      "off": "NFC-e ainda não liberada para esta conta.",
-      "enable": "Liberar NFC-e",
-      "disable": "Desligar NFC-e",
-      "enableTitle": "Liberar NFC-e",
-      "disableTitle": "Desligar NFC-e",
-      "enableDescription": "A conta passa a ver a venda ao consumidor (NFC-e, em teste) no painel, na API e no MCP. A NF-e e a NFC-e têm liberações separadas.",
-      "disableDescription": "A conta deixa de ver a NFC-e no painel, na API e no MCP. As notas já criadas ficam guardadas.",
-      "reason": "Motivo",
-      "reasonHint": "Escreva de 5 a 500 caracteres. Fica guardado no histórico.",
-      "cancel": "Cancelar",
-      "errorReason": "O motivo precisa ter de 5 a 500 caracteres.",
-      "errorNotFound": "Este espaço não foi encontrado.",
-      "errorGeneric": "Não foi possível mudar a liberação. Nada foi gravado. Tente de novo."
     },
     "svc": {
       "title": "NF-e na contingência (SVC)",

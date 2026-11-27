@@ -1,7 +1,6 @@
 import type { ConfigService } from '@nestjs/config';
 import { Company } from '@/modules/company/domain/company';
 import type { NfeSettings } from '@/modules/company/domain/nfe-settings';
-import type { NfeEnabledAuthorities } from '../domain/nfe-enabled-authorities';
 import { NfeEmissionPreconditions } from './nfe-emission-preconditions';
 
 const tenantId = '11111111-1111-4111-8111-111111111111';
@@ -40,157 +39,92 @@ const settings: NfeSettings = {
   enabledAt: null,
 };
 
-function build(options: { production?: boolean; ufEnabled?: boolean } = {}) {
-  const isEnabled = jest.fn().mockResolvedValue(options.ufEnabled ?? true);
-  const authorities = { isEnabled } as unknown as NfeEnabledAuthorities;
+function build(options: { production?: boolean } = {}) {
   const config = {
     get: jest.fn(() => options.production ?? false),
   } as unknown as ConfigService;
-  return {
-    preconditions: new NfeEmissionPreconditions(config, authorities),
-    isEnabled,
-  };
+  return new NfeEmissionPreconditions(config);
 }
 
 describe('NfeEmissionPreconditions', () => {
-  it('lets a complete test company in a released UF through', async () => {
-    const { preconditions, isEnabled } = build();
-    await expect(
-      preconditions.check({
-        environment: 'test',
-        company: company(),
-        settings,
-        model: 55,
-      }),
-    ).resolves.toBeNull();
-    expect(isEnabled).toHaveBeenCalledWith('SP', 55, 2);
+  it('lets a complete test company through, for any UF', () => {
+    const preconditions = build();
+    for (const model of [55, 65] as const)
+      expect(
+        preconditions.check({
+          environment: 'test',
+          company: company(),
+          settings,
+          model,
+        }),
+      ).toBeNull();
   });
 
-  it('blocks a live company while production is disabled', async () => {
-    const { preconditions } = build();
-    await expect(
-      preconditions.check({
+  it('blocks a live company while production is disabled', () => {
+    expect(
+      build().check({
         environment: 'live',
         company: company(),
         settings,
         model: 55,
       }),
-    ).resolves.toMatchObject({
+    ).toMatchObject({
       code: 'NFE_PRODUCTION_DISABLED',
       category: 'CONFIGURATION',
       message: 'NF-e em produção ainda não liberada',
     });
   });
 
-  it('asks for tpAmb 1 when production is enabled', async () => {
-    const { preconditions, isEnabled } = build({ production: true });
-    await preconditions.check({
-      environment: 'live',
-      company: company(),
-      settings,
-      model: 55,
-    });
-    expect(isEnabled).toHaveBeenCalledWith('SP', 55, 1);
+  it('lets a live company through when production is enabled', () => {
+    const preconditions = build({ production: true });
+    expect(preconditions.productionEnabled()).toBe(true);
+    expect(
+      preconditions.check({
+        environment: 'live',
+        company: company(),
+        settings,
+        model: 55,
+      }),
+    ).toBeNull();
   });
 
-  it('lists what is missing in the company', async () => {
-    const { preconditions } = build();
-    await expect(
-      preconditions.check({
+  it('lists what is missing in the company', () => {
+    expect(
+      build().check({
         environment: 'test',
         company: company(null),
         settings: null,
         model: 55,
       }),
-    ).resolves.toMatchObject({
+    ).toMatchObject({
       code: 'COMPANY_NFE_INCOMPLETE',
       category: 'CONFIGURATION',
       details: { missing: ['address_zip', 'state_registration'] },
     });
   });
 
-  it('refuses a UF that is not released', async () => {
-    const { preconditions } = build({ ufEnabled: false });
-    await expect(
-      preconditions.check({
-        environment: 'test',
-        company: company(),
-        settings,
-        model: 55,
-      }),
-    ).resolves.toMatchObject({
-      code: 'UF_NOT_ENABLED',
-      message: 'UF ainda não liberada',
-      category: 'CONFIGURATION',
-    });
-  });
-
-  it('reports the production lock before an incomplete company', async () => {
-    const { preconditions } = build({ ufEnabled: false });
-    await expect(
-      preconditions.check({
+  it('reports the production lock before an incomplete company', () => {
+    expect(
+      build().check({
         environment: 'live',
         company: company(null),
         settings: null,
         model: 55,
       }),
-    ).resolves.toMatchObject({ code: 'NFE_PRODUCTION_DISABLED' });
+    ).toMatchObject({ code: 'NFE_PRODUCTION_DISABLED' });
   });
 
-  describe('model 65 (NFC-e)', () => {
-    it('locks production for the NFC-e too, naming it', async () => {
-      const { preconditions } = build();
-      await expect(
-        preconditions.check({
-          environment: 'live',
-          company: company(),
-          settings,
-          model: 65,
-        }),
-      ).resolves.toMatchObject({
-        code: 'NFE_PRODUCTION_DISABLED',
-        message: 'NFC-e em produção ainda não liberada',
-      });
-    });
-
-    it('asks for the UF released for model 65, not 55', async () => {
-      const { preconditions, isEnabled } = build();
-      await preconditions.check({
-        environment: 'test',
+  it('locks production for the NFC-e too, naming it', () => {
+    expect(
+      build().check({
+        environment: 'live',
         company: company(),
         settings,
         model: 65,
-      });
-      expect(isEnabled).toHaveBeenCalledWith('SP', 65, 2);
-    });
-
-    it('refuses a UF released only for the NF-e', async () => {
-      const isEnabled = jest.fn((_uf: string, model: 55 | 65) =>
-        Promise.resolve(model === 55),
-      );
-      const preconditions = new NfeEmissionPreconditions(
-        { get: jest.fn(() => false) } as unknown as ConfigService,
-        { isEnabled },
-      );
-      await expect(
-        preconditions.check({
-          environment: 'test',
-          company: company(),
-          settings,
-          model: 65,
-        }),
-      ).resolves.toMatchObject({
-        code: 'UF_NOT_ENABLED',
-        details: { uf: 'SP' },
-      });
-      await expect(
-        preconditions.check({
-          environment: 'test',
-          company: company(),
-          settings,
-          model: 55,
-        }),
-      ).resolves.toBeNull();
+      }),
+    ).toMatchObject({
+      code: 'NFE_PRODUCTION_DISABLED',
+      message: 'NFC-e em produção ainda não liberada',
     });
   });
 });

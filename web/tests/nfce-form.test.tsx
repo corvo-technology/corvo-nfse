@@ -10,6 +10,9 @@ import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), validate: vi.fn(), resubmit: vi.fn(), push: vi.fn(), settings: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+const auth = vi.hoisted(() => ({ env: "test" as "test" | "live", nfeProduction: false }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: auth.env, features: { nfeProduction: auth.nfeProduction } }) }));
+beforeEach(() => { auth.env = "test"; auth.nfeProduction = false; });
 vi.mock("@/lib/nfe", async (original) => ({
   ...(await original<typeof import("@/lib/nfe")>()),
   createNfce: mocks.create, validateNfce: mocks.validate, resubmitNfe: mocks.resubmit, getNfeSettings: mocks.settings,
@@ -73,6 +76,24 @@ describe("toNfceInput", () => {
 });
 
 describe("NfceForm", () => {
+  it("in TEST shows the homologação banner; in LIVE with production off it says so and blocks emitting", () => {
+    renderForm();
+    expect(screen.getByText(/Test mode/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Issue NFC-e" }) as HTMLButtonElement).disabled).toBe(false);
+    cleanup();
+    auth.env = "live";
+    renderForm();
+    expect(screen.getByText(messages.Nfe.form.productionLockedNfce)).toBeTruthy();
+    expect(screen.queryByText(/Test mode/)).toBeNull();
+    expect((screen.getByRole("button", { name: "Issue NFC-e" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Validate" }) as HTMLButtonElement).disabled).toBe(false);
+    cleanup();
+    auth.nfeProduction = true;
+    renderForm();
+    expect(screen.queryByText(messages.Nfe.form.productionLockedNfce)).toBeNull();
+    expect((screen.getByRole("button", { name: "Issue NFC-e" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("issues the sale without a consumer: no recipient is sent", async () => {
     renderForm();
     fireEvent.click(screen.getByRole("button", { name: "Issue NFC-e" }));

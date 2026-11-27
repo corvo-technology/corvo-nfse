@@ -1,21 +1,11 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { InvoiceCall, InvoiceRoutes } from './invoice-routes';
 import { InvoiceTypeRouter } from './invoice-type.router';
-import type { NfeAccessPolicy } from './nfe-access.policy';
 import type { TypeormInvoiceSummaries } from '../infra/typeorm-invoice-summaries';
 
-function build(enabled: Record<'nfe' | 'nfce', boolean>) {
-  const access = {
-    isEnabled: jest.fn((_t: string, type: 'nfe' | 'nfce' = 'nfe') =>
-      Promise.resolve(enabled[type]),
-    ),
-  } as unknown as NfeAccessPolicy;
+function build() {
   const summaries = { list: jest.fn() } as unknown as TypeormInvoiceSummaries;
-  return {
-    router: new InvoiceTypeRouter(access, summaries),
-    access,
-    summaries,
-  };
+  return { router: new InvoiceTypeRouter(summaries), summaries };
 }
 
 const routesOf = (type: 'nfe' | 'nfce', owns = false) =>
@@ -40,49 +30,49 @@ function callOf(role: 'admin' | 'member'): InvoiceCall {
 const GATE = { nfse: 'nfse.invoices.view', nfe: 'nfe.documents.view' } as const;
 
 describe('InvoiceTypeRouter with nfce', () => {
-  it('404 RESOURCE_NOT_FOUND when no nfce routes are registered', async () => {
-    const { router } = build({ nfe: true, nfce: true });
-    await expect(
+  it('404 RESOURCE_NOT_FOUND when no nfce routes are registered', () => {
+    const { router } = build();
+    expect(() =>
       router.forType('nfce', callOf('admin'), 'nfe.documents.view'),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    ).toThrow(NotFoundException);
   });
 
-  it('404 when the tenant is not released for NFC-e, even if released for NF-e', async () => {
-    const { router, access } = build({ nfe: true, nfce: false });
+  it('403 PERMISSION_DENIED without the permission', () => {
+    const { router } = build();
     router.register(routesOf('nfce'));
-    await expect(
-      router.forType('nfce', callOf('admin'), 'nfe.documents.view'),
-    ).rejects.toMatchObject({ response: { code: 'RESOURCE_NOT_FOUND' } });
-    expect(access.isEnabled).toHaveBeenCalledWith('t1', 'nfce');
-  });
-
-  it('403 PERMISSION_DENIED when released but without the permission', async () => {
-    const { router } = build({ nfe: true, nfce: true });
-    router.register(routesOf('nfce'));
-    await expect(
+    expect(() =>
       router.forType('nfce', callOf('member'), 'nfe.documents.issue'),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).toThrow(ForbiddenException);
   });
 
-  it('owner only looks at the routes whose type is released', async () => {
-    const { router } = build({ nfe: false, nfce: true });
-    const nfe = routesOf('nfe', true);
+  it('every workspace reaches the registered routes, with no release', () => {
+    const { router } = build();
+    const nfce = routesOf('nfce');
+    router.register(nfce);
+    expect(router.forType('nfce', callOf('admin'), 'nfe.documents.view')).toBe(
+      nfce,
+    );
+  });
+
+  it('owner asks every registered type', async () => {
+    const { router } = build();
+    const nfe = routesOf('nfe', false);
     const nfce = routesOf('nfce', true);
     router.register(nfe);
     router.register(nfce);
     const found = await router.owner('id', callOf('admin'), GATE.nfe);
     expect(found).toBe(nfce);
-    expect(nfe.owns).not.toHaveBeenCalled();
+    expect(nfe.owns).toHaveBeenCalled();
   });
 
-  it('summaries include nfce only when released', async () => {
-    const { router, summaries } = build({ nfe: true, nfce: false });
+  it('summaries include nfe and nfce when registered', async () => {
+    const { router, summaries } = build();
     router.register(routesOf('nfe'));
     router.register(routesOf('nfce'));
     (summaries.list as jest.Mock).mockResolvedValue({});
     await router.summaries({}, callOf('admin'), GATE);
     expect(summaries.list).toHaveBeenCalledWith(
-      expect.objectContaining({ types: ['nfse', 'nfe'] }),
+      expect.objectContaining({ types: ['nfse', 'nfe', 'nfce'] }),
       't1',
       'test',
     );

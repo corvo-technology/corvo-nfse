@@ -10,6 +10,9 @@ import messages from "@/messages/en.json";
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn(), find: vi.fn(), cnpj: vi.fn(), cep: vi.fn(), settings: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+const auth = vi.hoisted(() => ({ env: "test" as "test" | "live", nfeProduction: false }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: auth.env, features: { nfeProduction: auth.nfeProduction } }) }));
+beforeEach(() => { auth.env = "test"; auth.nfeProduction = false; });
 vi.mock("@/lib/nfe", async (original) => ({ ...(await original<typeof import("@/lib/nfe")>()), createNfe: mocks.create, getNfeSettings: mocks.settings }));
 vi.mock("@/lib/api", async (original) => {
   const api = await original<typeof import("@/lib/api")>();

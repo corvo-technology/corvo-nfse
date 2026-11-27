@@ -22,8 +22,7 @@ export default function NfeListPage() {
   const t = useTranslations("Nfe");
   const tc = useTranslations("Common");
   const locale = useLocale();
-  const { can, features } = useAuth();
-  const nfceReleased = features?.nfce === true;
+  const { can } = useAuth();
   const [model, setModel] = useState<NfeKind | "all">("nfe");
   const [companyId, setCompanyId] = useState("");
   const [status, setStatus] = useState<NfeStatus | "">("");
@@ -31,10 +30,9 @@ export default function NfeListPage() {
   const { items, loading, loadingMore, hasMore, error, loadMore } = useCursorPagination(
     (cursor, signal) => {
       const params = { limit: 50, cursor, ...(companyId ? { companyId } : {}), ...(status ? { status } : {}) };
-      if (!nfceReleased) return listNfe(params, signal);
       return model === "all" ? listNfeAndNfce(params, signal) : listNfe({ ...params, type: model }, signal);
     },
-    [companyId, status, model, nfceReleased],
+    [companyId, status, model],
   );
 
   useEffect(() => {
@@ -57,7 +55,7 @@ export default function NfeListPage() {
         </div>
       ),
     },
-    ...(nfceReleased ? [{ id: "model", header: t("table.model"), cell: (nfe: NfeDocument) => <span className="text-[13px] text-text-3">{nfe.type === "nfce" ? "NFC-e" : "NF-e"}</span> }] : []),
+    { id: "model", header: t("table.model"), cell: (nfe) => <span className="text-[13px] text-text-3">{nfe.type === "nfce" ? "NFC-e" : "NF-e"}</span> },
     { id: "number", header: t("table.number"), align: "right", cell: (nfe) => <span className="font-mono text-[13px] text-text-3">{nfe.number ? `${nfe.number} / ${nfe.series}` : "—"}</span> },
     { id: "amount", header: t("table.amount"), align: "right", cell: (nfe) => <span className="font-mono text-[13px] text-text-2">{money.format(Number(nfe.totals.vNF))}</span> },
     { id: "status", header: t("table.status"), cell: (nfe) => <NfeStatusBadge status={nfe.status} /> },
@@ -78,16 +76,14 @@ export default function NfeListPage() {
       />
       <p role="note" className="banner">{t("homologationNotice")}</p>
       <div className="flex flex-wrap items-center gap-4">
-        {nfceReleased && (
-          <label className="flex items-center gap-2 text-sm text-text-3">
-            <span>{t("filters.model")}</span>
-            <Select value={model} onChange={(event) => setModel(event.target.value as NfeKind | "all")}>
-              <option value="nfe">NF-e</option>
-              <option value="nfce">NFC-e</option>
-              <option value="all">{t("filters.allModels")}</option>
-            </Select>
-          </label>
-        )}
+        <label className="flex items-center gap-2 text-sm text-text-3">
+          <span>{t("filters.model")}</span>
+          <Select value={model} onChange={(event) => setModel(event.target.value as NfeKind | "all")}>
+            <option value="nfe">NF-e</option>
+            <option value="nfce">NFC-e</option>
+            <option value="all">{t("filters.allModels")}</option>
+          </Select>
+        </label>
         <label className="flex items-center gap-2 text-sm text-text-3">
           <span>{t("filters.company")}</span>
           <Select value={companyId} onChange={(event) => setCompanyId(event.target.value)}>

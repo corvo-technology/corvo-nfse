@@ -3,8 +3,6 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
-import type { CachePort } from '@/infra/redis/cache.port';
-import { CACHE_PORT } from '@/infra/redis/redis.constants';
 import {
   apiKeyHeader,
   closeE2eApp,
@@ -54,11 +52,6 @@ describe('POST /v1/invoices/validate with type nfce (e2e)', () => {
     return Number(rows[0].n);
   };
 
-  const dropCache = () =>
-    ctx.moduleFixture
-      .get<CachePort>(CACHE_PORT)
-      .delete(`nfce:enabled:${tenantId}`);
-
   beforeAll(async () => {
     ctx = await createSeededE2eApp();
     db = ctx.dataSource;
@@ -90,31 +83,7 @@ describe('POST /v1/invoices/validate with type nfce (e2e)', () => {
     await closeE2eApp(ctx);
   });
 
-  it('answers 404 while the tenant has no NFC-e release', async () => {
-    const res = await validate(body({ companyId }));
-    expect(res.status).toBe(404);
-    expect(res.body.code).toBe('ERROR_RESOURCE_NOT_FOUND');
-  });
-
-  it('a release of the NF-e alone does not open the NFC-e', async () => {
-    await db.query(
-      `UPDATE "${schema}".tenants SET nfe_enabled_at = NOW() WHERE id = $1`,
-      [tenantId],
-    );
-    await dropCache();
-    const res = await validate(body({ companyId }));
-    expect(res.status).toBe(404);
-  });
-
-  describe('with the NFC-e released', () => {
-    beforeAll(async () => {
-      await db.query(
-        `UPDATE "${schema}".tenants SET nfce_enabled_at = NOW() WHERE id = $1`,
-        [tenantId],
-      );
-      await dropCache();
-    });
-
+  describe('with no release to ask for', () => {
     it('answers 422 COMPANY_NFE_INCOMPLETE while the company has no IE', async () => {
       const res = await validate(body({ companyId }));
       expect(res.status).toBe(422);
@@ -124,34 +93,33 @@ describe('POST /v1/invoices/validate with type nfce (e2e)', () => {
       });
     });
 
-    it('answers 422 UF_NOT_ENABLED while the UF has no model 65 row', async () => {
+    it('answers 422 UF_NOT_ENABLED for a UF with no NFC-e addresses yet, before anything is numbered', async () => {
       await request(ctx.app.getHttpServer())
         .put(`/v1/companies/${companyId}/nfe-settings`)
         .set(apiKeyHeader(key))
         .send({ stateRegistration: '110042490114', crt: 1 })
         .expect(200);
-      // A model 55 row does not release the NFC-e.
       await db.query(
-        `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-         VALUES ('SP', 55, 2, now(), 'docs/fiscal/nfe-runbook.md')`,
+        `UPDATE "${schema}".nfse_companies SET address_state = 'MG' WHERE id = $1`,
+        [companyId],
       );
-      const res = await validate(body({ companyId }));
-      expect(res.status).toBe(422);
-      expect(res.body).toMatchObject({
-        code: 'ERROR_UF_NOT_ENABLED',
-        type: 'configuration',
-      });
-      expect(await count('nfe_number_sequences')).toBe(0);
+      try {
+        const res = await validate(body({ companyId }));
+        expect(res.status).toBe(422);
+        expect(res.body).toMatchObject({
+          code: 'ERROR_UF_NOT_ENABLED',
+          type: 'configuration',
+        });
+        expect(await count('nfe_number_sequences')).toBe(0);
+      } finally {
+        await db.query(
+          `UPDATE "${schema}".nfse_companies SET address_state = 'SP' WHERE id = $1`,
+          [companyId],
+        );
+      }
     });
 
-    describe('with the UF released for model 65', () => {
-      beforeAll(async () => {
-        await db.query(
-          `INSERT INTO "${schema}".nfe_enabled_authorities (uf, model, tp_amb, enabled_at, runbook_ref)
-           VALUES ('SP', 65, 2, now(), 'docs/fiscal/nfe-runbook.md')`,
-        );
-      });
-
+    describe('with SP, which has NFC-e addresses', () => {
       it('answers 200 with a model 65 key preview, and saves nothing', async () => {
         const res = await validate(body({ companyId }));
         expect(res.status).toBe(200);

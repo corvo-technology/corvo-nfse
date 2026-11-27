@@ -464,7 +464,7 @@ export class ListInvoicesQuery extends CursorQuery {
     enum: INVOICE_LIST_TYPES,
     default: 'nfse',
     description:
-      '`nfse` (default) lists NFS-e. `nfe` lists NF-e and `nfce` lists NFC-e (filters: `companyId`, `status`). `all` lists every type released for the workspace in one summary shape (`companyId` and `status` only).',
+      '`nfse` (default) lists NFS-e. `nfe` lists NF-e and `nfce` lists NFC-e (filters: `companyId`, `status`). `all` lists every type in one summary shape (`companyId` and `status` only).',
   })
   @IsOptional()
   @IsIn(INVOICE_LIST_TYPES)

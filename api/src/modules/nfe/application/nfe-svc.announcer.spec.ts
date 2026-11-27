@@ -15,24 +15,19 @@ function setup(opsEmails = 'ops@corvo.test, outro@corvo.test') {
   const audience = {
     tenants: jest.fn(() => Promise.resolve([T1, T2, T3])),
   };
-  // `t2` has NF-e released in the tenant row but the global switch of the policy says no.
-  const policy = {
-    isEnabled: jest.fn((tenantId: string) => Promise.resolve(tenantId !== T2)),
-  };
   const webhooks = { publishTenantEvent: jest.fn(() => Promise.resolve()) };
   const email = { enqueueNotice: jest.fn(() => Promise.resolve()) };
   const announcer = new NfeSvcAnnouncer(
     audience as never,
-    policy as never,
     webhooks as never,
     email as never,
     new ConfigService({ OPS_ALERT_EMAILS: opsEmails }),
   );
-  return { announcer, audience, policy, webhooks, email };
+  return { announcer, audience, webhooks, email };
 }
 
 describe('NfeSvcAnnouncer', () => {
-  it('tells the workspaces of the UF with NF-e on, once each, in the environment of the change', async () => {
+  it('tells every workspace of the UF, once each, in the environment of the change', async () => {
     const t = setup();
     await t.announcer.entered(change);
     expect(t.audience.tenants).toHaveBeenCalledWith('SP', 2);
@@ -47,6 +42,12 @@ describe('NfeSvcAnnouncer', () => {
           authority: 'SVCAN',
           dhCont: '2026-11-26T12:00:00-03:00',
         },
+      ],
+      [
+        T2,
+        'test',
+        'nfe.contingency.entered',
+        expect.objectContaining({ uf: 'SP' }),
       ],
       [
         T3,

@@ -63,11 +63,10 @@ describe('platform-admin invariants (source scan)', () => {
     }
   });
 
-  it('só os módulos de concessão e de liberação de NF-e usam runAsPlatformAdminOnTenant ou o CreditsService', () => {
+  it('só o módulo de concessão usa runAsPlatformAdminOnTenant ou o CreditsService', () => {
     const grantFiles = new Set([
       'platform-credit-grant.module.ts',
       'platform-credit-grant.service.ts',
-      'platform-nfe-access.service.ts',
     ]);
     const offenders = adminSources.filter(
       (f) =>
@@ -78,7 +77,7 @@ describe('platform-admin invariants (source scan)', () => {
     expect(offenders.map(rel)).toEqual([]);
   });
 
-  it('fora do admin, runAsPlatformAdminOnTenant só existe na definição, na concessão e na liberação de NF-e', () => {
+  it('fora do admin, runAsPlatformAdminOnTenant só existe na definição, e na concessão', () => {
     const users = walk(SRC)
       .filter((f) => f.endsWith('.ts') && !isSpec(f))
       .filter((f) => /runAsPlatformAdminOnTenant/.test(code(f)))
@@ -87,7 +86,6 @@ describe('platform-admin invariants (source scan)', () => {
     expect(users).toEqual([
       'infra/persistence/typeorm/tenant-context.storage.ts',
       'modules/platform-admin/application/platform-credit-grant.service.ts',
-      'modules/platform-admin/application/platform-nfe-access.service.ts',
     ]);
   });
 
@@ -151,7 +149,6 @@ describe('route table invariant', () => {
       'PlatformAuditController',
       'PlatformContingencyController',
       'PlatformCreditGrantController',
-      'PlatformNfeAccessController',
       'PlatformOverviewController',
       'PlatformUserDetailController',
       'PlatformUsersController',

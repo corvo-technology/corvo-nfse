@@ -46,7 +46,7 @@ export class NfePreparation {
       input.companyId,
       tenantId,
     );
-    const blocked = await this.preconditions.check({
+    const blocked = this.preconditions.check({
       environment,
       company,
       settings,

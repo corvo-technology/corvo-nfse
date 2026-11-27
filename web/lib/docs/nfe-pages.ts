@@ -95,17 +95,17 @@ function overview(locale: DocsLocale): DocSection {
         "A NF-e é a nota fiscal de produto (mercadoria), diferente da NFS-e, que é a nota de serviço. Na Corvo ela vive nas mesmas rotas da NFS-e: `/v1/invoices`. O que muda o documento é o `type`: mande `type: \"nfe\"` para criar uma, ou `?type=nfe` para listar. Uma chamada sem `type` é NFS-e, como sempre foi.",
       )),
       callout("warn", l(
-        "**Phase 1 limits.** Test mode only (homologação): notes issued now have no tax value and the SEFAZ production environment is closed. Only Simples Nacional and MEI companies (CRT 1 or 4), with CSOSN 102 or 400. Only the states SP and the ones served by the SVRS that Corvo already released. **Corvo does not calculate taxes**: you inform the CFOP, the NCM and the CSOSN of each item, as your accountant told you.",
-        "**Limites da Fase 1.** Só teste (homologação): as notas emitidas agora não têm valor fiscal e a produção da SEFAZ está fechada. Só empresas do Simples Nacional e MEI (CRT 1 ou 4), com CSOSN 102 ou 400. Só SP e os estados da SVRS que a Corvo já liberou. **A Corvo não calcula imposto**: você informa o CFOP, o NCM e o CSOSN de cada item, como seu contador orientou.",
+        "**Phase 1 limits.** Test mode only (homologação): notes issued now have no tax value and the SEFAZ production environment is closed. Only Simples Nacional and MEI companies (CRT 1 or 4), with CSOSN 102 or 400. Every state, through its own SEFAZ (SP, for example) or the SVRS. **Corvo does not calculate taxes**: you inform the CFOP, the NCM and the CSOSN of each item, as your accountant told you.",
+        "**Limites da Fase 1.** Só teste (homologação): as notas emitidas agora não têm valor fiscal e a produção da SEFAZ está fechada. Só empresas do Simples Nacional e MEI (CRT 1 ou 4), com CSOSN 102 ou 400. Todos os estados, pela SEFAZ de cada um (SP, por exemplo) ou pela SVRS. **A Corvo não calcula imposto**: você informa o CFOP, o NCM e o CSOSN de cada item, como seu contador orientou.",
       )),
       callout("accent", l(
         "Selling to a consumer at the counter? That is the **NFC-e** (model 65), with its own page: same routes, `type: \"nfce\"`.",
         "Vendendo para o consumidor no balcão? Essa é a **NFC-e** (modelo 65), com página própria: as mesmas rotas, `type: \"nfce\"`.",
       )),
-      heading(l("Release", "Liberação")),
+      heading(l("Availability", "Disponibilidade")),
       text(l(
-        "NF-e is released account by account. While it is not released for your account, every NF-e route answers `404` and the NF-e screens and MCP tools do not appear; NFS-e is never affected. To get it released, talk to Corvo. On a self-hosted instance, the operator turns it on (see the runbook `docs/fiscal/runbooks/nfe-homologacao.md`).",
-        "A NF-e é liberada conta por conta. Enquanto não estiver liberada para a sua conta, toda rota de NF-e responde `404` e as telas e ferramentas MCP de NF-e não aparecem; a NFS-e nunca é afetada. Para liberar, fale com a Corvo. Numa instalação self-hosted, quem opera liga a NF-e (veja o runbook `docs/fiscal/runbooks/nfe-homologacao.md`).",
+        "NF-e is open to every account, with nothing to ask for: use a test key (or the TEST environment in the dashboard) and issue. In production (live) the answer is `422 NFE_PRODUCTION_DISABLED` until Corvo turns production on; the dashboard says so and keeps the emit button off. On a self-hosted instance, the operator turns production on with `NFE_PRODUCTION_ENABLED=true` (see the runbook `docs/fiscal/runbooks/nfe-homologacao.md`).",
+        "A NF-e está aberta para todas as contas, sem pedir nada: use uma chave de teste (ou o ambiente TESTE no painel) e emita. Em produção a resposta é `422 NFE_PRODUCTION_DISABLED` até a Corvo ligar a produção; o painel avisa e deixa o botão de emitir desligado. Numa instalação self-hosted, quem opera liga a produção com `NFE_PRODUCTION_ENABLED=true` (veja o runbook `docs/fiscal/runbooks/nfe-homologacao.md`).",
       )),
       heading(l("The routes", "As rotas")),
       {
@@ -178,8 +178,8 @@ function company(locale: DocsLocale): DocSection {
         "Uma IE errada responde `422` com `STATE_REGISTRATION_INVALID`. Uma empresa incompleta responde `COMPANY_NFE_INCOMPLETE` com os campos que faltam em `details`, antes de gastar qualquer número.",
       )),
       text(l(
-        "In the dashboard, the same data is in the company page, in the **NF-e** section, which also lists what is missing. It only appears when NF-e is released for the account.",
-        "No painel, os mesmos dados ficam na página da empresa, na seção **NF-e**, que também lista o que falta. Ela só aparece quando a NF-e está liberada para a conta.",
+        "In the dashboard, the same data is in the company page, in the **NF-e** section, which also lists what is missing. It is there for every account.",
+        "No painel, os mesmos dados ficam na página da empresa, na seção **NF-e**, que também lista o que falta. Ela existe em toda conta.",
       )),
     ],
   };
@@ -267,7 +267,7 @@ function errors(locale: DocsLocale): DocSection {
         head: ["`type`", l("Who acts", "Quem age"), l("What to do", "O que fazer")],
         rows: [
           ["`validation`", l("You", "Você"), l("Fix the fields in `details` (or, for a rejected note, what the SEFAZ refused) and send again.", "Corrija os campos de `details` (ou, numa nota rejeitada, o que a SEFAZ recusou) e envie de novo.")],
-          ["`configuration`", l("You", "Você"), l("Complete the company (IE, CRT, address), wait for the release of the state or of NF-e.", "Complete a empresa (IE, CRT, endereço) ou espere a liberação do estado ou da NF-e.")],
+          ["`configuration`", l("You", "Você"), l("Complete the company (IE, CRT, address) or use a test key while production is off.", "Complete a empresa (IE, CRT, endereço) ou use uma chave de teste enquanto a produção está desligada.")],
           ["`communication`", l("Nobody", "Ninguém"), l("The SEFAZ did not answer. Corvo checks again by itself, without issuing twice.", "A SEFAZ não respondeu. A Corvo confere de novo sozinha, sem emitir duas vezes.")],
         ],
       },
@@ -282,8 +282,8 @@ function errors(locale: DocsLocale): DocSection {
           ["`NFE_VALIDATION_FAILED`", l("Fields with problems; see `details` (path, code and message of each).", "Campos com problema; veja `details` (caminho, código e mensagem de cada um).")],
           ["`COMPANY_NFE_INCOMPLETE`", l("The company lacks address, IE or CRT; `details` lists them.", "Falta endereço, IE ou CRT na empresa; `details` lista o que falta.")],
           ["`STATE_REGISTRATION_INVALID`", l("The IE is not valid for the state of the company.", "A IE não vale para o estado da empresa.")],
-          ["`UF_NOT_ENABLED`", l("NF-e is not released yet for the state of the company.", "A NF-e ainda não foi liberada para o estado da empresa.")],
-          ["`NFE_PRODUCTION_DISABLED`", l("A live company asked for NF-e: production is not released yet.", "Uma empresa de produção pediu NF-e: a produção ainda não foi liberada.")],
+          ["`UF_NOT_ENABLED`", l("A NFC-e for a state that has no NFC-e addresses in Corvo yet (today only SP). The NF-e has no such limit.", "Uma NFC-e de um estado que ainda não tem endereços de NFC-e na Corvo (hoje só SP). A NF-e não tem esse limite.")],
+          ["`NFE_PRODUCTION_DISABLED`", l("A live company asked for NF-e: production is not turned on yet. Use a test key.", "Uma empresa de produção pediu NF-e: a produção ainda não foi ligada. Use uma chave de teste.")],
           ["`CERTIFICATE_UNUSABLE`", l("The A1 certificate is expired or invalid.", "O certificado A1 está vencido ou inválido.")],
           ["`IDEMPOTENCY_KEY_REQUIRED`, `IDEMPOTENCY_KEY_INVALID`, `IDEMPOTENCY_KEY_REUSED`", l("Missing header, wrong size, or one key used with two bodies.", "Cabeçalho ausente, tamanho errado ou uma chave usada com dois corpos.")],
           ["`INVOICE_OPERATION_NOT_SUPPORTED`", l("The operation does not exist for this type of note.", "A operação não existe para esse tipo de nota.")],
@@ -366,7 +366,7 @@ function files(locale: DocsLocale): DocSection {
       list([
         l("`GET /v1/invoices/:id/xml` and `GET /v1/invoices/:id/pdf` answer the file itself.", "`GET /v1/invoices/:id/xml` e `GET /v1/invoices/:id/pdf` respondem o próprio arquivo."),
         l("`POST /v1/invoices/:id/download-url` with `{ \"format\": \"xml\" | \"pdf\" }` answers a temporary link (`downloadUrl`, `expiresAt`). Another format answers `NFE_DOWNLOAD_FORMAT_INVALID`.", "`POST /v1/invoices/:id/download-url` com `{ \"format\": \"xml\" | \"pdf\" }` responde um link temporário (`downloadUrl`, `expiresAt`). Outro formato responde `NFE_DOWNLOAD_FORMAT_INVALID`."),
-        l("The monthly package for the accountant (`GET /v1/companies/:id/invoice-package`) also carries the NF-e of the month when NF-e is released.", "O pacote mensal do contador (`GET /v1/companies/:id/invoice-package`) também leva as NF-e do mês quando a NF-e está liberada."),
+        l("The monthly package for the accountant (`GET /v1/companies/:id/invoice-package`) also carries the NF-e of the month.", "O pacote mensal do contador (`GET /v1/companies/:id/invoice-package`) também leva as NF-e do mês."),
       ]),
       callout("accent", l(
         "The XML has the personal data of the recipient. Corvo never writes a whole XML in its logs and never hands one out without your key.",
@@ -472,9 +472,9 @@ function nfce(locale: DocsLocale): DocSection {
         "**Test mode first.** The NFC-e only runs in homologação for now: notes issued here have no tax value and the production of the SEFAZ is closed. Corvo starts with **SP**; another state only enters after its own homologation. Only Simples Nacional and MEI companies, with CSOSN 102 or 400. **Corvo does not calculate taxes**: you inform the CFOP, the NCM and the CSOSN of each item.",
         "**Primeiro em teste.** A NFC-e só roda em homologação por enquanto: as notas emitidas aqui não têm valor fiscal e a produção da SEFAZ está fechada. A Corvo começa por **SP**; outro estado só entra depois da homologação dele. Só empresas do Simples Nacional e MEI, com CSOSN 102 ou 400. **A Corvo não calcula imposto**: você informa o CFOP, o NCM e o CSOSN de cada item.",
       )),
-      heading(l("Release and accreditation", "Liberação e credenciamento")),
+      heading(l("Availability and accreditation", "Disponibilidade e credenciamento")),
       list([
-        l("**Release in Corvo.** The NFC-e has its own release, apart from the NF-e: until it is released for your account every NFC-e route answers `404` and the screens and MCP tools do not show it. Ask Corvo; on a self-hosted instance, the operator turns it on (runbook `docs/fiscal/runbooks/nfce-homologacao.md`).", "**Liberação na Corvo.** A NFC-e tem liberação própria, separada da NF-e: enquanto não estiver liberada para a sua conta, toda rota de NFC-e responde `404` e as telas e ferramentas MCP não aparecem. Fale com a Corvo; numa instalação self-hosted, quem opera liga (runbook `docs/fiscal/runbooks/nfce-homologacao.md`)."),
+        l("**Open to everyone.** The NFC-e needs no release: every account issues it in test. In production (live) the answer is `422 NFE_PRODUCTION_DISABLED` until production is turned on (on a self-hosted instance, `NFE_PRODUCTION_ENABLED=true`; runbook `docs/fiscal/runbooks/nfce-homologacao.md`).", "**Aberta para todos.** A NFC-e não pede liberação: toda conta emite em teste. Em produção a resposta é `422 NFE_PRODUCTION_DISABLED` até a produção ser ligada (numa instalação self-hosted, `NFE_PRODUCTION_ENABLED=true`; runbook `docs/fiscal/runbooks/nfce-homologacao.md`)."),
         l("**Accreditation at the SEFAZ.** The state registration (IE) of the company must be accredited to issue NFC-e at its state. It is done once, on the SEFAZ site, by the company or its accountant. Without it the SEFAZ refuses the notes.", "**Credenciamento na SEFAZ.** A inscrição estadual (IE) da empresa precisa estar credenciada para emitir NFC-e no estado dela. Faz-se uma vez, no site da SEFAZ, pela empresa ou pelo contador. Sem isso a SEFAZ recusa as notas."),
         l("**No CSC needed.** Corvo uses the QR Code v3 (online), which does not take the CSC (the security code that older QR Codes asked for) nor its id. You have nothing to register or keep.", "**Sem CSC.** A Corvo usa o QR Code v3 (online), que não usa o CSC (o código de segurança que os QR Codes antigos pediam) nem o id dele. Você não tem nada para cadastrar ou guardar."),
         l("**Series.** The NFC-e has its own series (`nfceDefaultSeries` in `PUT /v1/companies/:id/nfe-settings`, default 1) and its own numbering.", "**Série.** A NFC-e tem série própria (`nfceDefaultSeries` em `PUT /v1/companies/:id/nfe-settings`, padrão 1) e numeração própria."),

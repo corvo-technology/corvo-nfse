@@ -66,7 +66,7 @@ ar, ela pode voltar a entrar no minuto seguinte: nesse caso confira o disjuntor 
 - A sonda da SVC é a TCP do monitor (`AuthorityReachabilityStore`), não a consulta SOAP de status, que
   pediria um certificado A1. Se for preciso a consulta SOAP, troque a implementação de `SEFAZ_STATUS`.
 - A regra de `dhCont` (hora de entrada) em relação a `dhEmi` na SVC.
-- A produção continua travada por `NFE_PRODUCTION_ENABLED` e por `nfe_enabled_authorities`.
+- A produção continua travada por `NFE_PRODUCTION_ENABLED`. A chave da SVC olha todos os estados (NF-e) em homologação, e também em produção quando esse interruptor está ligado.
 
 ## Inutilização em SP
 
