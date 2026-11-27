@@ -1,0 +1,52 @@
+{
+  "id": "hook_Pq8rKlM3nVbT0xYz",
+  "account": { "id": "acc_jZkdN857et650oNv", "name": "Lojinha" },
+  "type": "order.paid",
+  "created_at": "2026-11-20T14:05:10Z",
+  "data": {
+    "id": "or_Wm4sXk2LbQe9RtYa",
+    "code": "PED-2026-0042",
+    "amount": 25000,
+    "currency": "BRL",
+    "closed": true,
+    "items": [
+      {
+        "id": "oi_Aa1Bb2Cc3Dd4Ee5F",
+        "description": "Consultoria mensal",
+        "amount": 12500,
+        "quantity": 2,
+        "status": "active"
+      }
+    ],
+    "customer": {
+      "id": "cus_Zx9Yw8Vu7Ts6Rq5P",
+      "name": "Empresa Exemplo Ltda",
+      "email": "financeiro@exemplo.com.br",
+      "document": "11222333000181",
+      "document_type": "CNPJ",
+      "type": "company",
+      "address": {
+        "line_1": "Rua Exemplo, 100",
+        "line_2": "Sala 2",
+        "zip_code": "01310100",
+        "city": "São Paulo",
+        "state": "SP",
+        "country": "BR"
+      }
+    },
+    "status": "paid",
+    "created_at": "2026-11-20T14:04:55Z",
+    "closed_at": "2026-11-20T14:05:08Z",
+    "charges": [
+      {
+        "id": "ch_Nn7Mm6Ll5Kk4Jj3H",
+        "code": "PED-2026-0042",
+        "amount": 25000,
+        "status": "paid",
+        "currency": "BRL",
+        "payment_method": "pix",
+        "paid_at": "2026-11-20T14:05:09Z"
+      }
+    ]
+  }
+}

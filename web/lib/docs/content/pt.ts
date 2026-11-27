@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify ou Pagar.me e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2866,6 +2866,19 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Valor da nota: `total` usa o valor pago (`full_price`); `mine` (\"minha parte\") desconta as comissões de coprodutor e afiliado. Se as comissões não vierem no aviso, a venda vai para atenção e não emite.",
             "Reembolso (`PURCHASE_REFUNDED`) e chargeback (`PURCHASE_CHARGEBACK`) cancelam a nota só se a regra tiver o cancelamento automático ligado; reembolso parcial é ignorado. Protesto (`PURCHASE_PROTEST`) só sinaliza a venda, sem cancelar.",
             "A Hotmart não informa o ambiente no aviso: vale o ambiente escolhido na conexão. Os campos dos avisos ainda precisam ser confirmados com um aviso real.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Pagar.me" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: nenhuma é obrigatória. A Corvo gera o `webhookSecret` (já dentro do `webhookUrl`), o `webhookUser` e o `webhookPassword` (autenticação básica), exibidos uma única vez ao criar a conexão. Copie e guarde. Opcionalmente, informe a `secretKey` (chave secreta `sk_...` da conta) para a Corvo conferir a assinatura.",
+            "Passo a passo: (1) no Dashboard da Pagar.me, em Configurações > Webhooks, crie um webhook com o `webhookUrl` e os eventos `order.paid`, `charge.refunded`, `order.canceled`, `charge.chargedback` e `chargeback.received`; (2) se houver campos de usuário e senha, preencha com o `webhookUser` e o `webhookPassword`; (3) faça uma venda de teste. A Corvo não consulta a API da Pagar.me: tudo chega no aviso.",
+            "Autenticação: a documentação v5 da Pagar.me não descreve assinatura do webhook. A Corvo exige o segredo da conexão no endereço (comparação em tempo constante); se a chamada trouxer autenticação básica (`Authorization: Basic`), ela precisa bater com o `webhookUser` e o `webhookPassword`; e, se você informou a `secretKey`, o cabeçalho `X-Hub-Signature` (HMAC-SHA1 do corpo cru com a chave, no formato `sha1=...`) precisa estar certo.",
+            "Cada pedido pago (`order.paid`, `status` `paid`) vira uma nota, identificada por `pagarme:<id do pedido>`. O valor é o total do pedido (`amount`, em centavos, já com frete e descontos). Os itens vêm de `items` (descrição e quantidade). O CPF/CNPJ vem de `customer.document`; sem ele, ou com documento que não seja CPF/CNPJ (`document_type`), a venda vai para \"Vendas pendentes\" (`customer_tax_id_missing`). O endereço vem de `customer.address`, ou do endereço de entrega.",
+            "Só BRL: outra moeda fica bloqueada com `unsupported_currency`. Se o comprador não tiver e-mail, a nota é emitida sem envio.",
+            "Reembolso (`charge.refunded`) e pedido cancelado (`order.canceled`) ligam à venda pelo id da cobrança ou do pedido e cancelam a nota só se a regra tiver o cancelamento automático ligado. Chargeback (`charge.chargedback`, `chargeback.received`) só sinaliza a venda (`refund_after_invoice`), sem cancelar. Reembolso parcial (`charge.partial_canceled`) é ignorado.",
+            "O formato do `chargeback.received` e a presença de `document_type` e `customer.address` no aviso ainda precisam ser confirmados com uma venda real.",
           ],
         },
         { kind: "heading", level: 2, body: "Vendas que precisam de atenção" },

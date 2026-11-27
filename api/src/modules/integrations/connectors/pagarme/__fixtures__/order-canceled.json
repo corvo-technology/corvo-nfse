@@ -1,0 +1,13 @@
+{
+  "id": "hook_Ab1Cd2Ef3Gh4Ij5K",
+  "account": { "id": "acc_jZkdN857et650oNv", "name": "Lojinha" },
+  "type": "order.canceled",
+  "created_at": "2026-11-21T09:00:00Z",
+  "data": {
+    "id": "or_Wm4sXk2LbQe9RtYa",
+    "code": "PED-2026-0042",
+    "amount": 25000,
+    "currency": "BRL",
+    "status": "canceled"
+  }
+}
