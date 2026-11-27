@@ -1,5 +1,6 @@
 import type { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { HttpStatusError, NetworkError, TimeoutError } from 'open-nfse';
 import { Invoice } from '../domain/invoice';
 import { DpsBuilder } from '../domain/fiscal/dps/dps-builder';
 import type { IFiscalSnapshotRepository } from '../domain/fiscal/fiscal-snapshot.repository';
@@ -192,7 +193,7 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
 
   it('a network error counts against the portal and schedules exactly one follow-up', async () => {
     const invoice = invoiceIn('queued');
-    provider.issue.mockRejectedValue(new Error('ECONNRESET'));
+    provider.issue.mockRejectedValue(new NetworkError('ECONNRESET'));
 
     await expect(run(invoice)).resolves.toBeUndefined();
 
@@ -406,15 +407,25 @@ describe('NfseWorkflowService when the fiscal portal is down', () => {
       expect(fakes.documentStorage.saveXml).not.toHaveBeenCalled();
     });
 
+    it('an HTTP 400 answer from the portal does not count as an outage', async () => {
+      const invoice = invoiceIn('manual_review');
+      provider.queryByDps.mockRejectedValue(new HttpStatusError(400, ''));
+
+      await discard(invoice);
+
+      expect(breaker.recordFailure).not.toHaveBeenCalled();
+      expect(invoice.status).toBe('manual_review');
+    });
+
     it('stays in manual review with the reason when the portal does not answer', async () => {
       const invoice = invoiceIn('manual_review');
-      provider.queryByDps.mockRejectedValue(new Error('timeout'));
+      provider.queryByDps.mockRejectedValue(new TimeoutError(60000));
 
       await discard(invoice);
 
       expect(invoice.status).toBe('manual_review');
       expect(invoice.toSnapshot().lastErrorMessage).toBe(
-        'Discard not confirmed: timeout',
+        'Discard not confirmed: no answer',
       );
       expect(fakes.invoices.save).toHaveBeenCalledWith(invoice, tenantId);
       expect(breaker.recordFailure).toHaveBeenCalledWith('live');

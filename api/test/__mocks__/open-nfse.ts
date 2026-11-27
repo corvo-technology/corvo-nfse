@@ -100,6 +100,7 @@ export const JustificativaSubstituicao = sdk.JustificativaSubstituicao;
 export const TipoEvento = sdk.TipoEvento;
 export const StatusDistribuicao = sdk.StatusDistribuicao;
 export const parseEventoXml = sdk.parseEventoXml;
+export const HttpStatusError = sdk.HttpStatusError;
 export const NetworkError = sdk.NetworkError;
 export const ServerError = sdk.ServerError;
 export const TimeoutError = sdk.TimeoutError;

@@ -6,6 +6,13 @@ import { fiscalPortal, type FiscalPortalStatus } from "@/lib/api";
 
 const POLL_MS = 60_000;
 
+/** The time of day, plus the date when the outage did not start today. */
+export function formatSince(date: Date, tag: string, now: Date = new Date()): string {
+  const time = date.toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
+  if (date.toDateString() === now.toDateString()) return time;
+  return `${date.toLocaleDateString(tag, { day: "2-digit", month: "2-digit" })} ${time}`;
+}
+
 /**
  * Says when the national NFS-e portal stopped answering, so waiting invoices do not look stuck.
  * Silent when the portal is fine or the status cannot be read.
@@ -41,9 +48,7 @@ export function PortalStatusBanner({ environment }: { environment: string }) {
       </p>
     );
   if (!status || status.available) return null;
-  const since = status.since
-    ? new Date(status.since).toLocaleTimeString(locale === "pt" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" })
-    : null;
+  const since = status.since ? formatSince(new Date(status.since), locale === "pt" ? "pt-BR" : "en-US") : null;
   return (
     <p role="status" className="banner banner-warn mb-6 flex items-start gap-2.5">
       <CloudOff size={16} className="mt-0.5 shrink-0" aria-hidden />

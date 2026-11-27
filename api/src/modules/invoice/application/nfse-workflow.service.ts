@@ -31,7 +31,7 @@ import {
   type IDocumentStorage,
 } from '@/infra/storage/domain/document-storage';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
-import { FiscalPortalBreaker } from './fiscal-portal-breaker';
+import { FiscalPortalBreaker, isPortalOutage } from './fiscal-portal-breaker';
 import { failureMessage } from '@/infra/external/nfse/connection-failure';
 import {
   DpsNumberingService,
@@ -318,7 +318,8 @@ export class NfseWorkflowService {
     try {
       result = await this.providers.resolve(invoice.environment).issue(payload);
     } catch (error: unknown) {
-      await this.breaker?.recordFailure(invoice.environment);
+      if (isPortalOutage(error))
+        await this.breaker?.recordFailure(invoice.environment);
       this.logReconciliation('warn', invoice, failureKind(error), {
         attempt: data.attemptCount ?? 0,
         nextDelayMs: reconciliationDelayMs((data.attemptCount ?? 0) + 1),
@@ -836,7 +837,7 @@ export class NfseWorkflowService {
         .resolve(invoice.environment)
         .queryByDps(idDps, payload);
     } catch (error: unknown) {
-      if (!(error instanceof DpsBuildRejectionError))
+      if (isPortalOutage(error))
         await this.breaker?.recordFailure(invoice.environment);
       this.logReconciliation('warn', invoice, failureKind(error), {
         source: 'manual_review_sweep',
@@ -938,7 +939,7 @@ export class NfseWorkflowService {
         .resolve(invoice.environment)
         .queryByDps(idDps, payload);
     } catch (error: unknown) {
-      if (!(error instanceof DpsBuildRejectionError))
+      if (isPortalOutage(error))
         await this.breaker?.recordFailure(invoice.environment);
       const reason = error instanceof Error ? error.message : 'no answer';
       await this.keepInReview(invoice, `Discard not confirmed: ${reason}`);

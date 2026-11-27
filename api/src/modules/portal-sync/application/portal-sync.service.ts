@@ -1,13 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  NetworkError,
-  ServerError,
-  StatusDistribuicao,
-  TimeoutError,
-  TooManyRequestsError,
-  type DistributedDocument,
-} from 'open-nfse';
+import { StatusDistribuicao, type DistributedDocument } from 'open-nfse';
+import { isPortalOutage } from '@/modules/invoice/application/fiscal-portal-breaker';
 import { OpenNfseProvider } from '@/infra/external/nfse/open-nfse.provider';
 import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import { ApplicationCertificateDecryptor } from '@/modules/certificate/application/certificate-decryptor';
@@ -289,14 +283,5 @@ function isBeforeFirstRound(
   return (
     cursor.firstRoundDoneAt === null ||
     document.generatedAt <= cursor.firstRoundDoneAt
-  );
-}
-
-function isPortalOutage(error: unknown): boolean {
-  return (
-    error instanceof NetworkError ||
-    error instanceof TimeoutError ||
-    error instanceof ServerError ||
-    error instanceof TooManyRequestsError
   );
 }
