@@ -158,8 +158,8 @@ describe("NF-e detail", () => {
       { kind: "event", at: "2026-11-26T13:00:00.000Z", status: "registered", from: null, tpEvento: "110110", sequence: 1, eventId: "e1", cStat: "135", xMotivo: "Evento registrado" },
     ]);
     await renderPage();
-    expect(screen.getByText("Correction letter 1")).toBeTruthy();
-    expect(screen.getByText("Registered")).toBeTruthy();
+    expect(screen.getByText("Correction letter no. 1")).toBeTruthy();
+    expect(screen.getByText(/^Registered/)).toBeTruthy();
   });
 
   describe("NFC-e", () => {

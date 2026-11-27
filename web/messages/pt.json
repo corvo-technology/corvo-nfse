@@ -3915,12 +3915,15 @@
     "timeline": {
       "empty": "Ainda não há histórico.",
       "cancellation": "Cancelamento",
-      "correction": "Carta de correção {sequence}",
+      "correction": "Carta de correção nº {sequence}",
+      "cancelRequested": "Cancelamento pedido",
+      "cancelRefused": "Cancelamento recusado",
+      "reason": "Motivo: {text}",
       "eventStatus": {
         "pending": "Enviando",
         "pending_check": "Conferindo com a SEFAZ",
-        "registered": "Registrado",
-        "rejected": "Recusado"
+        "registered": "Registrada",
+        "rejected": "Recusada"
       }
     },
     "cancel": {

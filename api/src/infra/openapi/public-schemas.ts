@@ -701,7 +701,7 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     kind: str({
       enum: ['status', 'event'],
       description:
-        '`status`: the NF-e moved to `status`. `event`: a cancellation or correction letter, in its own `status`.',
+        '`status`: the NF-e moved to `status`. `event`: a correction letter, in its own `status`. A cancellation is not a separate entry: the request is the `cancelling` entry (justification in `text`) and the SEFAZ answer is in the `cancelled` entry, or in the entry that goes back to `authorized` when it refuses.',
     }),
     at: dateTime(),
     status: str(),
@@ -709,7 +709,15 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
     tpEvento: nullable(str()),
     sequence: nullable(int()),
     eventId: nullable(uuid()),
-    cStat: nullable(str()),
+    text: nullable(
+      str({
+        description:
+          'The justification of a cancellation request or the text of a correction letter.',
+      }),
+    ),
+    cStat: nullable(
+      str({ description: 'Only when the SEFAZ answered on this entry.' }),
+    ),
     xMotivo: nullable(str()),
   }),
   NfeInutilization: obj(

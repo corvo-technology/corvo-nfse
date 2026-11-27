@@ -18,8 +18,11 @@ export function NfeTimeline({ entries }: { entries: NfeTimelineEntry[] }) {
       {entries.map((entry, index) => {
         const last = index === entries.length - 1;
         const isEvent = entry.kind === "event";
+        // The cancellation is told on the status rows: the request, then the answer (or the refusal).
         const title = isEvent
           ? entry.tpEvento === CANCELLATION ? t("cancellation") : t("correction", { sequence: entry.sequence ?? 1 })
+          : entry.status === "cancelling" ? t("cancelRequested")
+          : entry.status === "authorized" && entry.from === "cancelling" ? t("cancelRefused")
           : ts.has(entry.status) ? ts(entry.status) : entry.status;
         const detail = isEvent ? (t.has(`eventStatus.${entry.status}`) ? t(`eventStatus.${entry.status}`) : entry.status) : null;
         return (
@@ -31,8 +34,10 @@ export function NfeTimeline({ entries }: { entries: NfeTimelineEntry[] }) {
                 <p className={last ? "font-medium text-text" : "text-text-2"}>{title}</p>
                 <time dateTime={entry.at} className="text-[12.5px] text-text-4">{date(entry.at)}</time>
               </div>
-              {detail && <p className="text-sm text-text-3">{detail}</p>}
-              {entry.xMotivo && <p className="text-sm text-text-3">{entry.cStat ? `${entry.cStat} · ` : ""}{entry.xMotivo}</p>}
+              {entry.text && entry.status === "cancelling" && <p className="text-sm text-text-3">{t("reason", { text: entry.text })}</p>}
+              {(detail || entry.xMotivo) && (
+                <p className="text-sm text-text-3">{[detail, entry.cStat, entry.xMotivo].filter(Boolean).join(" · ")}</p>
+              )}
             </div>
           </li>
         );

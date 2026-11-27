@@ -97,6 +97,15 @@ describe('NfeDocument', () => {
       cStat: '225',
     });
   });
+  it('a move without an answer from the SEFAZ does not copy the last cStat into its history row', () => {
+    const doc = NfeDocument.create(documentParams());
+    doc.transitionTo('processing');
+    doc.transitionTo('authorized', { cStat: '100', xMotivo: 'Autorizado' });
+    const cancelling = doc.transitionTo('cancelling');
+    expect(cancelling).toMatchObject({ cStat: null, xMotivo: null });
+    expect(doc.toSnapshot().cStat).toBe('100');
+  });
+
   describe('off-line NFC-e (tpEmis 9)', () => {
     const offline = () =>
       NfeDocument.createOffline({

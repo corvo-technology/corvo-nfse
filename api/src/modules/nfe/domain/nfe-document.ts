@@ -359,7 +359,13 @@ export class NfeDocument {
     if (info.cStat !== undefined) this.props.cStat = info.cStat;
     if (info.xMotivo !== undefined) this.props.xMotivo = info.xMotivo;
     this.props.updatedAt = now;
-    return this.historyEntry(from, status);
+    // The row says what the SEFAZ answered on this move, not what the document had before.
+    return this.historyEntry(
+      from,
+      status,
+      info.cStat ?? null,
+      info.xMotivo ?? null,
+    );
   }
 
   /** The number is assigned once; a resubmission after a rejection keeps it (design spec 8.3). */
@@ -520,7 +526,12 @@ export class NfeDocument {
     this.props.nextCheckAt = null;
   }
 
-  private historyEntry(from: NfeStatus | null, to: NfeStatus): NfeHistoryEntry {
+  private historyEntry(
+    from: NfeStatus | null,
+    to: NfeStatus,
+    cStat: string | null = null,
+    xMotivo: string | null = null,
+  ): NfeHistoryEntry {
     return {
       tenantId: this.props.tenantId,
       documentId: this.props.id,
@@ -528,8 +539,8 @@ export class NfeDocument {
       toStatus: to,
       accessKey: this.props.accessKey,
       attempt: this.props.attempt,
-      cStat: this.props.cStat,
-      xMotivo: this.props.xMotivo,
+      cStat,
+      xMotivo,
     };
   }
 }
