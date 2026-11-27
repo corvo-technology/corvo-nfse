@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
@@ -114,22 +115,22 @@ export function NfceForm({ companies, initial, resubmitId }: NfceFormProps) {
       {banner && <p role="alert" className="banner banner-danger">{banner}</p>}
       {preview && <p role="status" className="banner banner-ok">{tf("validOk", { key: preview })}</p>}
 
-      <Card className="grid gap-4 p-5 sm:grid-cols-2">
+      <Card className="grid items-start gap-4 p-5 sm:grid-cols-2">
         <Field label={tf("company")} error={err("companyId")} required>
           {(c) => (
-            <select {...c} className="field" value={form.companyId} disabled={resubmitId !== undefined} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
+            <Select {...c} value={form.companyId} disabled={resubmitId !== undefined} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
               <option value="">{tf("companyChoose")}</option>
               {companies.map((company) => <option key={company.id} value={company.id}>{company.tradeName || company.legalName}</option>)}
-            </select>
+            </Select>
           )}
         </Field>
         <Field label={t("indPres")} hint={t("indPresHint")} error={err("indPres")}>
           {(c) => (
-            <select {...c} className="field" value={form.indPres} onChange={(e) => setForm({ ...form, indPres: e.target.value as NfceFormState["indPres"] })}>
+            <Select {...c} value={form.indPres} onChange={(e) => setForm({ ...form, indPres: e.target.value as NfceFormState["indPres"] })}>
               <option value="1">{t("indPres1")}</option>
               <option value="4">{t("indPres4")}</option>
               <option value="5">{t("indPres5")}</option>
-            </select>
+            </Select>
           )}
         </Field>
       </Card>
@@ -145,25 +146,25 @@ export function NfceForm({ companies, initial, resubmitId }: NfceFormProps) {
         <h2 className="font-medium">{tf("payments.title")}</h2>
         {form.payments.map((payment, index) => (
           <div key={index} className="flex flex-col gap-3">
-            <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div className="grid items-start gap-3 sm:grid-cols-[1fr_1fr_auto]">
               <Field label={tf("payments.means")} error={err(`payments[${index}].tPag`)}>
                 {(c) => (
-                  <select {...c} className="field" value={payment.tPag} onChange={(e) => setPayment(index, { tPag: e.target.value })}>
+                  <Select {...c} value={payment.tPag} onChange={(e) => setPayment(index, { tPag: e.target.value })}>
                     {PAYMENT_MEANS.map((means) => <option key={means} value={means}>{tPay(means)}</option>)}
-                  </select>
+                  </Select>
                 )}
               </Field>
               <Field label={tf("payments.amount")} hint={index === 0 && !payTouched ? tf("payments.amountAuto") : undefined} error={err(`payments[${index}].amount`)} required>{(c) => <Input {...c} inputMode="decimal" placeholder="0,00" value={payment.amount} onChange={(e) => { setPayTouched(true); setPayment(index, { amount: maskCurrency(e.target.value) }); }} />}</Field>
-              {form.payments.length > 1 && <Button variant="ghost" onClick={() => { setPayTouched(true); setForm({ ...form, payments: form.payments.filter((_, i) => i !== index) }); }} aria-label={tf("payments.remove", { number: index + 1 })}><Trash2 size={14} aria-hidden /></Button>}
+              {form.payments.length > 1 && <Button variant="ghost" className="sm:mt-[26px]" onClick={() => { setPayTouched(true); setForm({ ...form, payments: form.payments.filter((_, i) => i !== index) }); }} aria-label={tf("payments.remove", { number: index + 1 })}><Trash2 size={14} aria-hidden /></Button>}
             </div>
             {(CARD_MEANS as readonly string[]).includes(payment.tPag) && (
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid items-start gap-3 sm:grid-cols-3">
                 <Field label={t("cardBrand")} hint={t("cardHint")} error={err(`payments[${index}].card.tBand`)} optionalLabel={tf("optional")}>
                   {(c) => (
-                    <select {...c} className="field" value={payment.cardBrand} onChange={(e) => setPayment(index, { cardBrand: e.target.value })}>
+                    <Select {...c} value={payment.cardBrand} onChange={(e) => setPayment(index, { cardBrand: e.target.value })}>
                       <option value="">{t("cardBrandNone")}</option>
                       {CARD_BRANDS.map((brand) => <option key={brand} value={brand}>{t(`brands.${brand}`)}</option>)}
-                    </select>
+                    </Select>
                   )}
                 </Field>
                 <Field label={t("cardAuth")} error={err(`payments[${index}].card.cAut`)} optionalLabel={tf("optional")}>{(c) => <Input {...c} maxLength={128} placeholder={t("cardAuthPlaceholder")} value={payment.cardAuth} onChange={(e) => setPayment(index, { cardAuth: e.target.value })} />}</Field>
@@ -179,7 +180,7 @@ export function NfceForm({ companies, initial, resubmitId }: NfceFormProps) {
           : <p role="alert" className="text-right text-sm text-warn">{tf("payments.balanceDiffers", { paid: money(paid), total: money(total) })}</p>}
       </Card>
 
-      <Card className="grid gap-4 p-5 sm:grid-cols-6">
+      <Card className="grid items-start gap-4 p-5 sm:grid-cols-6">
         <h2 className="font-medium sm:col-span-6">{delivery ? t("consumerRequired") : t("consumerOptional")}</h2>
         <Field className="sm:col-span-3" label={tf("taxId")} hint={t("taxIdHint")} error={err("recipient.taxId")} optionalLabel={delivery ? undefined : tf("optional")} required={delivery}>{(c) => <Input {...c} inputMode="text" autoComplete="off" placeholder={tf("taxIdPlaceholder")} value={form.consumer.taxId} onChange={(e) => setConsumer({ taxId: maskTaxId(e.target.value) })} />}</Field>
         <Field className="sm:col-span-3" label={tf("name")} error={err("recipient.name")} optionalLabel={delivery ? undefined : tf("optional")} required={delivery}>{(c) => <Input {...c} maxLength={60} placeholder={tf("namePlaceholder")} value={form.consumer.name} onChange={(e) => setConsumer({ name: e.target.value })} />}</Field>

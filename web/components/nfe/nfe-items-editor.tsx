@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/ui/select";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -37,14 +38,14 @@ export function NfeItemsEditor({ items, onChange, errors, defaultCsosn, suggeste
       {items.map((item, index) => {
         const error = (field: string) => errors[`items[${index}].${field}`];
         return (
-          <fieldset key={index} className="grid gap-3 rounded-[12px] border border-border p-4 sm:grid-cols-6">
+          <fieldset key={index} className="grid items-start gap-3 rounded-[12px] border border-border p-4 sm:grid-cols-6">
             <legend className="px-1 text-sm text-text-3">{t("item", { number: index + 1 })}</legend>
             {saved.length > 0 && item.description === "" && (
               <div className="sm:col-span-6">
-                <select aria-label={t("useSaved")} className="field" value="" onChange={(e) => { const found = saved[Number(e.target.value)]; if (found) use(index, found); }}>
+                <Select aria-label={t("useSaved")} value="" onChange={(e) => { const found = saved[Number(e.target.value)]; if (found) use(index, found); }}>
                   <option value="">{t("useSaved")}</option>
                   {saved.map((product, i) => <option key={`${product.description}-${i}`} value={i}>{product.description}</option>)}
-                </select>
+                </Select>
               </div>
             )}
             <Field className="sm:col-span-4" label={t("description")} error={error("description")} required>{(c) => <Input {...c} maxLength={120} placeholder={t("descriptionPlaceholder")} value={item.description} onChange={(e) => set(index, { description: e.target.value })} />}</Field>
@@ -55,11 +56,11 @@ export function NfeItemsEditor({ items, onChange, errors, defaultCsosn, suggeste
             <Field className="sm:col-span-2" label={t("cfop")} hint={t("cfopHint")} error={error("cfop")} required>{(c) => <Input {...c} inputMode="numeric" maxLength={4} placeholder="5102" value={item.cfop} onChange={(e) => set(index, { cfop: e.target.value.replace(/\D/g, "").slice(0, 4), cfopManual: true })} />}</Field>
             <Field className="sm:col-span-2" label={t("csosn")} hint={t("csosnHint")} error={error("tax.csosn")}>
               {(c) => (
-                <select {...c} className="field" value={item.csosn} onChange={(e) => set(index, { csosn: e.target.value as NfeItemForm["csosn"] })}>
+                <Select {...c} value={item.csosn} onChange={(e) => set(index, { csosn: e.target.value as NfeItemForm["csosn"] })}>
                   <option value="">{defaultCsosn ? t("csosnDefaultWith", { csosn: defaultCsosn }) : t("csosnDefault")}</option>
                   <option value="102">102</option>
                   <option value="400">400</option>
-                </select>
+                </Select>
               )}
             </Field>
             <p className="-mt-1 text-[12.5px] text-text-3 sm:col-span-6"><a href={NCM_LOOKUP} target="_blank" rel="noreferrer" className="underline">{t("ncmLookup")}</a></p>
