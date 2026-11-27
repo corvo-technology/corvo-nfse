@@ -1,6 +1,10 @@
 import { centsToString } from '../totals';
 import type { NfeDraftItem } from '../nfe-draft';
-import type { BuildContext, XmlNode } from './context';
+import {
+  NFCE_HOMOLOGATION_ITEM_DESCRIPTION,
+  type BuildContext,
+  type XmlNode,
+} from './context';
 
 const NO_GTIN = 'SEM GTIN';
 
@@ -13,13 +17,13 @@ export function unitPriceText(tenDecimals: string): string {
 const positive = (cents: number): string | undefined =>
   cents > 0 ? centsToString(cents) : undefined;
 
-function prod(item: NfeDraftItem): XmlNode {
+function prod(item: NfeDraftItem, description: string): XmlNode {
   const price = unitPriceText(item.unitPrice);
   const gtin = item.gtin ?? NO_GTIN;
   return {
     cProd: item.code,
     cEAN: gtin,
-    xProd: item.description,
+    xProd: description,
     NCM: item.ncm,
     CEST: item.cest ?? undefined,
     // The layout asks for the relevant-scale indicator whenever a CEST is sent.
@@ -64,11 +68,20 @@ function imposto(item: NfeDraftItem): XmlNode {
   };
 }
 
-/** `det[]`: one per item, numbered from 1. */
+/**
+ * `det[]`: one per item, numbered from 1. A NFC-e in homologation puts the fixed text in the first
+ * item's `xProd`.
+ */
 export function detGroup(ctx: BuildContext): XmlNode[] {
+  const fixedText = ctx.draft.model === 65 && ctx.tpAmb === 2;
   return ctx.draft.items.map((item) => ({
     '@_nItem': String(item.nItem),
-    prod: prod(item),
+    prod: prod(
+      item,
+      fixedText && item.nItem === 1
+        ? NFCE_HOMOLOGATION_ITEM_DESCRIPTION
+        : item.description,
+    ),
     imposto: imposto(item),
   }));
 }

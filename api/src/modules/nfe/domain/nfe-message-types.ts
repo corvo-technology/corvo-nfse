@@ -6,6 +6,8 @@ export const NFE_CORRECT = 'nfe.correct';
 export const NFE_INUTILIZE = 'nfe.inutilize';
 export const NFE_PREPARE_DOCUMENTS = 'nfe.prepare_documents';
 export const NFE_SEND_EMAIL = 'nfe.send_email';
+/** The warning of an off-line NFC-e that is 20 hours old and was not transmitted yet. */
+export const NFCE_CONTINGENCY_ALERT = 'nfce.contingency_alert';
 
 /**
  * What every NF-e message carries: ids only. Never the certificate, the XML or the recipient's

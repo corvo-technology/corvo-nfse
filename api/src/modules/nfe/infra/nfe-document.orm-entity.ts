@@ -77,8 +77,9 @@ export class NfeDocumentOrmEntity {
   @Column({ name: 'authorized_at', type: 'timestamptz', nullable: true })
   authorizedAt!: Date | null;
 
-  @Column({ type: 'jsonb' })
-  recipient!: Record<string, unknown>;
+  /** Null only on a NFC-e (model 65) sold to an unidentified consumer. */
+  @Column({ type: 'jsonb', nullable: true })
+  recipient!: Record<string, unknown> | null;
 
   @Column({ type: 'jsonb' })
   totals!: Record<string, unknown>;
@@ -155,6 +156,37 @@ export class NfeDocumentOrmEntity {
 
   @Column({ name: 'cancel_requested_at', type: 'timestamptz', nullable: true })
   cancelRequestedAt!: Date | null;
+
+  /** NFC-e only: the QR Code (`infNFeSupl/qrCode`) of the current attempt. */
+  @Column({ name: 'qr_code', type: 'text', nullable: true })
+  qrCode!: string | null;
+
+  /** NFC-e only: `infNFeSupl/urlChave`. */
+  @Column({ name: 'url_chave', type: 'varchar', length: 85, nullable: true })
+  urlChave!: string | null;
+
+  /** NFC-e off-line (`tpEmis` 9): `dhCont`. */
+  @Column({ name: 'contingency_at', type: 'timestamptz', nullable: true })
+  contingencyAt!: Date | null;
+
+  /** NFC-e off-line: `xJust`. */
+  @Column({
+    name: 'contingency_reason',
+    type: 'varchar',
+    length: 256,
+    nullable: true,
+  })
+  contingencyReason!: string | null;
+
+  @Column({
+    name: 'contingency_alerted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  contingencyAlertedAt!: Date | null;
+
+  @Column({ name: 'transmitted_at', type: 'timestamptz', nullable: true })
+  transmittedAt!: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

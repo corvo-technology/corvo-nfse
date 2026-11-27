@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsUUID } from 'class-validator';
 import { CursorQuery } from '@/shared/http/pagination';
+import { NFCE_CONTINGENCY_DEADLINE_MS } from '@/modules/nfce/domain/contingency';
 import type { NfeDocument } from '../domain/nfe-document';
 import { NFE_STATUSES, type NfeStatus } from '../domain/nfe-status';
 import { toNfeHttpError, type NfeHttpError } from './nfe-error-http';
@@ -33,7 +34,7 @@ export function toNfeResponse(doc: NfeDocument) {
   const error = toNfeHttpError(s);
   const lastError: NfeHttpError | null = error ? error.error : null;
   return {
-    type: 'nfe' as const,
+    type: s.model === 65 ? ('nfce' as const) : ('nfe' as const),
     id: s.id,
     companyId: s.companyId,
     environment: s.environment,
@@ -80,6 +81,23 @@ export function toNfeResponse(doc: NfeDocument) {
     attempt: s.attempt,
     lastError,
     nextCheckAt: s.nextCheckAt,
+    // NFC-e only (`infNFeSupl`); the NF-e answer has no such fields.
+    ...(s.model === 65
+      ? {
+          qrCode: s.qrCode,
+          urlChave: s.urlChave,
+          contingencyAt: s.contingencyAt,
+          contingencyReason: s.contingencyReason,
+          contingencyDeadlineAt: s.contingencyAt
+            ? new Date(s.contingencyAt.getTime() + NFCE_CONTINGENCY_DEADLINE_MS)
+            : null,
+        }
+      : {
+          // NF-e only: 1 normal, 6 or 7 when it was issued through the SVC (`dhCont` and `xJust`).
+          emissionType: s.tpEmis,
+          contingencyAt: s.contingencyAt,
+          contingencyReason: s.contingencyReason,
+        }),
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
   };

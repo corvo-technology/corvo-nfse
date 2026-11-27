@@ -13,17 +13,30 @@ export function isAcceptedText(value: string): boolean {
   return ACCEPTED.test(value);
 }
 
+function recipientFields(draft: NfeDraft): Array<[string, string | null]> {
+  const { recipient } = draft;
+  if (!recipient) return [];
+  const { address } = recipient;
+  return [
+    ['recipient.name', recipient.name],
+    ...(address
+      ? ([
+          ['recipient.address.street', address.street],
+          ['recipient.address.number', address.number],
+          ['recipient.address.complement', address.complement],
+          ['recipient.address.district', address.district],
+          ['recipient.address.city', address.city],
+        ] as Array<[string, string | null]>)
+      : []),
+  ];
+}
+
 export const textCharsetValidator: PreSendValidator<NfeDraft> = {
   name: 'text-charset',
   validate(draft) {
     const fields: Array<[string, string | null]> = [
       ['natOp', draft.natOp],
-      ['recipient.name', draft.recipient.name],
-      ['recipient.address.street', draft.recipient.address.street],
-      ['recipient.address.number', draft.recipient.address.number],
-      ['recipient.address.complement', draft.recipient.address.complement],
-      ['recipient.address.district', draft.recipient.address.district],
-      ['recipient.address.city', draft.recipient.address.city],
+      ...recipientFields(draft),
       ...draft.items.flatMap((item, index): Array<[string, string | null]> => [
         [`items[${index}].code`, item.code],
         [`items[${index}].description`, item.description],

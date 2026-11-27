@@ -5,17 +5,19 @@ import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
 import { contentFromDraft } from '../domain/nfe-draft-mapper';
 import type { NfeInput } from '../domain/nfe-input';
+import { lockedFieldsChanged } from '@/modules/nfce/domain/offline-correction';
 import {
+  nfceContingencyFieldLocked,
   nfeInvalidState,
   nfeNotFound,
   nfeValidationFailed,
 } from './nfe-errors';
-import { emitMessage } from './nfe-messages';
-import { NfePreparation } from './nfe-preparation.service';
+import { emitMessage, transmitMessage } from './nfe-messages';
+import { NfePreparation, type PreparedNfe } from './nfe-preparation.service';
 import { nfeRequestHash } from './nfe-request-hash';
 import { keyOf } from './nfe-outcome.service';
 import type { NfeSubmitted } from './nfe-intake.service';
-import { NfeTransitionService } from './nfe-transition.service';
+import { NfeTransitionService, documentTypeOf } from './nfe-transition.service';
 
 /** Not written as a literal `code`: the web error catalogue scans the API source for those. */
 const COMPANY_MISMATCH = 'COMPANY_MISMATCH';
@@ -35,17 +37,50 @@ export class NfeResubmitService {
     private readonly ledger: DocumentCreditLedger,
   ) {}
 
-  async resubmit(
+  /** The NF-e (model 55). */
+  resubmit(
     id: string,
     tenantId: string,
     environment: ExecutionEnvironment,
     input: NfeInput,
   ): Promise<NfeSubmitted> {
-    const current = await this.find(id, tenantId, environment);
-    const requestHash = nfeRequestHash(input);
+    return this.resubmitWith(id, tenantId, environment, {
+      companyId: input.companyId,
+      requestHash: nfeRequestHash(input),
+      prepare: () => this.preparation.prepare(tenantId, environment, input),
+    });
+  }
+
+  /** The shared path; the NFC-e comes in here with its own `prepare` and `model: 65`. */
+  async resubmitWith(
+    id: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+    submission: {
+      companyId: string;
+      requestHash: string;
+      prepare: () => Promise<PreparedNfe>;
+      model?: 55 | 65;
+      /**
+       * An off-line NFC-e (`tpEmis` 9) comes back to `contingency_pending` with the same key: this
+       * builds and signs the corrected XML on the document, inside the transition.
+       */
+      rebuildOffline?: (
+        locked: NfeDocument,
+        prepared: PreparedNfe,
+      ) => void | Promise<void>;
+    },
+  ): Promise<NfeSubmitted> {
+    const { requestHash } = submission;
+    const current = await this.find(
+      id,
+      tenantId,
+      environment,
+      submission.model,
+    );
     if (current.status !== 'rejected')
       return this.replayOrConflict(current, requestHash, 'resubmitted');
-    if (input.companyId !== current.companyId)
+    if (submission.companyId !== current.companyId)
       throw nfeValidationFailed([
         {
           field: 'companyId',
@@ -54,27 +89,37 @@ export class NfeResubmitService {
         },
       ]);
 
-    const { draft } = await this.preparation.prepare(
-      tenantId,
-      environment,
-      input,
-    );
-    const content = contentFromDraft(draft);
-    const result = await this.transitions.apply(keyOf(current), 'queued', {
-      from: ['rejected'],
-      change: async (locked) => {
-        await this.ledger.reserve({
-          type: 'nfe',
-          id: locked.id,
-          tenantId,
-          environment,
-        });
-        locked.replaceContent(content, requestHash);
-        locked.recordError(null);
-        await this.documents.replaceItems(locked);
+    const prepared = await submission.prepare();
+    const content = contentFromDraft(prepared.draft);
+    const offline = current.toSnapshot().tpEmis === 9;
+    if (offline) {
+      const fields = lockedFieldsChanged(current.toSnapshot(), content);
+      if (fields.length > 0) throw nfceContingencyFieldLocked(fields);
+    }
+    const result = await this.transitions.apply(
+      keyOf(current),
+      offline ? 'contingency_pending' : 'queued',
+      {
+        from: ['rejected'],
+        change: async (locked) => {
+          await this.ledger.reserve({
+            type: documentTypeOf(locked.toSnapshot().model),
+            id: locked.id,
+            tenantId,
+            environment,
+          });
+          locked.replaceContent(content, requestHash);
+          locked.recordError(null);
+          await this.documents.replaceItems(locked);
+          if (offline) await submission.rebuildOffline?.(locked, prepared);
+        },
+        messages: [
+          offline
+            ? transmitMessage(current, current.attempt + 1)
+            : emitMessage(current),
+        ],
       },
-      messages: [emitMessage(current)],
-    });
+    );
     if (!result.applied)
       // Someone else resubmitted or discarded it between the read and the lock.
       return this.replayOrConflict(result.document, requestHash, 'resubmitted');
@@ -85,8 +130,9 @@ export class NfeResubmitService {
     id: string,
     tenantId: string,
     environment: ExecutionEnvironment,
+    model?: 55 | 65,
   ): Promise<NfeDocument> {
-    const current = await this.find(id, tenantId, environment);
+    const current = await this.find(id, tenantId, environment, model);
     if (current.status === 'discarded') return current;
     if (current.status !== 'rejected')
       throw nfeInvalidState(current.status, 'discarded');
@@ -102,8 +148,14 @@ export class NfeResubmitService {
     id: string,
     tenantId: string,
     environment: ExecutionEnvironment,
+    model?: 55 | 65,
   ): Promise<NfeDocument> {
-    const doc = await this.documents.findById(id, tenantId, environment);
+    const doc = await this.documents.findById(
+      id,
+      tenantId,
+      environment,
+      model ? { model } : {},
+    );
     if (!doc) throw nfeNotFound();
     return doc;
   }

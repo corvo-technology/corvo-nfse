@@ -53,4 +53,10 @@ describePostgres('NfeEnabledAuthorities with real PostgreSQL', () => {
     expect(await authorities.isEnabled('SP', 65, 2)).toBe(false);
     expect(await authorities.isEnabled('MG', 55, 2)).toBe(false);
   });
+
+  it('lists every released UF, model and environment', async () => {
+    expect(await authorities.listEnabled()).toEqual([
+      { uf: 'SP', model: 55, tpAmb: 2 },
+    ]);
+  });
 });

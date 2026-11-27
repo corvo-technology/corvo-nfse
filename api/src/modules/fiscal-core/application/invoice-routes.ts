@@ -4,6 +4,11 @@ import type { AuthContext } from '@/modules/auth/auth-context';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 import type { InvoiceType } from '../domain/invoice-type';
 
+/** What a PDF route accepts besides the id: the paper of the NFC-e (`80mm` is the default). */
+export interface InvoicePdfOptions {
+  layout?: 'a4' | '80mm';
+}
+
 /** Who asks, in which workspace and environment. */
 export interface InvoiceCall {
   tenantId: string;
@@ -58,7 +63,13 @@ export interface InvoiceRoutes {
   correct(id: string, body: unknown, call: InvoiceCall): Promise<unknown>;
   events(id: string, call: InvoiceCall): Promise<unknown>;
   xml(id: string, call: InvoiceCall, res: Response): Promise<string>;
-  pdf(id: string, call: InvoiceCall, res: Response): Promise<StreamableFile>;
+  /** `options.layout` is read by the NFC-e only (`a4`; the default is the 80 mm cupom). */
+  pdf(
+    id: string,
+    call: InvoiceCall,
+    res: Response,
+    options?: InvoicePdfOptions,
+  ): Promise<StreamableFile>;
   downloadUrl(
     id: string,
     format: 'xml' | 'pdf',

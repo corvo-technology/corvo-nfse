@@ -1,13 +1,13 @@
 import type { BuildContext, XmlNode } from './context';
 
-/** `ide`: identification. `cDV` is the last digit of the key; `tpEmis` and `procEmi` are fixed. */
+/** `ide`: identification. `cDV` is the last digit of the key; `procEmi` is fixed and `tpEmis` follows the contingency. */
 export function ideGroup(ctx: BuildContext): XmlNode {
   const { draft } = ctx;
   return {
     cUF: ctx.cUF,
     cNF: ctx.cNF,
     natOp: draft.natOp,
-    mod: 55,
+    mod: draft.model,
     serie: ctx.series,
     nNF: ctx.number,
     dhEmi: ctx.dhEmi,
@@ -15,7 +15,7 @@ export function ideGroup(ctx: BuildContext): XmlNode {
     idDest: draft.idDest,
     cMunFG: draft.issuer.address.cityCode,
     tpImp: draft.tpImp,
-    tpEmis: 1,
+    tpEmis: ctx.tpEmis,
     cDV: ctx.accessKey.slice(-1),
     tpAmb: ctx.tpAmb,
     finNFe: draft.finNfe,
@@ -23,5 +23,8 @@ export function ideGroup(ctx: BuildContext): XmlNode {
     indPres: draft.indPres,
     procEmi: 0,
     verProc: ctx.verProc,
+    ...(ctx.contingency
+      ? { dhCont: ctx.contingency.dhCont, xJust: ctx.contingency.xJust }
+      : {}),
   };
 }

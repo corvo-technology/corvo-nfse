@@ -153,6 +153,9 @@ const DETAILED_NFE_FIELDS = [
   'attempt',
   'lastError',
   'nextCheckAt',
+  // NFC-e only: the QR Code text (v3, no secret) and the consult page
+  'qrCode',
+  'urlChave',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -169,6 +172,7 @@ export function toDetailedNfe(nfe: unknown): Record<string, unknown> {
 /** Compact line of an NF-e in a list: the recipient is a name and the last 4 digits of the tax id. */
 export function toPublicNfe(nfe: unknown) {
   const n = nfe as {
+    type?: string;
     id: string;
     companyId: string;
     status: string;
@@ -182,7 +186,7 @@ export function toPublicNfe(nfe: unknown) {
     lastError?: { code?: string; message?: string } | null;
   };
   return {
-    type: 'nfe' as const,
+    type: n.type === 'nfce' ? ('nfce' as const) : ('nfe' as const),
     id: n.id,
     companyId: n.companyId,
     status: n.status,

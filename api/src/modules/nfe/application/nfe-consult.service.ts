@@ -19,6 +19,7 @@ import type { NfeDocument } from '../domain/nfe-document';
 import { INfeDocumentRepository } from '../domain/nfe-document.repository';
 import type { NfeStatus } from '../domain/nfe-status';
 import { nfeInvalidState, nfeNotFound } from './nfe-errors';
+import { endpointTpEmis } from '@/infra/external/nfe/sefaz/endpoints';
 import { nfeIssuerOf } from './nfe-issuer';
 import { reconcileMessage } from './nfe-messages';
 import {
@@ -28,7 +29,7 @@ import {
   type IssueResolution,
 } from './nfe-outcome.service';
 import { NfeSefazAccess } from './nfe-sefaz-access';
-import { NfeTransitionService } from './nfe-transition.service';
+import { NfeTransitionService, gatewayTypeOf } from './nfe-transition.service';
 
 /** Automatic looks at the SEFAZ (2, 4, 8, 16 and 30 minutes) before a person has to step in. */
 export const MAX_RECONCILE_ATTEMPTS = 5;
@@ -92,7 +93,14 @@ export class NfeConsultService {
       tenantId,
     );
     const uf = nfeIssuerOf(company, settings).uf;
-    const authority = this.access.breakerAuthority(uf, environment);
+    const model = snapshot.model;
+    const tpEmis = endpointTpEmis(snapshot.accessKey ?? '');
+    const authority = this.access.breakerAuthority(
+      uf,
+      environment,
+      model,
+      tpEmis,
+    );
 
     if (mode === 'automatic') {
       try {
@@ -110,8 +118,14 @@ export class NfeConsultService {
       tenantId,
       environment,
     );
-    const ctx = this.access.context(uf, environment, certificate);
-    const gateway = this.gateways.get<SignedNfe>('nfe');
+    const ctx = this.access.context(
+      uf,
+      environment,
+      certificate,
+      model,
+      tpEmis,
+    );
+    const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(model));
     const consult = () =>
       gateway.consult.consultByKey(
         snapshot.accessKey as string,
@@ -168,7 +182,7 @@ export class NfeConsultService {
     consult: () => Promise<GatewayOutcome<NfeConsultResult>>,
   ): Promise<NfeDocument> {
     const snapshot = doc.toSnapshot();
-    const gateway = this.gateways.get<SignedNfe>('nfe');
+    const gateway = this.gateways.get<SignedNfe>(gatewayTypeOf(snapshot.model));
     const outcome = await gateway.issuer.issue(
       {
         accessKey: snapshot.accessKey as string,

@@ -43,6 +43,7 @@ export function contentFromDraft(draft: NfeDraft): NfeContent {
       payments: draft.payments.map((p) => ({
         tPag: p.tPag,
         amount: centsToString(p.cents),
+        ...(p.card ? { card: p.card } : {}),
       })),
       change: centsToString(draft.changeCents),
     },
@@ -90,6 +91,7 @@ export function draftFromDocument(
     items: items.map((item) => item.amounts),
   };
   return {
+    model: doc.model,
     environment: doc.environment,
     issuer,
     natOp: doc.natOp,
@@ -104,6 +106,7 @@ export function draftFromDocument(
     payments: doc.payment.payments.map((p) => ({
       tPag: p.tPag,
       cents: toCents(p.amount),
+      ...(p.card ? { card: p.card } : {}),
     })),
     changeCents: toCents(doc.payment.change),
     additionalInfo: doc.additionalInfo,

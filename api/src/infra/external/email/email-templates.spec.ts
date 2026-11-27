@@ -1,6 +1,7 @@
 import {
   creditsLowEmail,
   emailLayout,
+  nfceAuthorizedEmail,
   nfeAuthorizedEmail,
   nfseDocumentsReadyEmail,
   otpEmail,
@@ -124,6 +125,33 @@ describe('email templates', () => {
     expect(test.subject).toBe(
       '[TESTE] Sua nota fiscal eletrônica nº 10 - Acme',
     );
+    expect(test.text).toContain('não tem valor fiscal');
+  });
+
+  it('writes the NFC-e e-mail with the cupom and the XML, with or without the name', () => {
+    const nfce = {
+      companyName: 'Acme',
+      customerName: '',
+      amount: 'R$ 20,00',
+      number: '31',
+      series: '1',
+      issueDate: '26/11/2026',
+      accessKey: '35261111222333000181650010000000311123456780',
+      isTest: false,
+    };
+    const live = nfceAuthorizedEmail(nfce);
+    expect(live.subject).toBe('Sua NFC-e nº 31 - Acme');
+    expect(live.text).toContain('Olá! A empresa Acme');
+    expect(live.text).toContain('DANFCE');
+    expect(live.text).toContain('Chave de acesso: 3526');
+    expect(live.text).not.toContain('homologação');
+    const test = nfceAuthorizedEmail({
+      ...nfce,
+      customerName: 'Ana',
+      isTest: true,
+    });
+    expect(test.subject).toBe('[TESTE] Sua NFC-e nº 31 - Acme');
+    expect(test.text).toContain('Olá, Ana!');
     expect(test.text).toContain('não tem valor fiscal');
   });
 

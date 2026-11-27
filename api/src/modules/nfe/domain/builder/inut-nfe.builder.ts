@@ -8,7 +8,7 @@ export interface InutilizationInput {
   /** Two digits. */
   ano: string;
   cnpj: string;
-  model: 55;
+  model: 55 | 65;
   series: number;
   start: number;
   end: number;
