@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import QRCode from "qrcode";
 import { Check, Copy, CreditCard, QrCode } from "lucide-react";
-import { ApiError, billing as billingApi, type CheckoutPlan, type PaymentMethod, type PurchaseResult } from "@/lib/api";
+import { ApiError, billing as billingApi, companies as companiesApi, type CheckoutPlan, type PaymentMethod, type PurchaseResult } from "@/lib/api";
 import { AVULSO_UNIT_CENTS, PLANS, chargeTotalCents, type BillingCycle } from "@/lib/plans-catalog";
 import { formatBRL } from "@/components/pricing/plan-picker";
 import { maskPhone, maskTaxId } from "@/lib/masks";
@@ -184,6 +184,17 @@ function CheckoutDialogInner({
   const [method, setMethod] = useState<PaymentMethod>("pix");
   const [payer, setPayer] = useState({ name: "", taxID: "", email: "", phone: "" });
   const setField = (key: keyof typeof payer) => (e: React.ChangeEvent<HTMLInputElement>) => setPayer((current) => ({ ...current, [key]: e.target.value }));
+  // Whoever buys credits receives the invoice: starts as the first company, and can be changed.
+  const buyingNotes = target?.kind === "avulso";
+  useEffect(() => {
+    if (!buyingNotes) return;
+    let cancelled = false;
+    companiesApi.list({ limit: 1 }).then((page) => {
+      const first = page.items[0];
+      if (!cancelled && first) setPayer((current) => (current.taxID || current.name ? current : { ...current, name: first.legalName, taxID: maskTaxId(first.taxId) }));
+    }).catch(() => { /* the person can type it */ });
+    return () => { cancelled = true; };
+  }, [buyingNotes]);
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixResult | null>(
     resume ? { method: "pix", brCode: resume.brCode, qrCodeImage: null, paymentLinkUrl: resume.paymentLinkUrl, expiresAt: null, paymentId: resume.paymentId } : null
@@ -201,13 +212,16 @@ function CheckoutDialogInner({
   const plan = target.kind === "plan" ? PLANS.find((p) => p.slug === target.slug)! : null;
   const total = plan ? chargeTotalCents(plan, (target as { cycle: BillingCycle }).cycle) : (target as { units: number }).units * AVULSO_UNIT_CENTS;
   const needsPayer = method === "pix" && target.kind === "plan" && target.cycle === "monthly";
+  const needsBuyer = method === "pix" && target.kind === "avulso";
   const digits = (value: string) => value.replace(/\D/g, "");
+  const buyerOk = payer.name.trim().length > 1 && (digits(payer.taxID).length === 11 || digits(payer.taxID).length === 14);
   const payerOk =
-    !needsPayer ||
-    (payer.name.trim().length > 1 &&
-      digits(payer.taxID).length >= 11 &&
-      /.+@.+\..+/.test(payer.email.trim()) &&
-      digits(payer.phone).length >= 10);
+    (!needsBuyer || buyerOk) &&
+    (!needsPayer ||
+      (payer.name.trim().length > 1 &&
+        digits(payer.taxID).length >= 11 &&
+        /.+@.+\..+/.test(payer.email.trim()) &&
+        digits(payer.phone).length >= 10));
   const expired = watch === "expired" || (remaining !== null && remaining <= 0);
   const ended = expired || watch === "failed" || watch === "session";
 
@@ -221,7 +235,7 @@ function CheckoutDialogInner({
     setBusy(true);
     setError(null);
     try {
-      const base = target.kind === "avulso" ? ({ kind: "avulso", units: target.units, method } as const)
+      const base = target.kind === "avulso" ? ({ kind: "avulso", units: target.units, method, customer: needsBuyer ? { name: payer.name.trim(), taxID: digits(payer.taxID) } : undefined } as const)
         : ({ kind: "plan", planSlug: target.slug, cycle: target.cycle, method, customer: needsPayer ? buildPayer(payer) : undefined } as const);
       const result = await billingApi.purchase(base, key);
       if (result.method === "card") redirect(result.url);
@@ -265,6 +279,13 @@ function CheckoutDialogInner({
               <MethodCard value="pix" selected={method === "pix"} onSelect={() => setMethod("pix")} title={t("checkout.pix")} description={t("checkout.pixDesc")} icon={<QrCode size={18} aria-hidden />} />
               <MethodCard value="card" selected={method === "card"} onSelect={() => setMethod("card")} title={t("checkout.card")} description={t("checkout.cardDesc")} icon={<CreditCard size={18} aria-hidden />} />
             </div>
+            {needsBuyer && (
+              <div className="grid grid-cols-6 gap-3">
+                <Field className="col-span-6" label={t("checkout.payerName")} value={payer.name} onChange={setField("name")} autoComplete="name" placeholder="Ana Souza" />
+                <Field className="col-span-6" label={t("checkout.payerTaxId")} value={payer.taxID} onChange={(e) => setPayer((c) => ({ ...c, taxID: maskTaxId(e.target.value) }))} inputMode="numeric" placeholder="000.000.000-00" maxLength={18} />
+                <p className="col-span-6 text-[12px] text-text-3">{t("checkout.buyerHint")}</p>
+              </div>
+            )}
             {needsPayer && (
               <div className="grid grid-cols-6 gap-3">
                 <Field className="col-span-6" label={t("checkout.payerName")} value={payer.name} onChange={setField("name")} autoComplete="name" placeholder="Ana Souza" />

@@ -571,7 +571,7 @@ export class McpService {
     this.server.registerTool(
       CREDITS_PURCHASE_TOOL,
       this.wrapWithScopeCheck(
-        createCreditsPurchaseHandler(this.checkoutRouter),
+        createCreditsPurchaseHandler(this.checkoutRouter, this.companyService),
         'billing:purchase',
         permission,
       ),
