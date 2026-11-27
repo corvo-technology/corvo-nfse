@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
@@ -161,8 +162,7 @@ export class NfseDocPrepProcessor extends WorkerHost {
           idempotencyKey: `email-auto-${invoiceId}`,
           attempts: 3,
           backoffMs: 5_000,
-          removeOnComplete: false,
-          removeOnFail: 1000,
+          ...QUEUE_RETENTION['nfse-email'],
         });
 
         // A fast email worker may already have marked delivery as sent.

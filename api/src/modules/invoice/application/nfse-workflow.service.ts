@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import type { Company } from '@/modules/company/domain/company';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
@@ -735,8 +736,7 @@ export class NfseWorkflowService {
         {
           attempts: 5,
           backoffMs: 10000,
-          removeOnComplete: false,
-          removeOnFail: 1000,
+          ...QUEUE_RETENTION['nfse-doc-prep'],
         },
       );
     } catch (error: unknown) {
@@ -758,8 +758,7 @@ export class NfseWorkflowService {
           idempotencyKey: `fiscal-reconcile:${invoice.id}`,
           attempts: 5,
           backoffMs: 10000,
-          removeOnComplete: false,
-          removeOnFail: 1000,
+          ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
         },
       );
     } catch (error: unknown) {

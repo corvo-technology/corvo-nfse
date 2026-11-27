@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import type { OutboxHandler } from '@/modules/invoice/domain/outbox-handler';
@@ -33,8 +34,7 @@ export class InvoiceEmitHandler implements OutboxHandler, OnModuleInit {
         idempotencyKey: `emission-${invoiceId}`,
         attempts: 5,
         backoffMs: 5000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-emission'],
       },
     );
   }

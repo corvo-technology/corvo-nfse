@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { InvoiceCalculationService } from './application/fiscal/invoice-calculation.service';
 import { CreditsModule } from '@/modules/credits/credits.module';
 import { ConfigService } from '@nestjs/config';
@@ -137,8 +138,7 @@ const ACCOUNTANT_PACKAGE = {
         defaultJobOptions: {
           attempts: 5,
           backoff: { type: 'fixed', delay: 10000 },
-          removeOnComplete: false,
-          removeOnFail: 1000,
+          ...QUEUE_RETENTION['nfse-fiscal-reconcile'],
         },
       },
     ),

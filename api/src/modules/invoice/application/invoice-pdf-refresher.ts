@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { Injectable, Logger } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import type { Invoice } from '../domain/invoice';
@@ -29,8 +30,7 @@ export class InvoicePdfRefresher {
         idempotencyKey: `pdf-refresh:${invoice.id}`,
         attempts: 5,
         backoffMs: 10_000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-doc-prep'],
       });
     } catch (error: unknown) {
       this.logger.error(

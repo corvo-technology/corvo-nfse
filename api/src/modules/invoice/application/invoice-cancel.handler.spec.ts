@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { VALID_CNPJ } from '@/shared/fiscal/fixtures';
 import { Invoice } from '../domain/invoice';
 import { cancellationReason } from '../domain/cancellation-reason';
@@ -81,8 +82,7 @@ describe('InvoiceCancelHandler', () => {
         idempotencyKey: 'cancellation-e1',
         attempts: 8,
         backoffMs: 60000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-cancellation'],
       },
     );
   });
