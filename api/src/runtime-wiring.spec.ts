@@ -9,6 +9,7 @@ import { AbacatePayConnectorModule } from './modules/integrations/connectors/aba
 import { PushinPayConnectorModule } from './modules/integrations/connectors/pushinpay/pushinpay.module';
 import { StripeConnectorModule } from './modules/integrations/connectors/stripe/stripe.module';
 import { KiwifyConnectorModule } from './modules/integrations/connectors/kiwify/kiwify.module';
+import { MonetizzeConnectorModule } from './modules/integrations/connectors/monetizze/monetizze.module';
 import { HotmartConnectorModule } from './modules/integrations/connectors/hotmart/hotmart.module';
 
 function importedModules(moduleClass: object): unknown[] {
@@ -49,6 +50,10 @@ describe('runtime wiring', () => {
     expect(importedModules(WorkerAppModule)).toContain(StripeConnectorModule);
     expect(importedModules(AppModule)).toContain(KiwifyConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(KiwifyConnectorModule);
+    expect(importedModules(AppModule)).toContain(MonetizzeConnectorModule);
+    expect(importedModules(WorkerAppModule)).toContain(
+      MonetizzeConnectorModule,
+    );
     expect(importedModules(AppModule)).toContain(HotmartConnectorModule);
     expect(importedModules(WorkerAppModule)).toContain(HotmartConnectorModule);
   });

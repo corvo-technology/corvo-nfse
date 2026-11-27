@@ -27,6 +27,7 @@ const pushinpay = { id: "pushinpay", name: "PushinPay", version: "1", credential
 const stripe = { id: "stripe", name: "Stripe", version: "1", credentialFields: [{ key: "apiKey", label: "Stripe restricted key", secret: true, optional: true }, { key: "webhookSigningSecret", label: "Webhook signing secret", secret: true, optional: true, afterUrl: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }], webhookInstructions: { pt: "pt", en: "Add a webhook endpoint on Stripe." }, webhookEvents: ["charge.succeeded", "charge.refunded"], supportedFlows: ["charge"] };
 const kiwify = { id: "kiwify", name: "Kiwify", version: "1", credentialFields: [{ key: "token", label: "Webhook token", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Create a webhook on Kiwify without affiliations or co-productions." }, supportedFlows: ["order"] };
 const hotmart = { id: "hotmart", name: "Hotmart", version: "1", credentialFields: [{ key: "hottok", label: "Hotmart hottok", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Add the webhook on Hotmart, paste your hottok and send a test." }, supportedFlows: ["purchase"] };
+const monetizze = { id: "monetizze", name: "Monetizze", version: "1", credentialFields: [{ key: "chaveUnica", label: "Chave única", secret: true }, { key: "webhookSecret", label: "Webhook secret", secret: true, generate: true, inWebhookUrl: true }, { key: "invoiceValue", label: "Valor da nota", secret: false, optional: true, options: ["total", "mine"] }], webhookInstructions: { pt: "pt", en: "Register the postback in Monetizze." }, supportedFlows: ["sale"] };
 const company = { id: "co1", legalName: "Acme Ltda", tradeName: "Acme" };
 const connection = (over: Record<string, unknown> = {}) => ({ id: "c1", provider: "woovi", environment: "test", companyId: "co1", state: "active", externalAccountId: "acc", activeFrom: null, webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB", createdAt: "2026-10-29T12:00:00Z", ...over });
 const sale = (over: Record<string, unknown> = {}) => ({ id: "s1", operationKey: "charge:1", commercialState: "paid", fiscalStatus: "submitted", blockReason: null, amountCents: 4990, currency: "BRL", customer: { name: "Maria", email: null, taxId: "52998224725", taxIdMasked: false }, paidAt: "2026-10-29T15:00:00Z", invoiceId: "inv1", createdAt: "2026-10-29T15:00:00Z", updatedAt: "2026-10-29T15:00:00Z", ...over });
@@ -388,6 +389,31 @@ describe("Connect page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Connect" }));
     await screen.findByText("Connected!");
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ credentials: { token: "tok_fake", invoiceValue: "total" } }));
+  });
+
+  it("Monetizze asks for the chave única, offers the invoice amount (total by default) and shows the guide", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe, monetizze]);
+    mocks.create.mockResolvedValue(connection({ provider: "monetizze", state: "draft", webhookUrl: "https://api.corvo.tech/v1/integrations/inbound/PUB?webhookSecret=S4", secrets: { webhookSecret: "S4" } }));
+    mocks.validate.mockResolvedValue(connection());
+    mocks.putRules.mockResolvedValue([]);
+    mocks.activate.mockResolvedValue(connection());
+    mocks.search = "provider=monetizze";
+    wrap(<NewIntegrationPage />);
+    await screen.findByLabelText(/Chave única/);
+    expect(screen.queryByLabelText(/^Webhook secret/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Company that issues the invoice/), { target: { value: "co1" } });
+    fireEvent.change(screen.getByLabelText(/Chave única/), { target: { value: "chave_fake" } });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+    await screen.findByText("Connected!");
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ provider: "monetizze", credentials: { chaveUnica: "chave_fake", invoiceValue: "total" } }));
+    expect(screen.getByText(/webhookSecret=S4/)).toBeTruthy();
+    expect(screen.getByText("Register the postback in Monetizze.")).toBeTruthy();
+  });
+
+  it("lists Monetizze among the platforms with its own description", async () => {
+    mocks.providers.mockResolvedValue([woovi, abacate, stripe, monetizze]);
+    wrap(<NewIntegrationPage />);
+    expect(await screen.findByText("Finalized sales on Monetizze.")).toBeTruthy();
   });
 
   it("lists Kiwify among the platforms with its own description", async () => {
