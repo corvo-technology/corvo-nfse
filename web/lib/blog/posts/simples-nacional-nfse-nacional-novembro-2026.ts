@@ -84,7 +84,7 @@ export const post: BlogPost = {
     },
     {
       q: "A Corvo atende empresas do Simples Nacional?",
-      a: "Sim. A Corvo emite NFS-e para MEI e para empresas do Simples Nacional. Ela não atende outros regimes e não emite nota de produto.",
+      a: "Sim. A Corvo emite NFS-e para MEI e para empresas do Simples Nacional. Ela não atende outros regimes. A nota de produto (NF-e) e a de balcão (NFC-e) estão disponíveis só em teste por enquanto.",
     },
     {
       q: "Quem informa a alíquota do Simples Nacional?",
