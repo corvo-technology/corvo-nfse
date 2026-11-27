@@ -52,8 +52,8 @@ export function isNfePath(pathname: string): boolean {
 }
 
 /** True when the member may open the page. */
-export function canOpenPath(pathname: string, can: (permission: string) => boolean, features?: { nfe?: boolean }): boolean {
-  if (isNfePath(pathname) && features?.nfe !== true) return false;
+export function canOpenPath(pathname: string, can: (permission: string) => boolean, features?: { nfe?: boolean; nfce?: boolean }): boolean {
+  if (isNfePath(pathname) && features?.nfe !== true && features?.nfce !== true) return false;
   const permission = permissionForPath(pathname);
   return permission === null || can(permission);
 }

@@ -133,6 +133,28 @@ describePostgres('NfeDocument repository with a restricted role', () => {
     });
   });
 
+  it('stores an NFC-e (model 65) and keeps it apart by model', async () => {
+    const nfe = newDoc();
+    const nfce = newDoc({ model: 65 });
+    await repo.insert(nfe);
+    await repo.insert(nfce);
+    expect(
+      (await repo.findById(nfce.id, tenantA, 'test'))?.toSnapshot().model,
+    ).toBe(65);
+    expect(
+      await repo.findById(nfce.id, tenantA, 'test', { model: 55 }),
+    ).toBeNull();
+    expect(
+      (await repo.findById(nfce.id, tenantA, 'test', { model: 65 }))?.id,
+    ).toBe(nfce.id);
+    const only55 = await repo.list(tenantA, 'test', {
+      limit: 100,
+      model: 55,
+    });
+    expect(only55.data.map((d) => d.id)).toContain(nfe.id);
+    expect(only55.data.map((d) => d.id)).not.toContain(nfce.id);
+  });
+
   it('saves the numbering, the key and the new status', async () => {
     const doc = newDoc();
     await repo.insert(doc);
@@ -156,6 +178,28 @@ describePostgres('NfeDocument repository with a restricted role', () => {
     expect(
       await repo.findByAccessKey('3'.repeat(44), tenantA, 'live'),
     ).toBeNull();
+  });
+
+  it('stores the QR Code and the urlChave of a NFC-e attempt, and clears them on a new attempt without them', async () => {
+    const doc = newDoc({ model: 65 });
+    await repo.insert(doc);
+    doc.transitionTo('processing');
+    doc.startAttempt('12345678', '6'.repeat(44), '<NFe/>', new Date(), {
+      qrCode: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=x|3|2',
+      urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+    });
+    await repo.save(doc);
+    expect(
+      (await repo.findById(doc.id, tenantA, 'test'))?.toSnapshot(),
+    ).toMatchObject({
+      qrCode: 'https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=x|3|2',
+      urlChave: 'https://www.homologacao.nfce.fazenda.sp.gov.br/consulta',
+    });
+    const nfe = newDoc();
+    await repo.insert(nfe);
+    expect(
+      (await repo.findById(nfe.id, tenantA, 'test'))?.toSnapshot(),
+    ).toMatchObject({ qrCode: null, urlChave: null });
   });
 
   it('finds by idempotency key within the tenant and environment', async () => {

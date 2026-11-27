@@ -1,6 +1,7 @@
 import type { NewOutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { NfeDocument } from '../domain/nfe-document';
 import {
+  NFCE_CONTINGENCY_ALERT,
   NFE_CANCEL,
   NFE_CORRECT,
   NFE_EMIT,
@@ -15,6 +16,20 @@ import {
 } from '../domain/nfe-message-types';
 import type { NfeInutilization } from '../domain/nfe-event';
 import { CANCEL_TP_EVENTO } from '../domain/nfe-event';
+
+/**
+ * What helps the customer after the SEFAZ refused a cancellation. A NFC-e can only be cancelled in
+ * the window the state allows (30 minutes in SP); cStat 501 is "prazo de cancelamento superior ao
+ * previsto" [cStat 501 a verificar na homologação]. Nothing for the NF-e: its text is the SEFAZ's.
+ */
+export function cancellationHint(
+  model: 55 | 65,
+  cStat: string,
+): string | undefined {
+  if (model === 65 && cStat === '501')
+    return 'A NFC-e só pode ser cancelada em até 30 minutos depois da autorização. Depois disso, fale com o contador.';
+  return undefined;
+}
 
 function base(
   doc: NfeDocument,
@@ -41,6 +56,33 @@ function base(
 /** First send (`emit:<id>:1`) or the one after a resubmission (`emit:<id>:<attempt + 1>`). */
 export function emitMessage(doc: NfeDocument): NewOutboxMessage {
   return base(doc, NFE_EMIT, `emit:${doc.id}:${doc.attempt + 1}`);
+}
+
+/**
+ * The first transmission of an off-line NFC-e (`tpEmis` 9): it was numbered, keyed and signed when it
+ * was issued, so this only sends that very XML (the emit handler reuses it, like a retry).
+ */
+export function transmitMessage(
+  doc: NfeDocument,
+  attempt: number = doc.attempt,
+): NewOutboxMessage {
+  return base(doc, NFE_EMIT, `emit:${doc.id}:${attempt}:offline`);
+}
+
+/**
+ * The 20 h warning of an off-line NFC-e, queued with the note and due 20 hours after `dhCont`. The
+ * handler looks at the state when it runs: a note already transmitted gets no warning.
+ */
+export function contingencyAlertMessage(
+  doc: NfeDocument,
+  availableAt: Date,
+): NewOutboxMessage {
+  return base(
+    doc,
+    NFCE_CONTINGENCY_ALERT,
+    `contingency-alert:${doc.id}`,
+    availableAt,
+  );
 }
 
 /** The same attempt again, once the authority answers (never a new key: nothing was sent). */

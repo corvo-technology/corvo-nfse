@@ -11,7 +11,7 @@ import { UF_TABLE } from './uf';
 export interface EndpointRow {
   authority: AuthorityId;
   tpAmb: 1 | 2;
-  model: 55;
+  model: 55 | 65;
   tpEmis: TpEmis;
   service: SefazService;
   url: string;
@@ -34,7 +34,8 @@ export class AuthorityNotConfiguredError extends Error {
 
 export const WSDL_NAMESPACE = 'http://www.portalfiscal.inf.br/nfe/wsdl';
 
-function row(
+function rowOfModel(
+  model: 55 | 65,
   authority: AuthorityId,
   tpAmb: 1 | 2,
   service: SefazService,
@@ -46,13 +47,42 @@ function row(
   return {
     authority,
     tpAmb,
-    model: 55,
+    model,
     tpEmis: 1,
     service,
     url,
     version,
     soapAction: `${WSDL_NAMESPACE}/${operation}/${method}`,
   };
+}
+
+function row(
+  ...args: [
+    authority: AuthorityId,
+    tpAmb: 1 | 2,
+    service: SefazService,
+    url: string,
+    version: '4.00' | '1.00',
+    operation: string,
+    method: string,
+  ]
+): EndpointRow {
+  return rowOfModel(55, ...args);
+}
+
+/** Same as `row`, for the NFC-e (modelo 65). */
+function row65(
+  ...args: [
+    authority: AuthorityId,
+    tpAmb: 1 | 2,
+    service: SefazService,
+    url: string,
+    version: '4.00' | '1.00',
+    operation: string,
+    method: string,
+  ]
+): EndpointRow {
+  return rowOfModel(65, ...args);
 }
 
 /**
@@ -66,8 +96,8 @@ function row(
  *   (https://github.com/nfephp-org/sped-nfe, LGPL-3.0, used here only as a data reference).
  * Not yet proven against the live services: run `yarn ts-node -r tsconfig-paths/register
  * scripts/nfe-check-endpoints.ts` and the homologação roteiro (docs/fiscal/runbooks/nfe-homologacao.md)
- * before enabling a UF. SVAN is unified with SVC-AN (same URLs); SVC-RS uses the SVRS URLs
- * (see SVC_AUTHORITY_BY_UF in uf.ts).
+ * before enabling a UF. The contingency authorities (SVCAN, SVCRS) have their own rows in
+ * `ENDPOINTS_SVC`.
  */
 /* prettier-ignore */
 export const ENDPOINTS: EndpointRow[] = [
@@ -241,19 +271,103 @@ export const ENDPOINTS: EndpointRow[] = [
   row('SVRS', 1, 'RecepcaoEvento', 'https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
 ];
 
+/**
+ * NFC-e 4.00, modelo 65, emissão normal (tpEmis 1). Only SP, the first UF of the NFC-e (kept apart
+ * from `ENDPOINTS`, which holds the model 55 rows of every authority).
+ *
+ * Source (verified 2026-11-26): SEFAZ-SP "Web Services da NFC-e",
+ * https://portal.fazenda.sp.gov.br/servicos/nfce/Paginas/WebServices.aspx. The SOAP actions are the
+ * same as the NF-e ones (same WSDL namespace). A UF only emits after the homologação roteiro.
+ */
+/* prettier-ignore */
+export const ENDPOINTS_65: EndpointRow[] = [
+  // SP homologação
+  row65('SP', 2, 'NfeStatusServico', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx', '4.00', 'NFeStatusServico4', 'nfeStatusServicoNF'),
+  row65('SP', 2, 'NfeAutorizacao', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx', '4.00', 'NFeAutorizacao4', 'nfeAutorizacaoLote'),
+  row65('SP', 2, 'NfeRetAutorizacao', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx', '4.00', 'NFeRetAutorizacao4', 'nfeRetAutorizacaoLote'),
+  row65('SP', 2, 'NfeConsultaProtocolo', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeConsultaProtocolo4.asmx', '4.00', 'NFeConsultaProtocolo4', 'nfeConsultaNF'),
+  row65('SP', 2, 'NfeInutilizacao', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx', '4.00', 'NFeInutilizacao4', 'nfeInutilizacaoNF'),
+  row65('SP', 2, 'RecepcaoEvento', 'https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
+  // SP produção
+  row65('SP', 1, 'NfeStatusServico', 'https://nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx', '4.00', 'NFeStatusServico4', 'nfeStatusServicoNF'),
+  row65('SP', 1, 'NfeAutorizacao', 'https://nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx', '4.00', 'NFeAutorizacao4', 'nfeAutorizacaoLote'),
+  row65('SP', 1, 'NfeRetAutorizacao', 'https://nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx', '4.00', 'NFeRetAutorizacao4', 'nfeRetAutorizacaoLote'),
+  row65('SP', 1, 'NfeConsultaProtocolo', 'https://nfce.fazenda.sp.gov.br/ws/NFeConsultaProtocolo4.asmx', '4.00', 'NFeConsultaProtocolo4', 'nfeConsultaNF'),
+  row65('SP', 1, 'NfeInutilizacao', 'https://nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx', '4.00', 'NFeInutilizacao4', 'nfeInutilizacaoNF'),
+  row65('SP', 1, 'RecepcaoEvento', 'https://nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx', '1.00', 'NFeRecepcaoEvento4', 'nfeRecepcaoEvento'),
+];
+
+/**
+ * SVC-AN and SVC-RS, model 55 only (`tpEmis` 6 and 7), `NfeInutilizacao` left out (the SVC does not
+ * serve it). The paths are the ones of SVAN (SVC-AN) and SVRS (SVC-RS); only the SVC-AN hosts differ:
+ * `hom.svc.fazenda.gov.br` / `www.svc.fazenda.gov.br` **[não verificado: conferir no Portal NF-e
+ * "Relação de Serviços Web" e no MOC Anexo III antes de liberar a SVC em produção]**. SVC-RS uses the
+ * SVRS hosts `nfe-homologacao.svrs.rs.gov.br` / `nfe.svrs.rs.gov.br`. Derived from the SVAN and SVRS
+ * rows so a path is never written twice.
+ */
+const SVC_HOST_OF_SVAN: Record<string, string> = {
+  'hom.sefazvirtual.fazenda.gov.br': 'hom.svc.fazenda.gov.br',
+  'www.sefazvirtual.fazenda.gov.br': 'www.svc.fazenda.gov.br',
+};
+
+function svcRows(): EndpointRow[] {
+  const rows: EndpointRow[] = [];
+  for (const source of ENDPOINTS) {
+    if (source.service === 'NfeInutilizacao') continue;
+    if (source.authority !== 'SVAN' && source.authority !== 'SVRS') continue;
+    const host = new URL(source.url).hostname;
+    const url =
+      source.authority === 'SVAN'
+        ? source.url.replace(host, SVC_HOST_OF_SVAN[host] ?? host)
+        : source.url;
+    rows.push({
+      ...source,
+      authority: source.authority === 'SVAN' ? 'SVCAN' : 'SVCRS',
+      tpEmis: source.authority === 'SVAN' ? 6 : 7,
+      url,
+    });
+  }
+  return rows;
+}
+
+export const ENDPOINTS_SVC: EndpointRow[] = svcRows();
+
+/** The `tpEmis` that picks the endpoint of a note by its key: 6 and 7 go to the SVC, the rest to the origin. */
+export function endpointTpEmis(accessKey: string): TpEmis {
+  const digit = accessKey.charAt(34);
+  return digit === '6' ? 6 : digit === '7' ? 7 : 1;
+}
+
 export class TableAuthorityEndpointResolver implements AuthorityEndpointResolver {
-  constructor(private readonly rows: EndpointRow[] = ENDPOINTS) {}
+  constructor(
+    private readonly rows: EndpointRow[] = [
+      ...ENDPOINTS,
+      ...ENDPOINTS_65,
+      ...ENDPOINTS_SVC,
+    ],
+  ) {}
 
   resolve(q: AuthorityTarget & { service: SefazService }): AuthorityEndpoint {
     const info = UF_TABLE[q.uf];
+    let authority: AuthorityId | undefined;
+    let tpEmis: TpEmis = q.tpEmis;
+    if (q.tpEmis === 6 || q.tpEmis === 7) {
+      // The SVC serves the NF-e only, and only the one the UF belongs to (Ato COTEPE 39/2012).
+      const wanted = q.tpEmis === 6 ? 'SVCAN' : 'SVCRS';
+      if (q.model === 55 && info?.svc === wanted) authority = wanted;
+    } else {
+      // The off-line NFC-e (9) is transmitted to the normal authorizer.
+      tpEmis = 1;
+      authority = q.model === 65 ? info?.authorizer65 : info?.authorizer55;
+    }
     const found =
-      q.model === 55 && info
+      authority !== undefined
         ? this.rows.find(
             (r) =>
-              r.authority === info.authorizer55 &&
+              r.authority === authority &&
               r.tpAmb === q.tpAmb &&
               r.model === q.model &&
-              r.tpEmis === q.tpEmis &&
+              r.tpEmis === tpEmis &&
               r.service === q.service,
           )
         : undefined;

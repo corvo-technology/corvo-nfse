@@ -79,7 +79,7 @@ export class InvoiceTypeRouter {
     permission: TenantPermission,
   ): Promise<InvoiceRoutes> {
     const routes = this.routes.get(type);
-    if (!routes || !(await this.access.isEnabled(call.tenantId)))
+    if (!routes || !(await this.access.isEnabled(call.tenantId, type)))
       throw new NotFoundException({
         code: 'RESOURCE_NOT_FOUND',
         message: 'Resource not found',
@@ -96,7 +96,8 @@ export class InvoiceTypeRouter {
     nfse: () => Promise<T>,
     other: (routes: InvoiceRoutes) => Promise<T>,
   ): Promise<T> {
-    if (type === 'nfe') return other(await this.forType(type, call, gate.nfe));
+    if (type === 'nfe' || type === 'nfce')
+      return other(await this.forType(type, call, gate.nfe));
     this.assertNfse(call, gate);
     return nfse();
   }
@@ -112,10 +113,11 @@ export class InvoiceTypeRouter {
     permission: TenantPermission,
   ): Promise<InvoiceRoutes | null> {
     if (!this.allows(call, permission)) return null;
-    if (this.routes.size === 0 || !(await this.access.isEnabled(call.tenantId)))
-      return null;
-    for (const routes of this.routes.values())
+    if (this.routes.size === 0) return null;
+    for (const routes of this.routes.values()) {
+      if (!(await this.access.isEnabled(call.tenantId, routes.type))) continue;
       if (await routes.owns(id, call)) return routes;
+    }
     return null;
   }
 
@@ -141,12 +143,13 @@ export class InvoiceTypeRouter {
   ): Promise<CursorPage<InvoiceSummary>> {
     const types: InvoiceType[] = [];
     if (this.allows(call, gate.nfse)) types.push('nfse');
-    if (
-      this.allows(call, gate.nfe) &&
-      this.routes.has('nfe') &&
-      (await this.access.isEnabled(call.tenantId))
-    )
-      types.push('nfe');
+    if (this.allows(call, gate.nfe))
+      for (const type of ['nfe', 'nfce'] as const)
+        if (
+          this.routes.has(type) &&
+          (await this.access.isEnabled(call.tenantId, type))
+        )
+          types.push(type);
     if (types.length === 0) throw denied(gate.nfse);
     return this.summaryQuery.list(
       { ...query, types },

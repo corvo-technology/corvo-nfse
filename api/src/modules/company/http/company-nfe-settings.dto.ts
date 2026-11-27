@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -42,6 +43,28 @@ export class UpdateCompanyNfeSettingsDto {
   @Min(0)
   @Max(999)
   defaultSeries?: number;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: 999,
+    default: 1,
+    description:
+      'Series used by default on new NFC-e (apart from the NF-e one).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(999)
+  nfceDefaultSeries?: number;
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      'Issue the NFC-e off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be reached. Off by default: a note issued off-line can still be rejected afterwards.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  nfceAutoOffline?: boolean;
 
   @ApiPropertyOptional({
     default: 'Venda de mercadoria',

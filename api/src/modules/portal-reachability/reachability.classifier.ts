@@ -24,11 +24,23 @@ export interface ProbeResults {
   govControl: boolean;
   /** A host outside the government (control). */
   externalControl: boolean;
+  /**
+   * One answer per enabled SEFAZ authority (`nfe-sp-2`, `nfce-sp-2`, ...). A SEFAZ that answers
+   * proves the government network is reachable, so the NFS-e portal alone is the one that is down.
+   */
+  authorities?: Record<string, boolean>;
+  /**
+   * Only when the backup proxy is configured: a tunnel to the Sefin opened through it. Never part of the
+   * classification (that one measures the direct route); it only tells whether the backup would work.
+   */
+  viaProxy?: boolean;
 }
 
 export function classifyProbes(results: ProbeResults): PortalHealth {
   if (results.sefin && results.adn) return 'ok';
-  if (results.sefin || results.adn || results.govControl) return 'portal_down';
+  const sefazAnswers = Object.values(results.authorities ?? {}).some(Boolean);
+  if (results.sefin || results.adn || results.govControl || sefazAnswers)
+    return 'portal_down';
   return results.externalControl ? 'gov_unreachable_from_us' : 'no_internet';
 }
 

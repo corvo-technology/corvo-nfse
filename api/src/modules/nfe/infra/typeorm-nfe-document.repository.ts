@@ -85,7 +85,7 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
     id: string,
     tenantId: string,
     environment: ExecutionEnvironment,
-    options: { forUpdate?: boolean } = {},
+    options: { forUpdate?: boolean; model?: 55 | 65 } = {},
   ): Promise<NfeDocument | null> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -95,6 +95,8 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
           'doc.id = :id AND doc.tenant_id = :tenantId AND doc.environment = :environment',
           { id, tenantId, environment },
         );
+      if (options.model)
+        query.andWhere('doc.model = :model', { model: options.model });
       if (options.forUpdate) query.setLock('pessimistic_write');
       const row = await query.getOne();
       return row ? this.hydrate(row) : null;
@@ -142,6 +144,8 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
           tenantId,
           environment,
         });
+      if (query.model)
+        builder.andWhere('doc.model = :model', { model: query.model });
       if (query.companyId)
         builder.andWhere('doc.company_id = :companyId', {
           companyId: query.companyId,
@@ -153,7 +157,14 @@ export class TypeOrmNfeDocumentRepository implements INfeDocumentRepository {
       const page = await queryCursorPage(
         builder,
         { limit: query.limit, cursor: query.cursor },
-        ['nfe', tenantId, environment, query.companyId, query.status],
+        [
+          'nfe',
+          tenantId,
+          environment,
+          query.companyId,
+          query.status,
+          query.model,
+        ],
         (row) => row,
       );
       const itemRows =

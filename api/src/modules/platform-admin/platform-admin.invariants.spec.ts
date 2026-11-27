@@ -149,6 +149,7 @@ describe('route table invariant', () => {
     expect(platform.map((c) => c.name).sort()).toEqual([
       'PlatformAttentionController',
       'PlatformAuditController',
+      'PlatformContingencyController',
       'PlatformCreditGrantController',
       'PlatformNfeAccessController',
       'PlatformOverviewController',

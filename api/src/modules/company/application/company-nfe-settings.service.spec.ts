@@ -36,6 +36,8 @@ function build(
     stateRegistration: '110042490114',
     crt: 1,
     defaultSeries: 1,
+    nfceDefaultSeries: 1,
+    nfceAutoOffline: false,
     defaultNatOp: 'Venda de mercadoria',
     defaultCsosn: '102',
     defaultOrigin: 0,
@@ -64,6 +66,8 @@ const settingsRow = (companyId: string): NfeSettings => ({
   stateRegistration: '110042490114',
   crt: null,
   defaultSeries: 1,
+  nfceDefaultSeries: 1,
+  nfceAutoOffline: false,
   defaultNatOp: 'Venda de mercadoria',
   defaultCsosn: '102',
   defaultOrigin: 0,
@@ -81,6 +85,8 @@ describe('CompanyNfeSettingsService', () => {
       crt: null,
       taxRegime: 'Simples Nacional',
       defaultSeries: 1,
+      nfceDefaultSeries: 1,
+      nfceAutoOffline: false,
       defaultCsosn: '102',
       missing: ['state_registration'],
     });
@@ -102,6 +108,41 @@ describe('CompanyNfeSettingsService', () => {
     const view = await service.get('c', tenantId, 'test');
     expect(view).toMatchObject({ crt: null, taxRegime: 'Lucro Presumido' });
     expect(view.missing).toEqual(['crt']);
+  });
+
+  it('saves the NFC-e series apart from the NF-e one', async () => {
+    const { service, repo } = build(company('SP'));
+    await service.update('c', tenantId, 'test', {
+      stateRegistration: '110042490114',
+      defaultSeries: 2,
+      nfceDefaultSeries: 9,
+    });
+    expect(repo.upsert).toHaveBeenCalledWith(
+      'c',
+      tenantId,
+      expect.objectContaining({ defaultSeries: 2, nfceDefaultSeries: 9 }),
+    );
+  });
+
+  it('keeps the off-line NFC-e option off unless asked, and saves it when it is', async () => {
+    const { service, repo } = build(company('SP'));
+    await service.update('c', tenantId, 'test', {
+      stateRegistration: '110042490114',
+    });
+    expect(repo.upsert).toHaveBeenLastCalledWith(
+      'c',
+      tenantId,
+      expect.objectContaining({ nfceAutoOffline: false }),
+    );
+    await service.update('c', tenantId, 'test', {
+      stateRegistration: '110042490114',
+      nfceAutoOffline: true,
+    });
+    expect(repo.upsert).toHaveBeenLastCalledWith(
+      'c',
+      tenantId,
+      expect.objectContaining({ nfceAutoOffline: true }),
+    );
   });
 
   it('saves a valid IE with the defaults filled in, digits only', async () => {

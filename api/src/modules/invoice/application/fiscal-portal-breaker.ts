@@ -33,6 +33,14 @@ export function nfeBreakerAuthority(
   return `nfe-${authority.toLowerCase()}-${tpAmb}`;
 }
 
+/** The NFC-e has its own breaker per authority: `nfe-sp-2` and `nfce-sp-2` never share a state. */
+export function nfceBreakerAuthority(
+  authority: AuthorityId,
+  tpAmb: 1 | 2,
+): BreakerAuthority {
+  return `nfce-${authority.toLowerCase()}-${tpAmb}`;
+}
+
 /** Redis set with the NF-e authorities the breaker has seen, so the status can list them. */
 const AUTHORITIES_KEY = 'fiscal:breaker:authorities';
 

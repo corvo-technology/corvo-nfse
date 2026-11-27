@@ -4,6 +4,8 @@ import type { NfeDocument, NfeHistoryEntry } from './nfe-document';
 import type { NfeStatus } from './nfe-status';
 
 export interface ListNfeFilters {
+  /** Only the documents of this model; every model when absent. */
+  model?: 55 | 65;
   companyId?: string;
   status?: NfeStatus;
 }
@@ -19,7 +21,7 @@ export abstract class INfeDocumentRepository {
     id: string,
     tenantId: string,
     environment: ExecutionEnvironment,
-    options?: { forUpdate?: boolean },
+    options?: { forUpdate?: boolean; model?: 55 | 65 },
   ): Promise<NfeDocument | null>;
   abstract findByIdempotencyKey(
     key: string,

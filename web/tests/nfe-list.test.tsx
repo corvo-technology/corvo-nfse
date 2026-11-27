@@ -6,9 +6,9 @@ import NfeListPage from "@/app/(dashboard)/app/nfe/page";
 import type { NfeDocument } from "@/lib/nfe";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), permissions: new Set<string>() }));
+const mocks = vi.hoisted(() => ({ list: vi.fn(), permissions: new Set<string>(), nfce: false }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => mocks.permissions.has(permission) }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => mocks.permissions.has(permission), features: { nfe: true, nfce: mocks.nfce } }) }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   companies: { list: async () => ({ items: [{ id: "c1", legalName: "Acme Ltda", tradeName: "Acme" }], hasMore: false, nextCursor: null }) },
@@ -25,6 +25,7 @@ const renderPage = () => render(<NextIntlClientProvider locale="en" messages={me
 
 beforeEach(() => {
   mocks.permissions = new Set(["nfe.documents.view", "nfe.documents.issue"]);
+  mocks.nfce = false;
   mocks.list.mockReset();
   mocks.list.mockResolvedValue({ items: [nfe(), nfe({ id: "n2", status: "rejected", recipient: { name: "João", taxId: "1" } as never, lastError: { type: "validation", code: "X", message: "NCM invalid" } })], hasMore: true, nextCursor: "next" });
 });
@@ -85,5 +86,24 @@ describe("NF-e list", () => {
     mocks.list.mockRejectedValue(new Error("boom"));
     renderPage();
     await screen.findByText("Could not load the notes. Try again.");
+  });
+
+  it("without NFC-e released there is no model filter and the list asks for NF-e", async () => {
+    renderPage();
+    await screen.findAllByRole("link", { name: "Maria da Silva" });
+    expect(screen.queryByLabelText("Model")).toBeNull();
+    expect(mocks.list).toHaveBeenLastCalledWith({ limit: 50, cursor: undefined }, expect.anything());
+  });
+
+  it("with NFC-e released: filters by model and shows the model of each row", async () => {
+    mocks.nfce = true;
+    mocks.list.mockResolvedValue({ items: [nfe({ id: "n3", type: "nfce", recipient: null as never })], hasMore: false, nextCursor: null });
+    renderPage();
+    await screen.findAllByText("Consumer not identified");
+    expect(screen.getAllByText("NFC-e").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "nfce" } });
+    await waitFor(() => expect(mocks.list).toHaveBeenLastCalledWith({ limit: 50, cursor: undefined, type: "nfce" }, expect.anything()));
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "nfe" } });
+    await waitFor(() => expect(mocks.list).toHaveBeenLastCalledWith({ limit: 50, cursor: undefined, type: "nfe" }, expect.anything()));
   });
 });

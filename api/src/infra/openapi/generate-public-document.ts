@@ -13,6 +13,7 @@ import {
   CorrectNfeDto,
   InutilizeNfeDto,
 } from '@/modules/nfe/http/nfe-event.dto';
+import { NfceRequestDto } from '@/modules/nfce/http/nfce.dto';
 import { NfeRequestDto } from '@/modules/nfe/http/nfe.dto';
 import { createOpenApiDocument } from './setup';
 import { toPublicDocument, type OpenApiDocument } from './public-document';
@@ -83,6 +84,7 @@ export async function generatePublicDocument(
           ScheduleResponseDto,
           ScheduleRunResponseDto,
           NfeRequestDto,
+          NfceRequestDto,
           CancelNfeDto,
           CorrectNfeDto,
           InutilizeNfeDto,

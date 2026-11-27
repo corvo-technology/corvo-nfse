@@ -111,6 +111,7 @@ export class NfeCancelService {
       from: ['authorized'],
       change: async (locked) => {
         locked.recordCancellationRequest(justification);
+        locked.clearError();
         if (retry)
           await this.events.restart(
             retry.id,

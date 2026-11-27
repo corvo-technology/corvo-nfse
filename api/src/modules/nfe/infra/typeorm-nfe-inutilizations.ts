@@ -16,6 +16,7 @@ function toInutilization(row: NfeInutilizationOrmEntity): NfeInutilization {
     tenantId: row.tenantId,
     companyId: row.companyId,
     environment: row.environment as ExecutionEnvironment,
+    model: row.model === 65 ? 65 : 55,
     series: row.series,
     start: row.startNumber,
     end: row.endNumber,
@@ -39,6 +40,8 @@ export interface NewInutilization {
   tenantId: string;
   companyId: string;
   environment: ExecutionEnvironment;
+  /** 55 (NF-e, the default) or 65 (NFC-e). */
+  model?: 55 | 65;
   series: number;
   start: number;
   end: number;
@@ -56,6 +59,8 @@ export interface InutilizationResult {
 }
 
 export interface ListInutilizationFilters {
+  /** Only the inutilizations of this model; every model when absent. */
+  model?: 55 | 65;
   companyId?: string;
   status?: NfeInutilizationStatus;
 }
@@ -76,7 +81,7 @@ export class TypeormNfeInutilizations {
         tenantId: input.tenantId,
         companyId: input.companyId,
         environment: input.environment,
-        model: 55,
+        model: input.model ?? 55,
         series: input.series,
         startNumber: input.start,
         endNumber: input.end,
@@ -132,6 +137,8 @@ export class TypeormNfeInutilizations {
         builder.andWhere('inut.company_id = :companyId', {
           companyId: query.companyId,
         });
+      if (query.model)
+        builder.andWhere('inut.model = :model', { model: query.model });
       if (query.status)
         builder.andWhere('inut.status = :status', { status: query.status });
       return queryCursorPage(
@@ -143,6 +150,7 @@ export class TypeormNfeInutilizations {
           environment,
           query.companyId,
           query.status,
+          query.model,
         ],
         toInutilization,
       );
@@ -159,6 +167,7 @@ export class TypeormNfeInutilizations {
     series: number,
     start: number,
     end: number,
+    model: 55 | 65 = 55,
   ): Promise<NfeInutilization | null> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -166,9 +175,9 @@ export class TypeormNfeInutilizations {
         .createQueryBuilder('inut')
         .where(
           `inut.tenant_id = :tenantId AND inut.company_id = :companyId AND inut.series = :series
-           AND inut.status IN ('pending','homologada')
+           AND inut.model = :model AND inut.status IN ('pending','homologada')
            AND inut.start_number <= :end AND inut.end_number >= :start`,
-          { tenantId, companyId, series, start, end },
+          { tenantId, companyId, series, start, end, model },
         )
         .getOne();
       return row ? toInutilization(row) : null;
@@ -182,6 +191,7 @@ export class TypeormNfeInutilizations {
     series: number,
     start: number,
     end: number,
+    model: 55 | 65 = 55,
   ): Promise<number> {
     return runWithTenant(tenantId, async () => {
       requireTenantId(tenantId);
@@ -189,10 +199,10 @@ export class TypeormNfeInutilizations {
         .repository(NfeDocumentOrmEntity)
         .createQueryBuilder('doc')
         .where(
-          `doc.tenant_id = :tenantId AND doc.company_id = :companyId AND doc.model = 55
+          `doc.tenant_id = :tenantId AND doc.company_id = :companyId AND doc.model = :model
            AND doc.series = :series AND doc.number BETWEEN :start AND :end
            AND doc.status <> 'discarded'`,
-          { tenantId, companyId, series, start, end },
+          { tenantId, companyId, series, start, end, model },
         )
         .getCount();
     });

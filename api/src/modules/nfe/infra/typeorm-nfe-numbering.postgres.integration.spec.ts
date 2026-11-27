@@ -24,11 +24,11 @@ const role = `${schema}_runtime`;
 const tenant = randomUUID();
 const company = randomUUID();
 
-const scope = (series = 1): NumberingScope => ({
+const scope = (series = 1, model: 55 | 65 = 55): NumberingScope => ({
   companyId: company,
   tenantId: tenant,
   environment: 'test',
-  model: 55,
+  model,
   series,
 });
 
@@ -125,6 +125,13 @@ describePostgres('NF-e numbering with real PostgreSQL', () => {
       series: 8,
       number: 1,
     });
+  });
+
+  it('counts the NF-e (55) and the NFC-e (65) of the same series apart', async () => {
+    const a = await inTransaction(() => numbering.reserveNext(scope(31, 55)));
+    const b = await inTransaction(() => numbering.reserveNext(scope(31, 65)));
+    const c = await inTransaction(() => numbering.reserveNext(scope(31, 65)));
+    expect([a.number, b.number, c.number]).toEqual([1, 1, 2]);
   });
 
   it('gives 1..20 without repeating to 20 concurrent reservations', async () => {

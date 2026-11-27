@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import { DOC_GROUPS, DOC_SLUGS } from "@/lib/docs/registry";
 
 describe("docs registry structure", () => {
-  it("has exactly 24 slugs in 4 groups", () => {
+  it("has exactly 25 slugs in 4 groups", () => {
     expect(DOC_GROUPS.map((g) => g.key)).toEqual([
       "gettingStarted",
       "reference",
       "guides",
       "nfe",
     ]);
-    expect(DOC_SLUGS).toHaveLength(24);
+    expect(DOC_SLUGS).toHaveLength(25);
   });
 
   it("has no duplicate slugs across groups", () => {
@@ -48,7 +48,7 @@ describe("docs registry structure", () => {
     ]);
   });
 
-  it("publishes the NF-e group with its six pages", () => {
+  it("publishes the NF-e group with its seven pages", () => {
     expect(DOC_GROUPS[3].slugs).toEqual([
       "nfe",
       "nfe-company",
@@ -56,6 +56,7 @@ describe("docs registry structure", () => {
       "nfe-errors",
       "nfe-events",
       "nfe-files",
+      "nfce",
     ]);
   });
 });

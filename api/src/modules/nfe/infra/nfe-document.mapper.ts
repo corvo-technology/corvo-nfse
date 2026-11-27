@@ -21,7 +21,7 @@ export class NfeDocumentMapper {
       tenantId: row.tenantId,
       companyId: row.companyId,
       environment: row.environment as ExecutionEnvironment,
-      model: 55,
+      model: row.model === 65 ? 65 : 55,
       series: row.series,
       number: row.number,
       accessKey: row.accessKey,
@@ -39,7 +39,7 @@ export class NfeDocumentMapper {
       xMotivo: row.xMotivo,
       protocol: row.protocol,
       authorizedAt: row.authorizedAt,
-      recipient: row.recipient as unknown as NfeRecipient,
+      recipient: row.recipient as unknown as NfeRecipient | null,
       items: [...items]
         .sort((a, b) => a.nItem - b.nItem)
         .map((item) => this.itemToDomain(item)),
@@ -65,6 +65,12 @@ export class NfeDocumentMapper {
       emailSentAt: row.emailSentAt,
       cancelReason: row.cancelReason,
       cancelRequestedAt: row.cancelRequestedAt,
+      qrCode: row.qrCode,
+      urlChave: row.urlChave,
+      contingencyAt: row.contingencyAt,
+      contingencyReason: row.contingencyReason,
+      contingencyAlertedAt: row.contingencyAlertedAt,
+      transmittedAt: row.transmittedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -119,6 +125,12 @@ export class NfeDocumentMapper {
       emailSentAt: s.emailSentAt,
       cancelReason: s.cancelReason,
       cancelRequestedAt: s.cancelRequestedAt,
+      qrCode: s.qrCode,
+      urlChave: s.urlChave,
+      contingencyAt: s.contingencyAt,
+      contingencyReason: s.contingencyReason,
+      contingencyAlertedAt: s.contingencyAlertedAt,
+      transmittedAt: s.transmittedAt,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
     });

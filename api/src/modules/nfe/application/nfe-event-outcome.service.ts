@@ -4,9 +4,13 @@ import type { NewOutboxMessage } from '@/modules/invoice/domain/outbox-message';
 import type { NfeDocument } from '../domain/nfe-document';
 import { CANCEL_TP_EVENTO, type NfeFiscalEvent } from '../domain/nfe-event';
 import { TypeormNfeEvents } from '../infra/typeorm-nfe-events';
-import { prepareDocumentsMessage } from './nfe-messages';
+import { cancellationHint, prepareDocumentsMessage } from './nfe-messages';
 import { keyOf } from './nfe-outcome.service';
-import { NfeTransitionService } from './nfe-transition.service';
+import {
+  NfeTransitionService,
+  documentTypeOf,
+  nfeEventName,
+} from './nfe-transition.service';
 
 /** What the SEFAZ said about an event that it registered. */
 export interface RegisteredEvent {
@@ -52,7 +56,7 @@ export class NfeEventOutcomeService {
         from: ['cancelling'],
         info: { cStat: receipt.cStat, xMotivo: receipt.xMotivo },
         messages,
-        change: async () => {
+        change: async (locked) => {
           await this.events.settle(
             event.id,
             event.tenantId,
@@ -60,6 +64,8 @@ export class NfeEventOutcomeService {
             'registered',
             patch,
           );
+          // A refused try before this one leaves nothing behind.
+          locked.clearError();
         },
       });
       // The document had already moved (another path settled it): the event still has to close.
@@ -89,7 +95,7 @@ export class NfeEventOutcomeService {
     if (applied)
       await this.webhooks.publish(
         {
-          type: 'nfe',
+          type: documentTypeOf(doc.toSnapshot().model),
           id: doc.id,
           tenantId: doc.tenantId,
           environment: doc.environment,
@@ -120,9 +126,11 @@ export class NfeEventOutcomeService {
     const patch = { cStat, xMotivo };
     const from = ['pending', 'pending_check'] as const;
     if (isCancel(event)) {
+      const model = doc.toSnapshot().model;
+      const hint = cancellationHint(model, cStat);
       const result = await this.transitions.apply(keyOf(doc), 'authorized', {
         from: ['cancelling'],
-        change: async () => {
+        change: async (locked) => {
           await this.events.settle(
             event.id,
             event.tenantId,
@@ -130,10 +138,22 @@ export class NfeEventOutcomeService {
             'rejected',
             patch,
           );
+          // The NFC-e keeps the reason where the customer looks (`lastError`, with the hint).
+          if (model === 65)
+            locked.recordError({
+              type: 'validation',
+              code: cStat,
+              message: xMotivo,
+            });
         },
         webhook: {
-          type: 'nfe.document.cancellation_rejected',
-          data: { eventId: event.id, cStat, xMotivo },
+          type: nfeEventName(model, 'document.cancellation_rejected'),
+          data: {
+            eventId: event.id,
+            cStat,
+            xMotivo,
+            ...(hint ? { hint } : {}),
+          },
         },
       });
       if (!result.applied)

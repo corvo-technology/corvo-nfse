@@ -50,7 +50,7 @@ interface Row {
 }
 
 /**
- * One list of NFS-e and NF-e together, newest first. Both tables are read in a single
+ * One list of NFS-e, NF-e and NFC-e together, newest first. Both tables are read in a single
  * `UNION ALL`, ordered by `(created_at, id)`: the cursor is the keyset of the last row shown, so
  * a page never repeats or skips a document of either type, whatever the mix.
  */
@@ -105,7 +105,13 @@ export class TypeormInvoiceSummaries {
         parts.push(
           `SELECT id, 'nfe' AS type, company_id, environment, status, number::text AS number,
                   access_key, totals->>'vNF' AS amount, external_id, issued_at, created_at
-             FROM ${this.table('nfe_documents')} ${where}`,
+             FROM ${this.table('nfe_documents')} ${where} AND model = 55`,
+        );
+      if (query.types.includes('nfce'))
+        parts.push(
+          `SELECT id, 'nfce' AS type, company_id, environment, status, number::text AS number,
+                  access_key, totals->>'vNF' AS amount, external_id, issued_at, created_at
+             FROM ${this.table('nfe_documents')} ${where} AND model = 65`,
         );
       let after = '';
       if (cursor) {

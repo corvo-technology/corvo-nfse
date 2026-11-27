@@ -32,6 +32,16 @@ export class TenantOrmEntity {
   })
   nfeEnabledAt!: Date | null;
 
+  /** NFC-e release for this tenant (null = off). Also needs the global NFE_ENABLED. Set by SQL or the platform admin. */
+  @Column({
+    name: 'nfce_enabled_at',
+    type: 'timestamptz',
+    nullable: true,
+    insert: false,
+    update: false,
+  })
+  nfceEnabledAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

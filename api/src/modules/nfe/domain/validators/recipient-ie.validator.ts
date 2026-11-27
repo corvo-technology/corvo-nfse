@@ -5,6 +5,7 @@ import type { NfeDraft } from '../nfe-draft';
 export const recipientIeValidator: PreSendValidator<NfeDraft> = {
   name: 'recipient-ie',
   validate(draft) {
+    if (!draft.recipient) return [];
     const { indIeDest, stateRegistration } = draft.recipient;
     const issue = (message: string) => [
       {
