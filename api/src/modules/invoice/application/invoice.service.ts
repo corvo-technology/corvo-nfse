@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { NfseProviderFactory } from '@/infra/external/nfse/nfse-provider.factory';
 import { CursorPage, CursorQuery } from '@/shared/http/pagination';
 import { InvoiceLifecycleService } from './invoice-lifecycle.service';
@@ -731,8 +732,7 @@ export class InvoiceService {
         idempotencyKey: jobId,
         attempts: 3,
         backoffMs: 5_000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-email'],
       },
     );
 

@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import {
   ConflictException,
   NotFoundException,
@@ -438,7 +439,7 @@ describe('InvoiceService — getDownloadUrl & requestEmail', () => {
         expect.objectContaining({
           attempts: 3,
           backoff: { type: 'exponential', delay: 5_000 },
-          removeOnFail: 1000,
+          ...QUEUE_RETENTION['nfse-email'],
         }),
       ]);
     });

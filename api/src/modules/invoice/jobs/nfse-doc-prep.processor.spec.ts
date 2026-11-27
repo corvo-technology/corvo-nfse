@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { Job } from 'bullmq';
 import type { LockPort } from '@/infra/redis/lock.port';
 import type { IDocumentStorage } from '@/infra/storage/domain/document-storage';
@@ -297,8 +298,7 @@ describe('NfseDocPrepProcessor', () => {
           idempotencyKey: 'email-auto-inv-1',
           attempts: 3,
           backoffMs: 5_000,
-          removeOnComplete: false,
-          removeOnFail: 1000,
+          ...QUEUE_RETENTION['nfse-email'],
         }),
       );
     });

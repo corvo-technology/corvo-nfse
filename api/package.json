@@ -28,6 +28,7 @@
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
     "typecheck:tests": "tsc --noEmit -p tsconfig.json",
+    "queue:clean": "node scripts/queue-clean.mjs",
     "storage:bucket": "bash scripts/create-bucket.sh",
     "graphify": "graphify update .",
     "test": "jest",

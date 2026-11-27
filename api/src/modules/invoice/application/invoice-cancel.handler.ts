@@ -1,3 +1,4 @@
+import { QUEUE_RETENTION } from '@/infra/redis/queue-retention';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { BullmqQueueService } from '@/infra/redis/bullmq-queue.service';
 import type { OutboxHandler } from '../domain/outbox-handler';
@@ -56,8 +57,7 @@ export class InvoiceCancelHandler implements OutboxHandler, OnModuleInit {
         idempotencyKey: `cancellation-${requestId}`,
         attempts: 8,
         backoffMs: 60000,
-        removeOnComplete: false,
-        removeOnFail: 1000,
+        ...QUEUE_RETENTION['nfse-cancellation'],
       },
     );
   }
