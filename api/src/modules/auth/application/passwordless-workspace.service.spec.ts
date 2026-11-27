@@ -31,7 +31,7 @@ function build(mode: 'cloud' | 'self_hosted' = 'cloud') {
     memberships: jest.fn().mockResolvedValue([]),
     freePlanId: jest.fn().mockResolvedValue('free-plan'),
     selfHostedPlanId: jest.fn().mockResolvedValue('self-hosted-plan'),
-    claimFirstFreeNote: jest.fn().mockResolvedValue(true),
+    claimWelcomeNotes: jest.fn().mockResolvedValue(true),
     create: jest.fn(async () => {
       expect(active).toBe(true);
     }),
@@ -52,11 +52,11 @@ describe('PasswordlessWorkspaceService', () => {
     const f = build('self_hosted');
     await f.service.ensureWorkspace(user);
     expect(f.workspaces.freePlanId).not.toHaveBeenCalled();
-    expect(f.workspaces.claimFirstFreeNote).not.toHaveBeenCalled();
+    expect(f.workspaces.claimWelcomeNotes).not.toHaveBeenCalled();
     expect(f.workspaces.create).toHaveBeenCalledWith(
       expect.objectContaining({
         planId: 'self-hosted-plan',
-        grantFirstFreeNote: false,
+        grantWelcomeNotes: false,
       }),
     );
   });
@@ -120,23 +120,23 @@ describe('PasswordlessWorkspaceService', () => {
       expect.objectContaining({ tenantId: user.id }),
     );
   });
-  it('grants the first free note when the normalized e-mail claims it', async () => {
+  it('grants the welcome notes when the normalized e-mail claims it', async () => {
     const f = build();
     await f.service.ensureWorkspace({ ...user, email: 'Owner+x@Example.com' });
-    expect(f.workspaces.claimFirstFreeNote).toHaveBeenCalledWith(
+    expect(f.workspaces.claimWelcomeNotes).toHaveBeenCalledWith(
       'owner@example.com',
       user.id,
     );
     expect(f.workspaces.create).toHaveBeenCalledWith(
-      expect.objectContaining({ grantFirstFreeNote: true }),
+      expect.objectContaining({ grantWelcomeNotes: true }),
     );
   });
-  it('still creates the workspace, without the free note, when it was already claimed', async () => {
+  it('still creates the workspace, without the welcome notes, when it was already claimed', async () => {
     const f = build();
-    f.workspaces.claimFirstFreeNote.mockResolvedValue(false);
+    f.workspaces.claimWelcomeNotes.mockResolvedValue(false);
     await f.service.ensureWorkspace(user);
     expect(f.workspaces.create).toHaveBeenCalledWith(
-      expect.objectContaining({ grantFirstFreeNote: false }),
+      expect.objectContaining({ grantWelcomeNotes: false }),
     );
   });
   it('propagates persistence failures to the unit of work', async () => {

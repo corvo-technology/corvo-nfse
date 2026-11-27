@@ -61,7 +61,7 @@ export default async function Page({ params }: Props) {
     offers: [
       {
         "@type": "Offer",
-        name: locale === "pt" ? "Primeira nota grátis" : "First invoice free",
+        name: locale === "pt" ? "5 notas grátis" : "5 invoices free",
         price: "0",
         priceCurrency: "BRL",
         url: pageUrl(locale),

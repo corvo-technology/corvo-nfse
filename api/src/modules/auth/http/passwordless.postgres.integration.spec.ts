@@ -11,6 +11,7 @@ import request from 'supertest';
 import { createTypeOrmOptions } from '@/infra/database/typeorm.options';
 import { EmailService } from '@/modules/email/application/email.service';
 import { TenantMembershipOrmEntity } from '@/infra/persistence/typeorm/entities/tenant-membership.orm-entity';
+import { WELCOME_FREE_NOTES } from '../domain/welcome-notes';
 import { PasswordlessWorkspaceService } from '../application/passwordless-workspace.service';
 import { AuthUserOrmEntity } from '@/infra/persistence/typeorm/entities/auth.orm-entities';
 import { TenantOrmEntity } from '@/infra/persistence/typeorm/entities/tenant.orm-entity';
@@ -261,7 +262,7 @@ describeReal('Passwordless HTTP with real PostgreSQL and Redis', () => {
       app.get(PasswordlessWorkspaceService).ensureWorkspace(user),
     ).rejects.toThrow('Tenant membership is inactive');
     // The same person again with an alias (`+tag`) gets a workspace of their own, but the
-    // first free note was already claimed by `email`, so no second note is granted.
+    // welcome notes were already claimed by `email`, so no second note is granted.
     const other = await db.getRepository(AuthUserOrmEntity).save({
       id: randomUUID(),
       email: email.replace('@', '+again@'),
@@ -270,12 +271,16 @@ describeReal('Passwordless HTTP with real PostgreSQL and Redis', () => {
     await app.get(PasswordlessWorkspaceService).ensureWorkspace(other);
     expect(await db.getRepository(TenantOrmEntity).count()).toBe(2);
     expect(await db.getRepository(TenantMembershipOrmEntity).count()).toBe(2);
-    const freeNotes = (tenantId: string) =>
-      db.query(
-        `SELECT 1 FROM "${schema}".credit_transactions WHERE tenant_id=$1 AND type='bonus'`,
-        [tenantId],
+    const freeNotes = async (tenantId: string) =>
+      Number(
+        (
+          await db.query<Array<{ n: string }>>(
+            `SELECT COALESCE(sum(amount),0) AS n FROM "${schema}".credit_transactions WHERE tenant_id=$1 AND type='bonus'`,
+            [tenantId],
+          )
+        )[0].n,
       );
-    expect(await freeNotes(user.id)).toHaveLength(1);
-    expect(await freeNotes(other.id)).toHaveLength(0);
+    expect(await freeNotes(user.id)).toBe(WELCOME_FREE_NOTES);
+    expect(await freeNotes(other.id)).toBe(0);
   });
 });

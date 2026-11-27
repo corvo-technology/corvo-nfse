@@ -806,10 +806,10 @@
         "desc": "Respostas estruturadas, exemplos em Node, Python e Go."
       }
     },
-    "freeCreditsTag": "PRIMEIRA NOTA GRÁTIS",
+    "freeCreditsTag": "5 NOTAS GRÁTIS",
     "headline": "Da primeira emissão à nota fiscal em minutos.",
     "afterSignup": "APÓS O CADASTRO",
-    "footerNote": "Sem cartão de crédito. Sem contrato. A primeira nota é grátis.",
+    "footerNote": "Sem cartão de crédito. Sem contrato. As 5 primeiras notas são grátis.",
     "magicLink": {
       "sendCode": "Enviar código",
       "sending": "Enviando...",
@@ -830,7 +830,7 @@
     "subtitle": "Envie os dados da venda e a Corvo emite a nota fiscal da sua empresa MEI ou do Simples Nacional no Brasil: NFS-e (serviço) e, em teste, NF-e e NFC-e (produto). Use pela API ou peça ao Claude e ao Cursor (via MCP).",
     "startFree": "Começar grátis",
     "viewDocs": "Ver documentação",
-    "mono": "A primeira nota é grátis. Sem cartão de crédito."
+    "mono": "As 5 primeiras notas são grátis. Sem cartão de crédito."
   },
   "Nav": {
     "product": "Produto",
@@ -848,11 +848,11 @@
   },
   "FreeTrial": {
     "eyebrow": "COMEÇAR GRÁTIS",
-    "title": "A primeira nota é grátis.",
+    "title": "As 5 primeiras notas são grátis.",
     "subtitle": "Sem cartão de crédito.",
-    "description": "Crie a conta e emita a primeira nota de verdade, sem pagar. Depois, escolha um plano ou compre notas avulsas por R$ 0,99 (mínimo de 3).",
+    "description": "Crie a conta e emita 5 notas de verdade, sem pagar. Depois, escolha um plano ou compre notas avulsas por R$ 0,99 (mínimo de 3).",
     "startFree": "Começar grátis",
-    "finePrint": "Uma nota grátis por pessoa. Notas de teste não contam.",
+    "finePrint": "5 notas grátis por pessoa. Notas de teste não contam.",
     "points": {
       "test": {
         "title": "Teste antes de pagar",
@@ -867,7 +867,7 @@
   "Pricing": {
     "eyebrow": "PREÇOS",
     "title": "Preços simples. Sem surpresas.",
-    "description": "A primeira nota é grátis. Depois, escolha um plano ou compre notas avulsas.",
+    "description": "As 5 primeiras notas são grátis. Depois, escolha um plano ou compre notas avulsas.",
     "cycle": {
       "label": "Ciclo de cobrança",
       "monthly": "Mensal",
@@ -935,7 +935,7 @@
       "mcp": "Use com Claude e Cursor (MCP)",
       "email": "Envio da nota por e-mail"
     },
-    "freeNote": "A primeira nota é grátis, sem cartão de crédito.",
+    "freeNote": "As 5 primeiras notas são grátis, sem cartão de crédito.",
     "avulso": {
       "title": "Notas avulsas",
       "description": "Sem plano: {price} por nota, a partir de {min} notas. As notas não expiram.",
@@ -1037,7 +1037,7 @@
     "description": "Uma integração para automatizar a emissão de NFS-e e acompanhar o crescimento do seu produto.",
     "ctaPrimary": "Começar grátis",
     "ctaSecondary": "Explorar API",
-    "subtext": "A primeira nota é grátis. Homologação sempre grátis."
+    "subtext": "As 5 primeiras notas são grátis. Homologação sempre grátis."
   },
   "Footer": {
     "brand": "© Corvo. Todos os direitos reservados.",
@@ -1098,11 +1098,11 @@
       },
       "s6": {
         "title": "6. Uso permitido e prevenção de abuso",
-        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade da primeira nota grátis, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
+        "content": "Não use o Serviço para emitir documentos falsos, agir sem autorização de uma empresa, praticar fraude, enviar spam, distribuir conteúdo ilegal ou violar direitos de terceiros. Não tente contornar cotas, limites de empresas, limites de requisições, controles de acesso ou regras de elegibilidade das notas grátis, inclusive por meio de contas ou workspaces criados para esse fim. Não compartilhe acesso à API fora das permissões contratadas nem interfira na operação do Serviço ou dos sistemas fiscais integrados."
       },
       "s7": {
         "title": "7. Planos, cotas e renovação",
-        "content": "Os planos Solo, Equipe, Empresa e Escala definem a cota mensal de notas, apresentada na oferta e no painel. Cada conta recebe uma primeira nota grátis, uma única vez e sem renovação, e não precisa ter plano para emitir. Notas de teste (homologação) são grátis, ilimitadas e não consomem cota. Nos planos pagos, a cota acompanha o período mensal informado no painel; no plano anual, a cota renova todo mês durante os 12 meses. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas do plano não utilizadas não acumulam nem se convertem em dinheiro. Ao esgotar a cota, a emissão é bloqueada até a renovação, a troca de plano ou a compra de notas avulsas. Sem plano (apenas notas avulsas) a conta pode ter 1 empresa ativa em produção; os planos recorrentes permitem empresas ilimitadas."
+        "content": "Os planos Solo, Equipe, Empresa e Escala definem a cota mensal de notas, apresentada na oferta e no painel. Cada conta recebe 5 notas grátis, uma única vez e sem renovação, e não precisa ter plano para emitir. Notas de teste (homologação) são grátis, ilimitadas e não consomem cota. Nos planos pagos, a cota acompanha o período mensal informado no painel; no plano anual, a cota renova todo mês durante os 12 meses. As cotas pertencem ao workspace, não a cada integrante ou chave de API. Notas do plano não utilizadas não acumulam nem se convertem em dinheiro. Ao esgotar a cota, a emissão é bloqueada até a renovação, a troca de plano ou a compra de notas avulsas. Sem plano (apenas notas avulsas) a conta pode ter 1 empresa ativa em produção; os planos recorrentes permitem empresas ilimitadas."
       },
       "s8": {
         "title": "8. Como o consumo e as notas avulsas funcionam",
@@ -2328,7 +2328,7 @@
     "checkout_invalid": "Dados da compra inválidos.",
     "checkout_key_reused": "Esta solicitação já foi usada em outra compra.",
     "checkout_unavailable": "Não foi possível abrir o pagamento. Tente novamente.",
-    "free_plan_abuse": "Este e-mail já usou a nota gratuita.",
+    "free_plan_abuse": "Este e-mail já usou as notas gratuitas.",
     "free_plan_no_checkout": "O plano gratuito não precisa de pagamento.",
     "invalid_billing_cycle": "Ciclo de cobrança inválido.",
     "no_plan_assigned": "Você ainda não tem um plano.",
@@ -2377,7 +2377,7 @@
     "invalid_plan": "Plano inválido.",
     "invalid_usage_reservation": "Não foi possível reservar a nota. Tente novamente.",
     "usage_period_missing": "Não encontramos o período de uso do seu plano. Fale com o suporte.",
-    "email_already_free": "Este e-mail já usou a nota gratuita.",
+    "email_already_free": "Este e-mail já usou as notas gratuitas.",
     "turnstile_invalid": "A verificação expirou ou é inválida. Tente de novo.",
     "integration_credential_refused": "A plataforma recusou a credencial informada. Confira e tente de novo.",
     "import_emit_failed": "A emissão da importação foi interrompida. Emita de novo para tentar outra vez.",

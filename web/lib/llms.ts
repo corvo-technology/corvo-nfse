@@ -41,7 +41,7 @@ Corvo registers issuer companies, stores their A1 certificates, calculates taxes
 - Official SDKs in nine languages (same operations, \`X-API-Key\` auth, typed errors, webhook verification): Node.js (\`npm install corvo-nfse-node\`), Python (\`pip install corvo-nfse\`), Go (\`go get github.com/corvo-technology/corvo-nfse-go\`), PHP (\`composer require corvo-technology/corvo-nfse\`), Ruby (\`gem install corvo-nfse\`), Rust (\`cargo add corvo-nfse\`), Java (\`tech.corvo:corvo-nfse\`), Elixir (\`{:corvo_nfse, "~> 0.1.1"}\`) and .NET (\`dotnet add package Corvo.Nfse\`). Each reads \`CORVO_API_KEY\`.
 - Open source: the API, the worker and the dashboard are public under AGPL-3.0 at https://github.com/corvo-technology/corvo-nfse, and can be self-hosted with Docker Compose (see SELF_HOSTING.md in the repository).
 - Multi-company: one account can hold many issuer companies, each with its own certificate.
-- Pricing: the first invoice is free (no plan needed, no credit card) and the sandbox is always free. Plans Solo, Equipe, Empresa and Escala (monthly, or annual with 30% off) and single invoices at R$ 0,99 are public at \`GET https://api.corvo.tech/v1/plans\`. There is no overage billing.`;
+- Pricing: the first 5 invoices are free (no plan needed, no credit card) and the sandbox is always free. Plans Solo, Equipe, Empresa and Escala (monthly, or annual with 30% off) and single invoices at R$ 0,99 are public at \`GET https://api.corvo.tech/v1/plans\`. There is no overage billing.`;
 
 const PT_INTRO = `# Corvo
 
@@ -67,7 +67,7 @@ A Corvo cadastra empresas emissoras, guarda os certificados A1, calcula os tribu
 - Substituição: \`POST /v1/invoices/:id/substitute\` com \`description\` (15 a 255 caracteres) emite uma nota que substitui uma \`authorized\`; só mudam \`service.description\`, \`purchaseOrder\` e \`notes\`. A original só passa a \`cancelled\` depois de a substituta ser autorizada. A substituta usa um crédito. No MCP: \`nfse_substitute\`.
 - Código aberto: a API, o worker e o painel são públicos sob a AGPL-3.0 em https://github.com/corvo-technology/corvo-nfse e podem ser hospedados por você com Docker Compose (veja SELF_HOSTING.md no repositório).
 - SDKs oficiais em nove linguagens; o Java usa a coordenada Maven \`tech.corvo:corvo-nfse\`.
-- Preço: a primeira nota é grátis (sem plano e sem cartão) e a homologação é sempre grátis. Planos Solo, Equipe, Empresa e Escala (mensal, ou anual com 30% de desconto) e notas avulsas a R$ 0,99 em \`GET https://api.corvo.tech/v1/plans\`. Não há cobrança de excedente.`;
+- Preço: as 5 primeiras notas são grátis (sem plano e sem cartão) e a homologação é sempre grátis. Planos Solo, Equipe, Empresa e Escala (mensal, ou anual com 30% de desconto) e notas avulsas a R$ 0,99 em \`GET https://api.corvo.tech/v1/plans\`. Não há cobrança de excedente.`;
 
 interface Labels {
   docs: string;

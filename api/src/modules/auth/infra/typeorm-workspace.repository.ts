@@ -6,6 +6,7 @@ import { TenantBillingOrmEntity } from '@/infra/persistence/typeorm/entities/ten
 import { TenantMembershipOrmEntity } from '@/infra/persistence/typeorm/entities/tenant-membership.orm-entity';
 import { PlanOrmEntity } from '@/modules/plans/infra/plan.orm-entity';
 import { CreditTransactionOrmEntity } from '@/modules/credits/infra/credit-transaction.orm-entity';
+import { WELCOME_FREE_NOTES } from '../domain/welcome-notes';
 import { FreeNoteClaimOrmEntity } from './free-note-claim.orm-entity';
 import {
   IWorkspaceRepository,
@@ -53,7 +54,7 @@ export class TypeOrmWorkspaceRepository extends IWorkspaceRepository {
     return plan.id;
   }
 
-  async claimFirstFreeNote(
+  async claimWelcomeNotes(
     emailKey: string,
     tenantId: string,
   ): Promise<boolean> {
@@ -85,13 +86,13 @@ export class TypeOrmWorkspaceRepository extends IWorkspaceRepository {
       permissions: workspace.permissions,
       isActive: true,
     });
-    if (workspace.grantFirstFreeNote)
+    if (workspace.grantWelcomeNotes)
       await this.db.repository(CreditTransactionOrmEntity).insert({
         tenantId: workspace.tenantId,
-        amount: 1,
+        amount: WELCOME_FREE_NOTES,
         type: 'bonus',
         source: 'bonus',
-        description: 'Primeira nota grátis',
+        description: 'Notas grátis de boas-vindas',
         isReservation: false,
         createdAt: new Date(),
       });

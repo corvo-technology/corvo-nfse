@@ -1,6 +1,7 @@
 import { TypeOrmUnitOfWork } from '@/infra/persistence/typeorm/typeorm-unit-of-work';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
+import { WELCOME_FREE_NOTES } from '@/modules/auth/domain/welcome-notes';
 import { PasswordlessWorkspaceService } from '@/modules/auth/application/passwordless-workspace.service';
 import { TypeOrmWorkspaceRepository } from '@/modules/auth/infra/typeorm-workspace.repository';
 import type { AuthUser } from '@/modules/auth/domain/auth-user';
@@ -296,7 +297,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'Tenant membership is inactive',
     );
     // The same person signing up again with an alias (`+tag`) gets a workspace, but the
-    // first free note was already claimed by the first one, so no second note is granted.
+    // welcome notes were already claimed by the first one, so no second note is granted.
     const duplicate = await createAuthUser(() =>
       account.email.replace('@', '+again@'),
     );
@@ -306,13 +307,17 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
         duplicate.id,
       ]),
     ).toHaveLength(1);
-    const freeNotes = (tenantId: string) =>
-      admin.query(
-        `SELECT 1 FROM ${table('credit_transactions')} WHERE tenant_id=$1 AND type='bonus'`,
-        [tenantId],
+    const freeNotes = async (tenantId: string) =>
+      Number(
+        (
+          await admin.query<Array<{ n: string }>>(
+            `SELECT COALESCE(sum(amount),0) AS n FROM ${table('credit_transactions')} WHERE tenant_id=$1 AND type='bonus'`,
+            [tenantId],
+          )
+        )[0].n,
       );
-    expect(await freeNotes(account.id)).toHaveLength(1);
-    expect(await freeNotes(duplicate.id)).toHaveLength(0);
+    expect(await freeNotes(account.id)).toBe(WELCOME_FREE_NOTES);
+    expect(await freeNotes(duplicate.id)).toBe(0);
   });
 
   it('rolls back workspace and billing when the membership insert fails', async () => {

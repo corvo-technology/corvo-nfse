@@ -8,7 +8,8 @@ const SEED_DATA: Record<Exclude<PlanSlug, 'self-hosted'>, CreatePlanInput> = {
   free: {
     slug: 'free',
     name: 'Sem plano',
-    description: 'Sem plano ativo: primeira nota grátis e notas avulsas',
+    description:
+      'Sem plano ativo: 5 notas grátis para conta nova e notas avulsas',
     monthlyCreditAllowance: 0,
     dailyLimit: null,
     // Avulso only: one company. Every recurring plan allows unlimited companies.

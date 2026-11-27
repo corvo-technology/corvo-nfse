@@ -806,10 +806,10 @@
         "desc": "Structured responses, examples in Node, Python, and Go."
       }
     },
-    "freeCreditsTag": "FIRST INVOICE FREE",
+    "freeCreditsTag": "5 INVOICES FREE",
     "headline": "From first integration to tax invoice in minutes.",
     "afterSignup": "AFTER SIGNUP",
-    "footerNote": "No credit card required. No contract. Your first invoice is free.",
+    "footerNote": "No credit card required. No contract. Your first 5 invoices are free.",
     "magicLink": {
       "sendCode": "Send code",
       "sending": "Sending...",
@@ -830,7 +830,7 @@
     "subtitle": "Send the sale data and Corvo issues the invoice for your MEI or Simples Nacional company in Brazil: NFS-e (services) and, in test mode, NF-e and NFC-e (goods). Use the API, or ask Claude and Cursor (via MCP).",
     "startFree": "Start free",
     "viewDocs": "View documentation",
-    "mono": "Your first invoice is free. No credit card required."
+    "mono": "Your first 5 invoices are free. No credit card required."
   },
   "Nav": {
     "product": "Product",
@@ -848,11 +848,11 @@
   },
   "FreeTrial": {
     "eyebrow": "START FREE",
-    "title": "The first invoice is free.",
+    "title": "The first 5 invoices are free.",
     "subtitle": "No credit card required.",
-    "description": "Create the account and issue your first real invoice without paying. After that, pick a plan or buy single invoices at R$ 0.99 (minimum of 3).",
+    "description": "Create the account and issue 5 real invoices without paying. After that, pick a plan or buy single invoices at R$ 0.99 (minimum of 3).",
     "startFree": "Start free",
-    "finePrint": "One free invoice per person. Test invoices do not count.",
+    "finePrint": "5 free invoices per person. Test invoices do not count.",
     "points": {
       "test": {
         "title": "Test before you pay",
@@ -867,7 +867,7 @@
   "Pricing": {
     "eyebrow": "PRICING",
     "title": "Simple pricing. No surprises.",
-    "description": "Your first invoice is free. After that, pick a plan or buy single invoices.",
+    "description": "Your first 5 invoices are free. After that, pick a plan or buy single invoices.",
     "cycle": {
       "label": "Billing cycle",
       "monthly": "Monthly",
@@ -935,7 +935,7 @@
       "mcp": "Use with Claude and Cursor (MCP)",
       "email": "Invoice delivery by email"
     },
-    "freeNote": "The first invoice is free, no credit card required.",
+    "freeNote": "The first 5 invoices are free, no credit card required.",
     "avulso": {
       "title": "Single invoices",
       "description": "No plan: {price} per invoice, from {min} invoices. They never expire.",
@@ -1037,7 +1037,7 @@
     "description": "One integration to automate NFS-e issuance and track your product's growth.",
     "ctaPrimary": "Start free",
     "ctaSecondary": "Explore API",
-    "subtext": "Your first invoice is free. Test mode is always free."
+    "subtext": "Your first 5 invoices are free. Test mode is always free."
   },
   "Footer": {
     "brand": "© Corvo. All rights reserved.",
@@ -1098,11 +1098,11 @@
       },
       "s6": {
         "title": "6. Acceptable use and abuse prevention",
-        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or free first-invoice eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
+        "content": "Do not use the Service to issue false documents, act without company authorization, commit fraud, send spam, distribute unlawful content or violate third-party rights. Do not bypass allowances, company limits, request limits, access controls or free-invoice eligibility rules, including through accounts or workspaces created for that purpose. Do not share API access beyond your contracted permissions or interfere with the Service or connected fiscal systems."
       },
       "s7": {
         "title": "7. Plans, allowances and renewal",
-        "content": "The Solo, Equipe, Empresa and Escala plans set the monthly invoice allowance shown in the offer and in the dashboard. Every account gets one free first invoice, once and without renewal, and does not need a plan to issue it. Test (sandbox) invoices are free, unlimited and do not use any allowance. On paid plans the allowance follows the monthly period shown in the dashboard; on the annual plan it renews every month for the 12 months. Allowances belong to the workspace, not to each member or API key. Unused plan invoices do not roll over or convert to money. When the allowance runs out, issuing is blocked until renewal, a plan change or a purchase of single invoices. Without a plan (single invoices only) the account can have 1 active company in production; the recurring plans allow unlimited companies."
+        "content": "The Solo, Equipe, Empresa and Escala plans set the monthly invoice allowance shown in the offer and in the dashboard. Every account gets 5 free invoices, once and without renewal, and does not need a plan to issue it. Test (sandbox) invoices are free, unlimited and do not use any allowance. On paid plans the allowance follows the monthly period shown in the dashboard; on the annual plan it renews every month for the 12 months. Allowances belong to the workspace, not to each member or API key. Unused plan invoices do not roll over or convert to money. When the allowance runs out, issuing is blocked until renewal, a plan change or a purchase of single invoices. Without a plan (single invoices only) the account can have 1 active company in production; the recurring plans allow unlimited companies."
       },
       "s8": {
         "title": "8. How usage and single invoices work",
@@ -2328,7 +2328,7 @@
     "checkout_invalid": "Invalid purchase data.",
     "checkout_key_reused": "This request was already used for a different purchase.",
     "checkout_unavailable": "The payment could not be opened. Try again.",
-    "free_plan_abuse": "This e-mail already used the free note.",
+    "free_plan_abuse": "This e-mail already used the free invoices.",
     "free_plan_no_checkout": "The free plan does not need payment.",
     "invalid_billing_cycle": "Invalid billing cycle.",
     "no_plan_assigned": "You do not have a plan yet.",
@@ -2377,7 +2377,7 @@
     "invalid_plan": "Invalid plan.",
     "invalid_usage_reservation": "The note could not be reserved. Try again.",
     "usage_period_missing": "We could not find your plan's usage period. Contact support.",
-    "email_already_free": "This e-mail already used the free note.",
+    "email_already_free": "This e-mail already used the free invoices.",
     "turnstile_invalid": "The verification expired or is invalid. Try again.",
     "integration_credential_refused": "The platform refused the credential. Check it and try again.",
     "import_emit_failed": "Issuing this import was interrupted. Issue again to retry.",
