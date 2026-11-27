@@ -54,6 +54,11 @@ describe.each(["pt", "en"] as const)("payment integrations docs (%s)", (locale) 
       expect(text.toLowerCase()).toContain(term.toLowerCase());
   });
 
+  it("documents how to connect Mercado Pago", () => {
+    for (const term of ["x-signature", "HMAC-SHA256", "accessToken", "webhookSigningSecret", "mercadopago:<", "/v1/payments/{id}", "refunded", "charged_back", "payer.identification"])
+      expect(text.toLowerCase()).toContain(term.toLowerCase());
+  });
+
   it("documents how to connect Hotmart", () => {
     for (const term of ["hottok", "X-HOTMART-HOTTOK", "PURCHASE_APPROVED", "PURCHASE_COMPLETE", "PURCHASE_REFUNDED", "PURCHASE_CHARGEBACK", "PURCHASE_PROTEST", "hotmart:<transaction>", "invoice_by", "invoiceValue"])
       expect(text).toContain(term);

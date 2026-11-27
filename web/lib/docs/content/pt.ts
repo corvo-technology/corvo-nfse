@@ -2772,7 +2772,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("pt"),
     "payment-integrations": {
       title: "Integrações de pagamento",
-      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart ou Kiwify e emita a NFS-e automaticamente a cada pagamento confirmado.",
+      description: "Conecte Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify ou Mercado Pago e emita a NFS-e automaticamente a cada pagamento confirmado.",
       blocks: [
         {
           kind: "text",
@@ -2851,6 +2851,19 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Valor da nota: por padrão o total pago pelo comprador (`Commissions.charge_amount`). Com `invoiceValue` = `mine` usa a sua parte (`Commissions.my_commission`); se o aviso não trouxer esse valor, a venda vai para atenção em vez de usar o total.",
             "A Kiwify não tem modo de teste: o \"Testar Webhook\" manda dados fictícios. Faça esse teste numa conexão de teste da Corvo, nunca numa conexão de produção.",
             "Reembolso e chargeback ligam à venda pelo `order_id`. Com \"cancelar nota no reembolso\" ligado, o reembolso cancela a nota; sem isso (e no chargeback) a venda só é sinalizada (`refund_after_invoice`).",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Mercado Pago" },
+        {
+          kind: "list",
+          items: [
+            "Credenciais: `accessToken`, o Access Token de produção da sua aplicação no Mercado Pago (Suas integrações > Credenciais de produção), e `webhookSigningSecret`, a assinatura secreta do webhook. A Corvo gera o `webhookSecret` e exibe o endereço do webhook ao criar a conexão. O Access Token só é usado para ler o pagamento recebido; a Corvo não cobra, estorna nem altera nada.",
+            "Passo a passo: (1) crie a conexão com o Access Token; (2) copie o endereço do webhook; (3) no Mercado Pago, em Webhooks > Configurar notificações, cole o endereço na URL de produção e marque o evento `payment` (Pagamentos); (4) copie a assinatura secreta mostrada pelo Mercado Pago, cole na Corvo e ative.",
+            "A Corvo confere o cabeçalho `x-signature` (`ts` e `v1`, HMAC-SHA256 do texto `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`) e o segredo da conexão no endereço. O aviso só traz o id do pagamento: a Corvo consulta `GET /v1/payments/{id}` para saber o status, o valor, o comprador e os itens.",
+            "Cada pagamento aprovado (`approved`) vira uma nota, identificada por `mercadopago:<id do pagamento>`. Pagamentos pendentes, em análise ou recusados não emitem; o reenvio do mesmo aviso é barrado.",
+            "O CPF/CNPJ vem de `payer.identification` (tipo CPF ou CNPJ). Sem ele a venda fica em \"Vendas pendentes\"; sem e-mail a nota sai sem envio por e-mail. Só BRL: outra moeda fica bloqueada com `unsupported_currency`.",
+            "Reembolso total (`refunded`) e chargeback (`charged_back`) ligam à venda pelo id do pagamento. Com \"cancelar nota no reembolso\" ligado, o reembolso cancela a nota; sem isso (e no chargeback) a venda só é sinalizada (`refund_after_invoice`). Reembolso parcial é ignorado.",
+            "Use uma conexão de teste com o Access Token de teste e a URL de teste; o botão \"Simular\" do painel é reconhecido e ignorado.",
           ],
         },
         { kind: "heading", level: 3, body: "Hotmart" },

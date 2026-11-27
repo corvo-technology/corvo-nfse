@@ -25,8 +25,8 @@ interface ConnectFlowProps {
 
 type Step = "platform" | "details" | "done";
 
-export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "kiwify" | "other" {
-  return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "pushinpay" || id === "hotmart" || id === "kiwify" ? id : "other";
+export function providerDescriptionKey(id: string): "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "kiwify" | "mercadopago" | "other" {
+  return id === "woovi" || id === "abacatepay" || id === "stripe" || id === "pushinpay" || id === "hotmart" || id === "kiwify" || id === "mercadopago" ? id : "other";
 }
 
 export function ConnectFlow({ providers, companies, environment, initialProvider }: ConnectFlowProps) {

@@ -1,0 +1,15 @@
+{
+  "id": 999999999,
+  "date_created": "2026-11-20T10:04:58.000-03:00",
+  "date_approved": null,
+  "date_last_updated": "2026-11-20T10:04:58.000-03:00",
+  "payer": { "email": "joao@example.com", "identification": { "type": "CNPJ", "number": "11.222.333/0001-81" } },
+  "additional_info": {},
+  "transaction_amount": 99.9,
+  "currency_id": "BRL",
+  "description": "Plano mensal",
+  "status": "pending",
+  "status_detail": "pending_waiting_transfer",
+  "live_mode": true,
+  "collector_id": 44444
+}

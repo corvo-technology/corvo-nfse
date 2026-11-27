@@ -28,6 +28,7 @@ describe("invoiceOrigin", () => {
     ["integ_abc", "checkout:bill_abc123xyz456", "Sale (AbacatePay) · charge bill_abc"],
     ["integ_abc", "transparent:pix_1", "Sale (AbacatePay) · charge pix_1"],
     ["integ_abc", "pushinpay:9c8a1f4e-2b7d-4c6a", "Sale (PushinPay) · charge 9c8a1f4e"],
+    ["integ_abc", "mercadopago:999999999", "Sale (Mercado Pago) · charge 999999999"],
     ["integ_abc", "stripe_charge:ch_3SabcdefGHIJ", "Sale (Stripe) · charge ch_3Sabc"],
     ["integ_abc", "kiwify:9b1c2d3e-0000-4000-8000-000000000001", "Sale (Kiwify) · charge 9b1c2d3e"],
     ["integ_abc", "hotmart:HP16015479281022", "Sale (Hotmart) · charge HP160154"],

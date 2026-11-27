@@ -2795,7 +2795,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     municipalities: municipalitiesPage("en"),
     "payment-integrations": {
       title: "Payment integrations",
-      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart or Kiwify and issue the NFS-e automatically for every confirmed payment.",
+      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify or Mercado Pago and issue the NFS-e automatically for every confirmed payment.",
       blocks: [
         {
           kind: "text",
@@ -2874,6 +2874,19 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Invoice amount: by default the total paid by the buyer (`Commissions.charge_amount`). With `invoiceValue` = `mine` it uses your share (`Commissions.my_commission`); if the notice has no such value, the sale goes to attention instead of using the total.",
             "Kiwify has no test mode: \"Test Webhook\" sends fake data. Run that test on a Corvo test connection, never on a production one.",
             "A refund and a chargeback link to the sale by `order_id`. With \"cancel invoice on refund\" on, a refund cancels the invoice; without it (and on a chargeback) the sale is only flagged (`refund_after_invoice`).",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Mercado Pago" },
+        {
+          kind: "list",
+          items: [
+            "Credentials: `accessToken`, the production Access Token of your Mercado Pago application (Your integrations > Production credentials), and `webhookSigningSecret`, the webhook secret signature. Corvo generates `webhookSecret` and shows the webhook address when the connection is created. The Access Token is only used to read the payment received; Corvo never charges, refunds or changes anything.",
+            "Steps: (1) create the connection with the Access Token; (2) copy the webhook address; (3) in Mercado Pago, under Webhooks > Configure notifications, paste the address as the production URL and tick the `payment` event; (4) copy the secret signature Mercado Pago shows, paste it in Corvo and activate.",
+            "Corvo checks the `x-signature` header (`ts` and `v1`, HMAC-SHA256 of `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`) and the connection secret in the address. The notice only carries the payment id: Corvo reads `GET /v1/payments/{id}` for the status, amount, buyer and items.",
+            "Each approved payment (`approved`) becomes one invoice, identified by `mercadopago:<payment id>`. Pending, in-review or rejected payments do not issue; a redelivered notice is dropped.",
+            "The CPF/CNPJ comes from `payer.identification` (type CPF or CNPJ). Without it the sale waits in \"Pending sales\"; without an e-mail the invoice is issued and not e-mailed. BRL only: another currency is blocked with `unsupported_currency`.",
+            "A full refund (`refunded`) and a chargeback (`charged_back`) link to the sale by payment id. With \"cancel invoice on refund\" on, the refund cancels the invoice; without it (and on a chargeback) the sale is only flagged (`refund_after_invoice`). A partial refund is ignored.",
+            "Use a test connection with the test Access Token and the test URL; the panel's \"Simulate\" button is recognized and ignored.",
           ],
         },
         { kind: "heading", level: 3, body: "Hotmart" },
