@@ -6,6 +6,8 @@ export const NFE_CORRECT = 'nfe.correct';
 export const NFE_INUTILIZE = 'nfe.inutilize';
 export const NFE_PREPARE_DOCUMENTS = 'nfe.prepare_documents';
 export const NFE_SEND_EMAIL = 'nfe.send_email';
+/** The e-mail of an authorized note sent again, on request. */
+export const NFE_RESEND_EMAIL = 'nfe.resend_email';
 /** The warning of an off-line NFC-e that is 20 hours old and was not transmitted yet. */
 export const NFCE_CONTINGENCY_ALERT = 'nfce.contingency_alert';
 
@@ -17,6 +19,12 @@ export interface NfeMessagePayload {
   documentId: string;
   tenantId: string;
   companyId: string;
+}
+
+/** `nfe.resend_email`: which request this is, and the address when it is not the recipient's. */
+export interface NfeResendEmailPayload extends NfeMessagePayload {
+  emailId: string;
+  toEmail?: string;
 }
 
 /**

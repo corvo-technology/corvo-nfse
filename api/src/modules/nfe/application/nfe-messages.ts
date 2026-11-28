@@ -8,11 +8,13 @@ import {
   NFE_INUTILIZE,
   NFE_PREPARE_DOCUMENTS,
   NFE_RECONCILE,
+  NFE_RESEND_EMAIL,
   NFE_SEND_EMAIL,
   type NfeEventMessagePayload,
   type NfeInutilizeMessagePayload,
   type NfeMessagePayload,
   type NfePrepareInutilizationPayload,
+  type NfeResendEmailPayload,
 } from '../domain/nfe-message-types';
 import type { NfeInutilization } from '../domain/nfe-event';
 import { CANCEL_TP_EVENTO } from '../domain/nfe-event';
@@ -157,6 +159,29 @@ export function prepareInutilizationMessage(
 /** `nfe.send_email`: the NF-e to the recipient, once, with the documents ready. */
 export function sendEmailMessage(doc: NfeDocument): NewOutboxMessage {
   return base(doc, NFE_SEND_EMAIL, `email:${doc.id}`);
+}
+
+/** `nfe.resend_email`: one per request (`emailId`), so a repeated key is one send. */
+export function resendEmailMessage(
+  doc: NfeDocument,
+  emailId: string,
+  toEmail?: string,
+): NewOutboxMessage {
+  const payload: NfeResendEmailPayload = {
+    documentId: doc.id,
+    tenantId: doc.tenantId,
+    companyId: doc.companyId,
+    emailId,
+    ...(toEmail ? { toEmail } : {}),
+  };
+  return {
+    tenantId: doc.tenantId,
+    environment: doc.environment,
+    type: NFE_RESEND_EMAIL,
+    aggregateId: doc.id,
+    payload: { ...payload },
+    dedupeKey: `resend-email:${doc.id}:${emailId}`,
+  };
 }
 
 /**

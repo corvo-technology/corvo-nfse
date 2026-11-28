@@ -7,6 +7,7 @@ export const NFE_SUMMARY_HEADERS = [
   'status',
   'data',
   'valor',
+  'modelo',
 ] as const;
 
 const BOM = '﻿';
@@ -19,7 +20,7 @@ const dateFormat = new Intl.DateTimeFormat('pt-BR', {
   year: 'numeric',
 });
 
-/** `nfe-resumo.csv`, like the NFS-e `resumo.csv`: `;` separator, decimal comma, UTF-8 with BOM. */
+/** `nfe-resumo.csv` (NF-e and NFC-e, `modelo` 55 or 65), like the NFS-e `resumo.csv`: `;` separator, decimal comma, UTF-8 with BOM. */
 export function buildNfeSummaryCsv(rows: PackageNfe[]): string {
   const lines = rows.map((row) =>
     [
@@ -29,6 +30,7 @@ export function buildNfeSummaryCsv(rows: PackageNfe[]): string {
       row.status === 'cancelled' ? 'cancelada' : 'autorizada',
       row.issuedAt ? dateFormat.format(row.issuedAt) : '',
       row.total.replace('.', ','),
+      String(row.model),
     ].join(SEPARATOR),
   );
   return (

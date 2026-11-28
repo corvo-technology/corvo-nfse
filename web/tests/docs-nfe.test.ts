@@ -67,7 +67,7 @@ describe("NF-e docs", () => {
 
   it.each(["en", "pt"] as const)("%s: the MCP page names the NF-e tools and the type", (locale) => {
     const text = allText(page(locale, "mcp").blocks);
-    for (const tool of ["nfe_validate", "nfe_correct", "nfe_inutilize", "nfe_number_gaps", "nfe_settings_get", "nfe_settings_update"]) expect(text, tool).toContain(tool);
+    for (const tool of ["nfe_validate", "nfe_repeat", "nfe_correct", "nfe_inutilize", "nfe_number_gaps", "nfe_settings_get", "nfe_settings_update"]) expect(text, tool).toContain(tool);
     expect(text).toContain('type: "all"');
   });
 

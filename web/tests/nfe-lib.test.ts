@@ -57,6 +57,11 @@ it("the buttons follow the state and the permission", () => {
   expect(nfeActions({ status: "authorized", documentsReady: true }, all)).toMatchObject({ cancel: true, correct: true, sync: false, resubmit: false, discard: false, download: true });
   expect(nfeActions({ status: "rejected", documentsReady: false }, all)).toMatchObject({ cancel: false, correct: false, resubmit: true, discard: true, download: false });
   expect(nfeActions({ status: "manual_review", documentsReady: false }, all).sync).toBe(true);
+  // Copy: any note, for who may issue; e-mail again: only authorized with the files ready.
+  expect(nfeActions({ status: "authorized", documentsReady: true }, all)).toMatchObject({ copy: true, resendEmail: true });
+  expect(nfeActions({ status: "authorized", documentsReady: false }, all).resendEmail).toBe(false);
+  expect(nfeActions({ status: "cancelled", documentsReady: true }, all)).toMatchObject({ copy: true, resendEmail: false });
+  expect(nfeActions({ status: "authorized", documentsReady: true }, () => false)).toMatchObject({ copy: false, resendEmail: false });
   expect(nfeActions({ status: "reconciliation_required", documentsReady: false }, all).sync).toBe(true);
   expect(nfeActions({ status: "authorized", documentsReady: true }, only("nfe.documents.view", "nfe.documents.issue"))).toMatchObject({ cancel: false, correct: false });
   expect(nfeActions({ status: "rejected", documentsReady: false }, only("nfe.documents.manage"))).toMatchObject({ discard: true, resubmit: false });

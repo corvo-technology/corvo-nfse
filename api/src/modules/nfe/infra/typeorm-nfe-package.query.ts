@@ -7,11 +7,15 @@ import type { ExecutionEnvironment } from '@/shared/domain/execution-environment
 import { Decimal } from '@/shared/types/money';
 import { NfeDocumentOrmEntity } from './nfe-document.orm-entity';
 
-/** An NF-e of the month package. */
+const modelOf = (model: number): 55 | 65 => (model === 65 ? 65 : 55);
+
+/** An NF-e or NFC-e of the month package. */
 export interface PackageNfe {
   id: string;
   tenantId: string;
   environment: ExecutionEnvironment;
+  /** 55 NF-e, 65 NFC-e. */
+  model: 55 | 65;
   series: number | null;
   number: number | null;
   accessKey: string | null;
@@ -23,7 +27,7 @@ export interface PackageNfe {
 }
 
 /**
- * The NF-e of a competence month: authorized and cancelled ones, by the day they were issued in
+ * The NF-e and NFC-e of a competence month: authorized and cancelled ones, by the day they were issued in
  * São Paulo. Read-only, for the accountant package.
  */
 @Injectable()
@@ -41,8 +45,8 @@ export class TypeormNfePackageQuery {
         .andWhere('doc.environment = :environment', {
           environment: scope.environment,
         })
-        // Model 55 only: the NFC-e has no DANFE and its package comes with the DANFCE (NFC-e 4/5).
-        .andWhere('doc.model = 55')
+        // NF-e (55) and NFC-e (65): the accountant needs the XML of both.
+        .andWhere('doc.model IN (55, 65)')
         .andWhere("doc.status IN ('authorized', 'cancelled')")
         .andWhere(
           "(doc.issued_at AT TIME ZONE 'America/Sao_Paulo')::date >= :start",
@@ -77,7 +81,8 @@ export class TypeormNfePackageQuery {
   list(scope: PackageScope, limit: number): Promise<PackageNfe[]> {
     return runWithTenant(scope.tenantId, async () => {
       const rows = await this.query(scope)
-        .orderBy('doc.series', 'ASC')
+        .orderBy('doc.model', 'ASC')
+        .addOrderBy('doc.series', 'ASC')
         .addOrderBy('doc.number', 'ASC')
         .addOrderBy('doc.id', 'ASC')
         .limit(limit)
@@ -86,6 +91,7 @@ export class TypeormNfePackageQuery {
         id: row.id,
         tenantId: row.tenantId,
         environment: row.environment as ExecutionEnvironment,
+        model: modelOf(row.model),
         series: row.series,
         number: row.number,
         accessKey: row.accessKey,

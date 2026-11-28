@@ -7386,7 +7386,7 @@
     },
     "/invoices/{id}/email": {
       "post": {
-        "description": "Queues the e-mail with the PDF and XML. Send `email` in the body to use another destination than the customer address (the invoice must be authorized with its documents ready).\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Queues the e-mail with the PDF and XML. Send `email` in the body to use another destination than the customer address (the invoice must be authorized with its documents ready).\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "invoices_sendEmail",
         "parameters": [
           {
@@ -7475,7 +7475,8 @@
           "Invoices"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.issue"
         ]
       }
     },

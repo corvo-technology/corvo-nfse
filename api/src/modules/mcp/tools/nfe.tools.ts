@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
+  IsEmail,
   IsDateString,
   IsIn,
   IsInt,
@@ -126,6 +127,16 @@ class NfeListInput {
   @IsOptional() @IsString() status?: string;
   @IsOptional() @IsNumber() @Min(1) @Max(1000) limit?: number;
   @IsOptional() @IsString() cursor?: string;
+}
+
+class NfeEmailResendInput extends NfeIdInput {
+  @IsOptional() @IsEmail() @MaxLength(254) email?: string;
+}
+
+class NfeRepeatInput extends NfeIdInput {
+  @IsOptional() @IsIn(['nfe', 'nfce']) type?: McpGoodsType;
+  @IsString() @MinLength(1) @MaxLength(255) idempotency_key!: string;
+  @IsOptional() @IsString() @MaxLength(5000) additional_info?: string;
 }
 
 class NfeCancelInput extends NfeIdInput {
@@ -344,6 +355,30 @@ export function createNfeListHandler(
   };
 }
 
+/** `nfse_email_resend` for an NF-e or a NFC-e: the XML and the DANFE (DANFCE) again, by e-mail. */
+export function createNfeEmailResendHandler(
+  nfe: McpNfe,
+  kind: McpGoodsType = 'nfe',
+): Handler {
+  return async (raw, ctx) => {
+    const input = (raw ?? {}) as Record<string, unknown>;
+    if (typeof input.email === 'string') input.email = input.email.trim();
+    const params = await parse(NfeEmailResendInput, input);
+    const result = await nfe.run<{ emailId: string; status: string }>(
+      ctx,
+      'nfe.documents.issue',
+      (r, c) => r.email(params.invoice_id, params.email, undefined, c),
+      kind,
+    );
+    return {
+      type: kind,
+      invoice_id: params.invoice_id,
+      email_id: result.emailId,
+      status: result.status,
+    };
+  };
+}
+
 /** `type: "all"`: NFS-e, NF-e and NFC-e in one list; falls back to the NFS-e list when neither is for this member. */
 export function createAllListHandler(nfe: McpNfe, nfse: Handler): Handler {
   return async (raw, ctx) => {
@@ -503,6 +538,40 @@ export const NFE_VALIDATE_TOOL = {
   },
 } as const;
 
+export const NFE_REPEAT_TOOL = {
+  name: 'nfe_repeat',
+  description:
+    'Issue a new NF-e or NFC-e copying a previous one: same company, recipient, items, payments, nature of operation and additional information. ' +
+    'Use it for "emit the same note as last time": find the previous note with nfse_list (type "nfe" or "nfce"), then pass its invoice_id and the same type. ' +
+    'It never copies the number, access key, protocol or date: the new note is numbered and dated when it is issued, and goes through the same checks as nfse_issue (run nfe_validate first when the data may have changed, such as prices). ' +
+    'Optional additional_info replaces the copied text. It uses a credit like nfse_issue and returns immediately with the queued status; follow it with nfse_get. Homologação (test) only for now. Confirm the recipient and the amount with the user before calling.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      invoice_id: {
+        type: 'string',
+        description: 'UUID of the NF-e or NFC-e to copy',
+      },
+      type: {
+        type: 'string',
+        enum: ['nfe', 'nfce'],
+        default: 'nfe',
+        description: 'Kind of the note to copy: "nfe" (default) or "nfce".',
+      },
+      idempotency_key: {
+        type: 'string',
+        description: 'Repeat the same key to avoid issuing twice.',
+      },
+      additional_info: {
+        type: 'string',
+        maxLength: 5000,
+        description: 'New additional information. Defaults to the copied one.',
+      },
+    },
+    required: ['invoice_id', 'idempotency_key'],
+  },
+} as const;
+
 export const NFE_CORRECT_TOOL = {
   name: 'nfe_correct',
   description:
@@ -626,6 +695,7 @@ export const NFE_READINESS_TOOL = {
 /** The tools that exist only for NF-e and NFC-e (`nfe_correct` only with NF-e). */
 export const NFE_ONLY_TOOL_NAMES = [
   NFE_VALIDATE_TOOL.name,
+  NFE_REPEAT_TOOL.name,
   NFE_CORRECT_TOOL.name,
   NFE_INUTILIZE_TOOL.name,
   NFE_NUMBER_GAPS_TOOL.name,
@@ -647,6 +717,35 @@ export function createNfeValidateHandler(nfe: McpNfe): Handler {
     );
     const { xml: _xml, ...safe } = result;
     return safe;
+  };
+}
+
+export function createNfeRepeatHandler(nfe: McpNfe): Handler {
+  return async (raw, ctx) => {
+    const params = await parse(NfeRepeatInput, raw);
+    const kind = params.type ?? 'nfe';
+    const result = await nfe.run<Accepted>(
+      ctx,
+      'nfe.documents.issue',
+      (r, c) =>
+        r.repeat(
+          params.invoice_id,
+          params.additional_info === undefined
+            ? {}
+            : { additionalInfo: params.additional_info },
+          params.idempotency_key,
+          c,
+          noResponse,
+        ),
+      kind,
+    );
+    return {
+      type: kind,
+      invoice_id: result.id,
+      status: result.status,
+      copied_from_invoice_id: params.invoice_id,
+      ...(result.replayed ? { replayed: true } : {}),
+    };
   };
 }
 

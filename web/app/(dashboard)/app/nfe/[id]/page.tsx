@@ -11,6 +11,7 @@ import { saveBlob } from "@/lib/download";
 import { discardNfe, getNfe, isNfePending, listNfeEvents, nfeActions, nfeFile, syncNfe, type NfeDocument, type NfeTimelineEntry } from "@/lib/nfe";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { NfeCancelDialog } from "@/components/nfe/nfe-cancel-dialog";
+import { ResendEmailDialog } from "@/components/invoices/resend-email-dialog";
 import { NfeCorrectionDialog } from "@/components/nfe/nfe-correction-dialog";
 import { NfeTimeline } from "@/components/nfe/nfe-timeline";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default function NfeDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [correctOpen, setCorrectOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -106,6 +108,8 @@ export default function NfeDetailPage() {
           <>
             {actions.sync && <Button loading={busy} onClick={() => void run(() => syncNfe(id), t("syncDone"))}>{t("sync")}</Button>}
             {actions.resubmit && <Link href={`/app/nfe/new?resubmit=${nfe.id}`} className="btn btn-accent">{t("resubmit")}</Link>}
+            {actions.copy && <Link href={`/app/nfe/new?from=${nfe.id}`} className="btn btn-secondary">{t("copy")}</Link>}
+            {actions.resendEmail && <Button onClick={() => setEmailOpen(true)}>{t("resendEmail")}</Button>}
             {actions.discard && <Button variant="danger" onClick={() => setDiscardOpen(true)}>{t("discard")}</Button>}
             {actions.correct && <Button onClick={() => setCorrectOpen(true)}>{t("correct")}</Button>}
             {actions.cancel && <Button variant="danger" onClick={() => setCancelOpen(true)}>{t("cancel")}</Button>}
@@ -185,6 +189,7 @@ export default function NfeDetailPage() {
 
       {cancelOpen && actions.cancel && <NfeCancelDialog nfe={nfe} open onClose={() => setCancelOpen(false)} onCancelled={() => { setCancelOpen(false); setNotice(t("cancelRequested")); setRevision((value) => value + 1); }} />}
       {correctOpen && actions.correct && <NfeCorrectionDialog nfe={nfe} open onClose={() => setCorrectOpen(false)} onCorrected={() => { setCorrectOpen(false); setNotice(t("correctionSent")); setRevision((value) => value + 1); }} />}
+      {emailOpen && actions.resendEmail && <ResendEmailDialog invoiceId={nfe.id} defaultEmail={nfe.recipient?.email ?? ""} open onClose={() => setEmailOpen(false)} onSent={() => { setEmailOpen(false); setRevision((value) => value + 1); }} />}
       <Modal open={discardOpen} onClose={() => { if (!busy) setDiscardOpen(false); }} title={t("discardTitle")}>
         <p className="mb-5 text-sm text-text-3">{t("discardWarning")}</p>
         <div className="flex justify-end gap-3">

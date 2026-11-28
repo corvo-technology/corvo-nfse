@@ -2147,6 +2147,7 @@
     "nfe_validation_failed": "A NF-e tem problemas. Confira os campos indicados e envie de novo.",
     "invoice_operation_not_supported": "Essa operação não existe para esse tipo de nota. Por exemplo, carta de correção, descarte e inutilização são só da NF-e.",
     "nfe_invalid_state": "Essa ação não vale para a situação atual da NF-e.",
+    "nfe_repeat_not_normal": "Só dá para copiar uma NF-e normal. Devolução e complemento não podem ser copiados.",
     "nfe_download_format_invalid": "Formato de arquivo inválido. Use xml ou pdf.",
     "justification_length": "A justificativa precisa ter de 15 a 255 caracteres.",
     "correction_length": "A correção precisa ter de 15 a 1000 caracteres.",
@@ -3804,7 +3805,8 @@
       "status": "Situação",
       "created": "Criada em",
       "model": "Modelo",
-      "consumerAnonymous": "Consumidor não identificado"
+      "consumerAnonymous": "Consumidor não identificado",
+      "copy": "Copiar"
     },
     "filters": {
       "company": "Empresa",
@@ -3834,6 +3836,8 @@
       "subtitle": "Preencha os dados, confira com “Validar” e emita. Nada é enviado ao validar.",
       "resubmitTitle": "Corrigir e reenviar",
       "resubmitSubtitle": "Corrija o que a SEFAZ recusou e envie de novo. A nota mantém o mesmo número.",
+      "copyTitle": "Copiar nota",
+      "copySubtitle": "Os dados vêm da nota copiada. Confira preços e quantidades antes de emitir: a nova nota terá outro número e a data de hoje.",
       "loading": "Carregando…",
       "failed": "Não foi possível carregar os dados. Tente de novo."
     },
@@ -3904,6 +3908,8 @@
       "sync": "Conferir na SEFAZ",
       "syncDone": "Pedimos a conferência à SEFAZ. A situação aparece aqui em instantes.",
       "resubmit": "Corrigir e reenviar",
+      "copy": "Copiar",
+      "resendEmail": "Reenviar e-mail",
       "discard": "Descartar",
       "discardTitle": "Descartar esta NF-e?",
       "discardWarning": "A nota rejeitada deixa de existir e o número dela fica sem uso. Depois, use “Números pulados” para inutilizar esse número.",
@@ -4168,7 +4174,9 @@
       "title": "Nova venda ao consumidor",
       "subtitle": "Itens, forma de pagamento e, se o cliente pedir, o CPF. Nada é enviado quando você valida.",
       "resubmitTitle": "Corrigir e reenviar a NFC-e",
-      "resubmitSubtitle": "Corrija o que a SEFAZ recusou e envie de novo. A nota mantém o mesmo número."
+      "resubmitSubtitle": "Corrija o que a SEFAZ recusou e envie de novo. A nota mantém o mesmo número.",
+      "copyTitle": "Copiar venda",
+      "copySubtitle": "Os dados vêm da venda copiada. Confira preços e quantidades antes de emitir: a nova nota terá outro número e a data de hoje."
     }
   },
   "Admin": {

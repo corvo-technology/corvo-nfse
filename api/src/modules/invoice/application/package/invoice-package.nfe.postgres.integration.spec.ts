@@ -155,7 +155,7 @@ describePostgres('month package with NF-e on PostgreSQL', () => {
       .split('\r\n')
       .filter(Boolean);
     expect(lines).toHaveLength(3);
-    expect(lines[0]).toBe('numero;serie;chave;status;data;valor');
+    expect(lines[0]).toBe('numero;serie;chave;status;data;valor;modelo');
     expect(lines[1]).toMatch(/^\d+;1;\d{44};autorizada;\d{2}\/\d{2}\/\d{4};/);
   });
 
@@ -198,5 +198,17 @@ describePostgres('month package with NF-e on PostgreSQL', () => {
     await expect(open(withoutNfe)).rejects.toThrow(
       'No authorized or cancelled',
     );
+  });
+
+  it('a NFC-e of the month comes in an nfce/ folder with its XML and DANFCE', async () => {
+    const id = await s.issueNfce('FAKE-100');
+    await s.dispatch('nfe.prepare_documents', id);
+    const { names } = await open(withNfe);
+    const nfceFiles = names.filter((n) => n.startsWith('nfce/'));
+    expect(nfceFiles).toHaveLength(2);
+    expect(nfceFiles.some((n) => n.endsWith('/nfe-proc.xml'))).toBe(true);
+    expect(nfceFiles.some((n) => n.endsWith('/danfce.pdf'))).toBe(true);
+    const rows = await new TypeormNfePackageQuery(h.helper).list(scope(), 50);
+    expect(rows.filter((r) => r.model === 65)).toHaveLength(1);
   });
 });
