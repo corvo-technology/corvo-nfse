@@ -22,6 +22,8 @@ export interface ScheduleListFilter {
   status?: ScheduleStatus;
   companyId?: string;
   environment?: 'test' | 'live';
+  /** Only these kinds of document; empty answers nothing. */
+  documentTypes?: Array<'nfse' | 'nfe'>;
 }
 export interface SchedulePage {
   limit: number;

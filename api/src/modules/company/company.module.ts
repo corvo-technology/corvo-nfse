@@ -20,6 +20,9 @@ import { CompanyFiscalProfileService } from './application/company-fiscal-profil
 import { CompanyServiceTaxProfileService } from './application/company-service-tax-profile.service';
 import { CompanyController } from './http/company.controller';
 import { CompanyNfeSettingsController } from './http/company-nfe-settings.controller';
+import { CompanyNfeReadinessController } from './http/company-nfe-readiness.controller';
+import { ICadastroLookup } from './domain/cadastro-lookup';
+import { SefazCadastroLookup } from './infra/sefaz-cadastro-lookup';
 import { CompanyNfeSettingsOrmEntity } from './infra/company-nfe-settings.orm-entity';
 import { TypeOrmCompanyNfeSettingsRepository } from './infra/typeorm-company-nfe-settings.repository';
 import { ICompanyNfeSettingsRepository } from './domain/company-nfe-settings.repository';
@@ -44,6 +47,7 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
   controllers: [
     CompanyController,
     CompanyNfeSettingsController,
+    CompanyNfeReadinessController,
     CnpjController,
   ],
   providers: [
@@ -63,6 +67,7 @@ import { CertificateModule } from '@/modules/certificate/certificate.module';
       provide: ICompanyNfeSettingsRepository,
       useClass: TypeOrmCompanyNfeSettingsRepository,
     },
+    { provide: ICadastroLookup, useClass: SefazCadastroLookup },
     {
       provide: SimplesRegistryPort,
       // The adapter takes plain options (not injectables): build it here.

@@ -104,6 +104,29 @@ export class CompanyNfeSettingsOrmEntity {
   })
   contingencyMode!: string;
 
+  @Column({
+    name: 'registration_check_status',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
+  registrationCheckStatus!: string | null;
+
+  @Column({
+    name: 'registration_check_ie',
+    type: 'varchar',
+    length: 14,
+    nullable: true,
+  })
+  registrationCheckIe!: string | null;
+
+  @Column({
+    name: 'registration_checked_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  registrationCheckedAt!: Date | null;
+
   @Column({ name: 'enabled_at', type: 'timestamptz', nullable: true })
   enabledAt!: Date | null;
 

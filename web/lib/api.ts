@@ -1,6 +1,7 @@
 import type { InvoiceOriginKind } from "@/lib/invoice-origin";
 import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 import type { AuditActorFilter, AuditEvent } from "./audit";
+import type { NfeCreateInput } from "./nfe";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
 // Dashboard credentials are always the browser's HttpOnly cookie.
@@ -332,20 +333,26 @@ export interface PaymentStatus { id: string; status: "pending" | "paid" | "expir
 export type PurchaseResult =
   | { method: "card"; url: string }
   | { method: "pix"; brCode: string | null; qrCodeImage: string | null; paymentLinkUrl: string; expiresAt: string | null; paymentId?: string };
-type ScheduleWire = { id: string; kind: InvoiceSchedule["kind"]; frequency: ScheduleFrequency | null; status: InvoiceSchedule["status"]; pause_reason: InvoiceSchedule["pauseReason"]; company_id: string; anchor_on: string; next_run_on: string | null; ends_on: string | null; attempts: number; last_run_on: string | null; invoice: Record<string, unknown>; created_at: string };
+type ScheduleWire = { id: string; type?: InvoiceSchedule["type"]; kind: InvoiceSchedule["kind"]; frequency: ScheduleFrequency | null; status: InvoiceSchedule["status"]; pause_reason: InvoiceSchedule["pauseReason"]; company_id: string; anchor_on: string; next_run_on: string | null; ends_on: string | null; attempts: number; last_run_on: string | null; invoice: Record<string, unknown>; created_at: string };
 type ScheduleRunWire = { id: string; occurrence_on: string; ran_on: string; attempt: number; outcome: ScheduleRun["outcome"]; invoice_id: string | null; error_code: string | null; error_message: string | null; created_at: string };
-const adaptSchedule = (w: ScheduleWire): InvoiceSchedule => ({ id: w.id, kind: w.kind, frequency: w.frequency, status: w.status, pauseReason: w.pause_reason, companyId: w.company_id, anchorOn: w.anchor_on, nextRunOn: w.next_run_on, endsOn: w.ends_on, attempts: w.attempts, lastRunOn: w.last_run_on, invoice: w.invoice, createdAt: w.created_at });
+const adaptSchedule = (w: ScheduleWire): InvoiceSchedule => ({ id: w.id, type: w.type ?? "nfse", kind: w.kind, frequency: w.frequency, status: w.status, pauseReason: w.pause_reason, companyId: w.company_id, anchorOn: w.anchor_on, nextRunOn: w.next_run_on, endsOn: w.ends_on, attempts: w.attempts, lastRunOn: w.last_run_on, invoice: w.invoice, createdAt: w.created_at });
 const adaptScheduleRun = (w: ScheduleRunWire): ScheduleRun => ({ id: w.id, occurrenceOn: w.occurrence_on, ranOn: w.ran_on, attempt: w.attempt, outcome: w.outcome, invoiceId: w.invoice_id, errorCode: w.error_code, errorMessage: w.error_message, createdAt: w.created_at });
 /** What POST /invoices takes to create a schedule: the invoice body plus `options.type` SCHEDULE or RECURRING. */
 /** What a substitute can change (the Sefin forbids changing the customer, the competence date and the amount for MEI and Simples Nacional). */
 export interface SubstituteInvoiceInput { description: string; service?: { description?: string }; purchaseOrder?: string; notes?: string }
 export interface CreateScheduleInput { companyId: string; amount: number; competenceDate: string; customer?: { name?: string; taxId?: string; email?: string; address?: { city?: string; state?: string }; foreign?: ForeignCustomer }; service?: { description?: string; code?: string; municipalityCode?: string }; deduction?: number; purchaseOrder?: string; notes?: string; options: { type: "SCHEDULE" | "RECURRING"; recurrence?: { frequency: ScheduleFrequency; endsOn?: string }; email?: { send: boolean } } }
 export interface UpdateScheduleInput { invoice?: Record<string, unknown>; endsOn?: string | null; frequency?: ScheduleFrequency; anchorOn?: string }
+export interface NfeScheduleWhen { firstDate: string; frequency?: ScheduleFrequency; endsOn?: string }
 export const schedules = {
-  list: async (params: PageParams & { status?: InvoiceSchedule["status"] } = {}, signal?: AbortSignal): Promise<Page<InvoiceSchedule>> => { const page = toPage(await request<ListBody<ScheduleWire>>(`/schedules${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptSchedule) }; },
+  list: async (params: PageParams & { status?: InvoiceSchedule["status"]; type?: InvoiceSchedule["type"] } = {}, signal?: AbortSignal): Promise<Page<InvoiceSchedule>> => { const page = toPage(await request<ListBody<ScheduleWire>>(`/schedules${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptSchedule) }; },
   get: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}`))),
   runs: async (id: string, params: PageParams = {}, signal?: AbortSignal): Promise<Page<ScheduleRun>> => { const page = toPage(await request<ListBody<ScheduleRunWire>>(`/schedules/${idPath(id)}/runs${query(params)}`, { signal })); return { ...page, items: page.items.map(adaptScheduleRun) }; },
   create: async (input: CreateScheduleInput, idempotencyKey?: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>("/invoices", { ...json(input), ...(idempotencyKey ? { headers: { "idempotency-key": idempotencyKey } } : {}) }))),
+  /** An NF-e that issues later: the same body as `createNfe`, the first date and how it repeats (`once` has no frequency). */
+  createNfe: async (input: NfeCreateInput, when: NfeScheduleWhen, idempotencyKey: string) => {
+    const options = when.frequency ? { type: "RECURRING", recurrence: { frequency: when.frequency, ...(when.endsOn ? { endsOn: when.endsOn } : {}) } } : { type: "SCHEDULE" };
+    return adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>("/invoices", { ...json({ type: "nfe", ...input, competenceDate: when.firstDate, options }), headers: { "idempotency-key": idempotencyKey } })));
+  },
   update: async (id: string, patch: UpdateScheduleInput) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}`, json(patch, "PATCH")))),
   pause: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/pause`, json({})))),
   resume: async (id: string) => adaptSchedule(unwrap(await request<Envelope<ScheduleWire>>(`/schedules/${idPath(id)}/resume`, json({})))),

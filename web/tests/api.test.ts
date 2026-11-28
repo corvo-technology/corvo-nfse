@@ -198,7 +198,26 @@ describe("schedules", () => {
     const page = await schedules.list({ cursor: "0" });
     expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/schedules?cursor=0");
     expect(page).toMatchObject({ hasMore: true, nextCursor: "50" });
-    expect(page.items[0]).toEqual({ id: "s1", kind: "recurring", frequency: "WEEKLY", status: "paused", pauseReason: "failures", companyId: "c1", anchorOn: "2026-11-09", nextRunOn: null, endsOn: "2027-01-31", attempts: 3, lastRunOn: "2026-11-11", invoice: { amount: 100 }, createdAt: "2026-11-06T15:00:00.000Z" });
+    expect(page.items[0]).toEqual({ id: "s1", type: "nfse", kind: "recurring", frequency: "WEEKLY", status: "paused", pauseReason: "failures", companyId: "c1", anchorOn: "2026-11-09", nextRunOn: null, endsOn: "2027-01-31", attempts: 3, lastRunOn: "2026-11-11", invoice: { amount: 100 }, createdAt: "2026-11-06T15:00:00.000Z" });
+  });
+
+  it("reads the type of document a schedule issues and can filter by it", async () => {
+    fetchMock.mockResolvedValue(reply({ data: [{ ...wire, type: "nfe" }], pagination: { limit: 50, hasMore: false, nextCursor: null } }));
+    const page = await schedules.list({ type: "nfe" });
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/schedules?type=nfe");
+    expect(page.items[0].type).toBe("nfe");
+  });
+
+  it("schedules an NF-e through POST /invoices with the first date, how it repeats and the key", async () => {
+    fetchMock.mockImplementation(async () => reply({ data: { ...wire, type: "nfe", kind: "once", frequency: null } }, 202));
+    const input = { companyId: "c1", recipient: {}, items: [], payments: [] } as unknown as Parameters<typeof schedules.createNfe>[0];
+    const created = await schedules.createNfe(input, { firstDate: "2026-12-01" }, "key-1");
+    expect(created.type).toBe("nfe");
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/proxy/v1/invoices");
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("idempotency-key")).toBe("key-1");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ type: "nfe", competenceDate: "2026-12-01", options: { type: "SCHEDULE" } });
+    await schedules.createNfe(input, { firstDate: "2026-12-01", frequency: "MONTHLY", endsOn: "2027-06-30" }, "key-2");
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body)).options).toEqual({ type: "RECURRING", recurrence: { frequency: "MONTHLY", endsOn: "2027-06-30" } });
   });
 
   it("pause, resume and cancel POST to the action and return the schedule", async () => {

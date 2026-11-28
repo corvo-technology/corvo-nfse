@@ -133,6 +133,10 @@ describePostgres('schedule runner against real transactions', () => {
         retryNotice: () => Promise.resolve(),
         paused: () => Promise.resolve(),
       },
+      {
+        validate: () => Promise.resolve({ companyId: '' }),
+        issue: () => Promise.resolve({ id: '' }),
+      },
       500,
     );
   }, 60000);

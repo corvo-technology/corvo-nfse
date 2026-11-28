@@ -6,11 +6,12 @@ import { NfeSettingsForm } from "@/components/companies/nfe-settings-form";
 import { ApiError } from "@/lib/api";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn(), readiness: vi.fn() }));
 vi.mock("@/lib/nfe", async (original) => ({
   ...(await original<typeof import("@/lib/nfe")>()),
   getNfeSettings: mocks.get,
   updateNfeSettings: mocks.update,
+  getNfeReadiness: mocks.readiness,
 }));
 
 const settings = (overrides = {}) => ({
@@ -19,7 +20,11 @@ const settings = (overrides = {}) => ({
 });
 const renderForm = (canManage = true, nfce = false) => render(<NextIntlClientProvider locale="en" messages={messages}><NfeSettingsForm companyId="c1" canManage={canManage} nfce={nfce} /></NextIntlClientProvider>);
 
-beforeEach(() => { vi.clearAllMocks(); mocks.get.mockResolvedValue(settings()); });
+const readiness = (overrides = {}) => ({
+  companyId: "c1", ready: false, status: "unavailable", message: "x", stateRegistration: null, suggestedStateRegistration: null, registrations: [], missing: [], checkedAt: null, ...overrides,
+});
+
+beforeEach(() => { vi.clearAllMocks(); mocks.get.mockResolvedValue(settings()); mocks.readiness.mockResolvedValue(readiness()); });
 afterEach(cleanup);
 
 describe("NfeSettingsForm", () => {
@@ -127,5 +132,45 @@ describe("NfeSettingsForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
     await waitFor(() => expect(mocks.update).toHaveBeenCalled());
     expect(mocks.update.mock.calls[0][1]).not.toHaveProperty("nfceAutoOffline");
+  });
+
+  it("fills the IE the SEFAZ found when the company has none, without saving it", async () => {
+    mocks.readiness.mockResolvedValue(readiness({ status: "ie_suggested", suggestedStateRegistration: "110042490114" }));
+    renderForm();
+    await screen.findByText(/We found state registration 110042490114/);
+    expect((screen.getByLabelText(/State registration \(IE\)/) as HTMLInputElement).value).toBe("110042490114");
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("tells a company with no IE that it cannot issue NF-e/NFC-e", async () => {
+    mocks.readiness.mockResolvedValue(readiness({ status: "no_registration" }));
+    renderForm();
+    await screen.findByText(/has no state registration in/);
+    expect(screen.getByTestId("nfe-readiness").textContent).toMatch(/use the NFS-e/);
+  });
+
+  it("the button asks the SEFAZ again and fills the IE", async () => {
+    mocks.readiness.mockResolvedValueOnce(readiness({ status: "no_certificate" })).mockResolvedValue(readiness({ status: "ie_mismatch", stateRegistration: "999", suggestedStateRegistration: "110042490114" }));
+    renderForm();
+    await screen.findByText(/Upload the digital certificate/);
+    fireEvent.click(screen.getByRole("button", { name: /Check at the SEFAZ/ }));
+    await screen.findByText(/does not belong to this CNPJ/);
+    await waitFor(() => expect((screen.getByLabelText(/State registration \(IE\)/) as HTMLInputElement).value).toBe("110042490114"));
+  });
+
+  it("shows a neutral message when the check cannot be done", async () => {
+    mocks.readiness.mockRejectedValue(new Error("boom"));
+    renderForm();
+    await screen.findByText(/Look up the state registration at the CCC/);
+  });
+
+  it("shows the warning of the SEFAZ after saving, without blocking the save", async () => {
+    mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [], registrationWarning: "A inscrição estadual 110042490114 não está habilitada." }));
+    renderForm();
+    await screen.findByText("This is still missing to issue NF-e:");
+    fireEvent.change(screen.getByLabelText(/State registration \(IE\)/), { target: { value: "110042490114" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
+    await screen.findByText("NF-e data saved.");
+    expect(screen.getByText("A inscrição estadual 110042490114 não está habilitada.")).toBeTruthy();
   });
 });

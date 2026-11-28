@@ -106,6 +106,12 @@ function formatAmount(schedule: InvoiceSchedule): string | null {
   const input = schedule.props.invoiceInput;
   let total: number | null =
     typeof input.amount === 'number' ? input.amount : null;
+  if (total === null && Array.isArray(input.items))
+    total = (input.items as Array<Record<string, unknown>>).reduce(
+      (sum, item) =>
+        sum + Number(item.quantity ?? 0) * Number(item.unitPrice ?? 0),
+      0,
+    );
   if (total === null && Array.isArray(input.services))
     total = (input.services as Array<Record<string, unknown>>).reduce(
       (sum, service) =>

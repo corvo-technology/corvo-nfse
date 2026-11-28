@@ -1,3 +1,4 @@
+import type { RegistrationCheck } from './nfe-registration';
 import type { NfeSettings, NfeSettingsInput } from './nfe-settings';
 
 export abstract class ICompanyNfeSettingsRepository {
@@ -12,4 +13,10 @@ export abstract class ICompanyNfeSettingsRepository {
     tenantId: string,
     input: Required<NfeSettingsInput>,
   ): Promise<NfeSettings>;
+  /** Keeps (or clears, with `null`) the last conclusive SEFAZ consulta about the saved IE. */
+  abstract saveRegistrationCheck(
+    companyId: string,
+    tenantId: string,
+    check: RegistrationCheck | null,
+  ): Promise<void>;
 }

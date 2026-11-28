@@ -61,6 +61,7 @@ import {
 } from '@/modules/fiscal-core/application/invoice-routes';
 import {
   InvoiceTypeRouter,
+  invoiceOperationNotSupported,
   type InvoiceGate,
 } from '@/modules/fiscal-core/application/invoice-type.router';
 import { RequireDocumentPermission } from '@/modules/auth/require-permission.decorator';
@@ -75,6 +76,12 @@ import {
   ListInvoicesQuery,
   RequestInvoiceEmailDto,
 } from './invoice.dto';
+
+/** `options.type` SCHEDULE or RECURRING: the request creates a schedule instead of a note. */
+function isScheduling(options: unknown): boolean {
+  const type = (options as { type?: unknown } | null | undefined)?.type;
+  return type === 'SCHEDULE' || type === 'RECURRING';
+}
 
 const VIEW: InvoiceGate = {
   nfse: 'nfse.invoices.view',
@@ -157,6 +164,21 @@ export class InvoiceController {
       // The validation pipe let it through untouched: NF-e and NFC-e validate their own body.
       const call = this.callOf(req);
       const routes = this.types.forType(bodyType, call, ISSUE.nfe);
+      const body = dto as unknown as Record<string, unknown>;
+      if (isScheduling(body.options)) {
+        // Scheduling is for the NF-e; a NFC-e is a sale at the counter and is issued on the spot.
+        if (bodyType === 'nfce')
+          throw invoiceOperationNotSupported(
+            'A NFC-e é venda presencial e não pode ser agendada nem recorrente: emita no momento da venda',
+          );
+        const schedule = await this.emissionRouter.scheduleNfe(
+          body,
+          req.authContext!.activeTenantId,
+          req.authContext!,
+          idempotencyKey,
+        );
+        return data(toScheduleResponse(schedule));
+      }
       return routes.create(dto, idempotencyKey, call, res!);
     }
     this.types?.assertNfse(this.callOf(req), ISSUE);

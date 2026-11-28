@@ -38,6 +38,8 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
   const t = useTranslations("Schedules");
   const te = useTranslations("ApiErrors");
   const editing = schedule !== undefined;
+  // An NF-e schedule only changes its dates and repetition here: its items and price are fixed when it is created.
+  const isNfe = schedule?.type === "nfe";
   const stored = schedule?.invoice ?? {};
   const customer = sub(stored, "customer");
   const [companyId, setCompanyId] = useState(schedule?.companyId ?? "");
@@ -63,8 +65,8 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
     const found: Record<string, string> = {};
     if (!editing && !companyId) found.company = required;
     if (!firstDate) found.firstDate = required;
-    if (!(toNumber(amount) > 0)) found.amount = required;
-    if ((name.trim() || email.trim()) && !digits(taxId)) found.taxId = required;
+    if (!isNfe && !(toNumber(amount) > 0)) found.amount = required;
+    if (!isNfe && (name.trim() || email.trim()) && !digits(taxId)) found.taxId = required;
     setErrors(found);
     return Object.keys(found).length === 0;
   };
@@ -96,16 +98,16 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
   const updatePayload = (): UpdateScheduleInput => {
     const patch: UpdateScheduleInput = {};
     const invoice: Body = {};
-    if (toNumber(amount) !== stored.amount) invoice.amount = toNumber(amount);
+    if (!isNfe && toNumber(amount) !== stored.amount) invoice.amount = toNumber(amount);
     const service = sub(stored, "service");
-    if (description.trim() !== String(service.description ?? "")) invoice.service = { ...service, description: description.trim() };
+    if (!isNfe && description.trim() !== String(service.description ?? "")) invoice.service = { ...service, description: description.trim() };
     // An empty text clears the field: the API drops a blank value when the note is issued.
-    if (purchaseOrder.trim() !== (typeof stored.purchaseOrder === "string" ? stored.purchaseOrder : "")) invoice.purchaseOrder = purchaseOrder.trim();
-    if (notes.trim() !== (typeof stored.notes === "string" ? stored.notes : "")) invoice.notes = notes.trim();
+    if (!isNfe && purchaseOrder.trim() !== (typeof stored.purchaseOrder === "string" ? stored.purchaseOrder : "")) invoice.purchaseOrder = purchaseOrder.trim();
+    if (!isNfe && notes.trim() !== (typeof stored.notes === "string" ? stored.notes : "")) invoice.notes = notes.trim();
     const now = customerBody() ?? {};
-    if (JSON.stringify(now) !== JSON.stringify(Object.fromEntries(Object.entries(customer).filter(([k]) => ["name", "taxId", "email"].includes(k) && customer[k])))) invoice.customer = { ...customer, ...now };
+    if (!isNfe && JSON.stringify(now) !== JSON.stringify(Object.fromEntries(Object.entries(customer).filter(([k]) => ["name", "taxId", "email"].includes(k) && customer[k])))) invoice.customer = { ...customer, ...now };
     const options = sub(stored, "options");
-    if (sendEmail !== Boolean(sub(options, "email").send)) invoice.options = { ...options, email: { send: sendEmail } };
+    if (!isNfe && sendEmail !== Boolean(sub(options, "email").send)) invoice.options = { ...options, email: { send: sendEmail } };
     if (Object.keys(invoice).length > 0) patch.invoice = invoice;
     if (recurring && frequency !== schedule?.frequency) patch.frequency = frequency;
     if (recurring && endsOn !== (schedule?.endsOn ?? "")) patch.endsOn = endsOn || null;
@@ -178,6 +180,7 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
             </Field>
           )}
         </div>
+        {isNfe ? <p role="note" className="banner">{t("form.nfeHint")}</p> : (<>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label={t("form.amount")} error={errors.amount} required>
             {(c) => <input {...c} type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />}
@@ -212,6 +215,7 @@ export function ScheduleForm({ open, onClose, companies, schedule, onSaved }: Pr
           <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
           {t("form.sendEmail")}
         </label>
+        </>)}
         {apiError && <p role="alert" className="text-[13px] text-danger">{apiError}</p>}
         <div className="flex justify-end gap-3">
           <Button type="submit" variant="accent" loading={saving}>{editing ? t("form.save") : t("form.create")}</Button>

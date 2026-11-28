@@ -45,6 +45,7 @@ describe('McpService tool registration', () => {
         'nfe_number_gaps',
         'nfe_settings_get',
         'nfe_settings_update',
+        'nfe_readiness',
       ]),
     );
   });

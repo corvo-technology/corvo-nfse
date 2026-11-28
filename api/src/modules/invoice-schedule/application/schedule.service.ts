@@ -11,7 +11,15 @@ import { validationExceptionFactory } from '@/shared/http/validation-pipe';
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
-import { CreateInvoiceDto } from '@/modules/invoice/http/invoice.dto';
+import {
+  CreateInvoiceDto,
+  InvoiceOptionsDto,
+} from '@/modules/invoice/http/invoice.dto';
+import { validateDto } from '@/shared/http/validate-dto';
+import {
+  SCHEDULE_NFE_PORT,
+  type ScheduleNfePort,
+} from './schedule-nfe.adapter';
 import {
   InvoiceSchedule,
   ScheduleValidationError,
@@ -69,6 +77,7 @@ export class ScheduleService {
     @Inject(SCHEDULE_HORIZON_DAYS) private readonly horizonDays: number,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly audit: AccountAuditRecorder,
+    @Inject(SCHEDULE_NFE_PORT) private readonly nfe: ScheduleNfePort,
   ) {}
 
   /** Recorded after the write is committed, never inside the transaction. */
@@ -144,6 +153,104 @@ export class ScheduleService {
       now,
       this.horizonDays,
     );
+    return this.insertReplaying(
+      schedule,
+      tenantId,
+      environment,
+      idempotencyKey,
+      requestHash,
+    );
+  }
+
+  /**
+   * `POST /invoices` with `type: "nfe"` and `options.type` SCHEDULE or RECURRING. The whole NF-e is
+   * checked now, as `POST /invoices/validate` would, so a schedule never starts broken. `competenceDate`
+   * is the day of the first run. The body is stored as sent (minus the scheduling fields).
+   */
+  async createNfeFromEmission(
+    rawBody: Record<string, unknown>,
+    tenantId: string,
+    authContext: AuthContext,
+    now: Date = new Date(),
+    idempotencyKey?: string,
+  ): Promise<InvoiceSchedule> {
+    const {
+      type: _type,
+      options: rawOptions,
+      competenceDate,
+      ...body
+    } = rawBody;
+    const options = await validateDto(InvoiceOptionsDto, rawOptions ?? {});
+    const kind = KIND_BY_TYPE[options.type ?? ''];
+    if (!kind)
+      throw new ScheduleValidationError(
+        'options.type',
+        'invalid',
+        'options.type must be SCHEDULE or RECURRING',
+      );
+    if (options.email !== undefined)
+      throw new ScheduleValidationError(
+        'options.email',
+        'not_allowed',
+        'For an NF-e use sendEmail in the body instead of options.email',
+      );
+    if (
+      typeof competenceDate !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}/.test(competenceDate)
+    )
+      throw new ScheduleValidationError(
+        'competenceDate',
+        'invalid_date',
+        'competenceDate must be the date of the first run (YYYY-MM-DD)',
+      );
+    const environment = executionEnvironment(authContext);
+    const requestHash = hashRequest(rawBody);
+    if (idempotencyKey) {
+      const replay = await this.replayOf(
+        tenantId,
+        environment,
+        idempotencyKey,
+        requestHash,
+      );
+      if (replay) return replay;
+    }
+    await this.assertRoomForOne(tenantId);
+
+    const { companyId } = await this.nfe.validate(tenantId, environment, body);
+    const schedule = InvoiceSchedule.create(
+      {
+        tenantId,
+        environment,
+        companyId,
+        documentType: 'nfe',
+        kind,
+        frequency: options.recurrence?.frequency ?? null,
+        firstOn: competenceDate.slice(0, 10),
+        endsOn: options.recurrence?.endsOn ?? null,
+        invoiceInput: body,
+        createdBy: authContext.authUserId ?? null,
+        idempotencyKey: idempotencyKey ?? null,
+        requestHash: idempotencyKey ? requestHash : null,
+      },
+      now,
+      this.horizonDays,
+    );
+    return this.insertReplaying(
+      schedule,
+      tenantId,
+      environment,
+      idempotencyKey,
+      requestHash,
+    );
+  }
+
+  private async insertReplaying(
+    schedule: InvoiceSchedule,
+    tenantId: string,
+    environment: 'test' | 'live',
+    idempotencyKey: string | undefined,
+    requestHash: string,
+  ): Promise<InvoiceSchedule> {
     try {
       await this.repo.insert(schedule);
     } catch (error) {
@@ -192,6 +299,7 @@ export class ScheduleService {
       status?: ScheduleStatus;
       companyId?: string;
       environment?: 'test' | 'live';
+      documentTypes?: Array<'nfse' | 'nfe'>;
     },
     page: SchedulePage,
   ): Promise<ScheduleListResult<InvoiceSchedule>> {
@@ -244,8 +352,18 @@ export class ScheduleService {
       };
       if (patch.invoice) {
         const merged = { ...schedule.props.invoiceInput, ...patch.invoice };
-        await assertEditableInvoicePatch(patch.invoice);
-        await this.validate(merged, tenantId, schedule.props.environment, now);
+        if (schedule.props.documentType === 'nfe') {
+          assertEditableNfePatch(patch.invoice);
+          await this.nfe.validate(tenantId, schedule.props.environment, merged);
+        } else {
+          await assertEditableInvoicePatch(patch.invoice);
+          await this.validate(
+            merged,
+            tenantId,
+            schedule.props.environment,
+            now,
+          );
+        }
         change.invoiceInput = merged;
       }
       schedule.update(change, todayInSaoPaulo(now), this.horizonDays);
@@ -329,6 +447,17 @@ const OWNED_BY_THE_SCHEDULE = [
   'companyTaxId',
   'competenceDate',
 ] as const;
+
+/** Same rule for an NF-e; the rest of the patch is judged by the NF-e validation of the merged body. */
+function assertEditableNfePatch(patch: Record<string, unknown>): void {
+  for (const key of ['companyId', 'type', 'options', 'competenceDate'])
+    if (patch[key] !== undefined)
+      throw new ScheduleValidationError(
+        `invoice.${key}`,
+        'not_allowed',
+        `invoice.${key} cannot be changed on a schedule`,
+      );
+}
 
 /**
  * The part of the invoice a PATCH may change: shaped like a normal emission (so a malformed body

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { fieldIssues } from "@/lib/api-errors";
+import { schedules as schedulesApi } from "@/lib/api";
 import { createNfe, getNfeSettings, resubmitNfe, validateNfe, type NfeSettings } from "@/lib/nfe";
 import { maskCurrency, maskState, maskTaxId, maskZip } from "@/lib/masks";
 import { rememberProducts } from "@/lib/nfe-products";
@@ -14,6 +15,7 @@ import type { Company } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { NfeItemsEditor } from "@/components/nfe/nfe-items-editor";
+import { ISSUE_NOW, NfeScheduleOptions, type NfeWhen } from "@/components/nfe/nfe-schedule-options";
 import { useRecipientAutofill } from "@/components/nfe/use-recipient-autofill";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,6 +45,8 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
   const [form, setForm] = useState<NfeFormState>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
+  const [when, setWhen] = useState<NfeWhen>(ISSUE_NOW);
+  const scheduling = resubmitId === undefined && when.mode !== "now";
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState<"validate" | "submit" | null>(null);
   const inFlight = useRef(false);
@@ -98,8 +102,16 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
         setPreview(result.accessKeyPreview);
         return;
       }
-      const body = JSON.stringify(input);
+      const body = JSON.stringify(scheduling ? { input, when } : input);
       if (key.current?.body !== body) key.current = { body, value: crypto.randomUUID() };
+      if (scheduling) {
+        if (!when.firstDate) { setErrors({ firstDate: t("schedule.dateRequired") }); setBanner(t("fixFields")); return; }
+        // The NF-e is checked now, as a dry-run would: it never becomes a schedule while it is broken.
+        const created = await schedulesApi.createNfe(input, { firstDate: when.firstDate, ...(when.mode === "recurring" ? { frequency: when.frequency, ...(when.endsOn ? { endsOn: when.endsOn } : {}) } : {}) }, key.current.value);
+        rememberProducts(items);
+        router.push(`/app/schedules/${created.id}`);
+        return;
+      }
       const accepted = resubmitId ? await resubmitNfe(resubmitId, input, key.current.value) : await createNfe(input, key.current.value);
       rememberProducts(items);
       router.push(`/app/nfe/${accepted.id}`);
@@ -191,9 +203,11 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
         <label className="flex items-center gap-2 text-sm text-text-2"><input type="checkbox" checked={form.sendEmail} onChange={(e) => setForm({ ...form, sendEmail: e.target.checked })} />{t("sendEmail")}</label>
       </Card>
 
+      {resubmitId === undefined && <NfeScheduleOptions value={when} onChange={setWhen} error={err("firstDate")} />}
+
       <div className="flex flex-wrap justify-end gap-3">
         <Button variant="secondary" loading={busy === "validate"} disabled={busy !== null} onClick={() => void run("validate")}>{t("validate")}</Button>
-        <Button type="submit" variant="accent" loading={busy === "submit"} disabled={busy !== null || productionLocked}>{resubmitId ? t("resubmit") : t("issue")}</Button>
+        <Button type="submit" variant="accent" loading={busy === "submit"} disabled={busy !== null || productionLocked}>{resubmitId ? t("resubmit") : scheduling ? t(when.mode === "recurring" ? "schedule.submitRecurring" : "schedule.submitOnce") : t("issue")}</Button>
       </div>
     </form>
   );

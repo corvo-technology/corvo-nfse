@@ -220,6 +220,7 @@ import {
   NFE_INUTILIZE_TOOL,
   NFE_NUMBER_GAPS_TOOL,
   NFE_REPEAT_TOOL,
+  NFE_READINESS_TOOL,
   NFE_SETTINGS_GET_TOOL,
   NFE_SETTINGS_UPDATE_TOOL,
   NFE_VALIDATE_TOOL,
@@ -237,6 +238,7 @@ import {
   createNfeNumberGapsHandler,
   createNfeRepeatHandler,
   createNfeReviewHandler,
+  createNfeReadinessHandler,
   createNfeSettingsGetHandler,
   createNfeSettingsUpdateHandler,
   createNfeValidateHandler,
@@ -396,8 +398,8 @@ export class McpService {
       NFSE_ISSUE_TOOL,
       this.wrapWithScopeCheck(
         byType(createNfseIssueHandler(this.emissionRouter), {
-          nfe: createNfeIssueHandler(this.nfe),
-          nfce: createNfeIssueHandler(this.nfe, 'nfce'),
+          nfe: createNfeIssueHandler(this.nfe, 'nfe', this.emissionRouter),
+          nfce: createNfeIssueHandler(this.nfe, 'nfce', this.emissionRouter),
         }),
         'nfse:write',
       ),
@@ -662,6 +664,7 @@ export class McpService {
         createNfeSettingsGetHandler(this.nfe),
         'nfse:read',
       ],
+      [NFE_READINESS_TOOL, createNfeReadinessHandler(this.nfe), 'nfse:read'],
     ] as const)
       this.server.registerTool(tool, this.wrapWithScopeCheck(handler, scope));
   }

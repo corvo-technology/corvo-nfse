@@ -59,7 +59,7 @@ describe("New NF-e / NFC-e page", () => {
     await screen.findByRole("button", { name: "Issue NF-e" });
     expect(screen.getByRole("heading", { name: "Copy note" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Send NF-e again" })).toBeNull();
-    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByRole("radiogroup", { name: "Which note do you want to issue?" })).toBeNull();
     expect(screen.getByDisplayValue("Camiseta")).toBeTruthy();
     expect(screen.getByDisplayValue("Maria da Silva")).toBeTruthy();
     expect(screen.getByDisplayValue("Pedido 10")).toBeTruthy();
