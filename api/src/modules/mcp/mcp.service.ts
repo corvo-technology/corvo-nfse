@@ -282,7 +282,6 @@ export class McpService {
     private readonly packageLinks: PackageLinkService,
     private readonly accountantPackages: AccountantPackageService,
     private readonly serviceFavorites: ServiceFavoritesService,
-    private readonly productFavorites: ProductFavoritesService,
     private readonly invoiceOverview: InvoiceOverviewService,
     private readonly billingUsage: BillingUsageService,
     private readonly credits: CreditsService,
@@ -302,6 +301,7 @@ export class McpService {
     private readonly webhookDeliveries: WebhookDeliveryService,
     private readonly webhookOutbox: WebhookOutboxService,
     private readonly nfe: McpNfe,
+    private readonly productFavorites: ProductFavoritesService,
   ) {
     this.server = new McpServer({
       instructions: mcpInstructions(IS_SELF_HOSTED),
