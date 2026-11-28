@@ -6,6 +6,7 @@ Built from `git log --since=2026-10-26` and the diff of the controllers and DTOs
 
 ## Unreleased
 
+- MCP: `nfe_validate` may answer `warnings` (non-blocking, from the last SEFAZ check kept for the company: it may not be able to issue, or was never checked); `nfe_settings_get` and `nfe_settings_update` no longer show the deprecated `nfceAutoOffline`. `GET /companies/{id}/nfe-settings` now answers `registrationWarning` with the last known warning (as `PUT` does), `readiness.status` `sefaz_rejected` (cStat 257) is kept as the last answer, and `PUT` keeps the stored `nfceAutoOffline` when it is not sent. Additive.
 - `readiness.status` of `GET /companies/{id}/nfe-settings?check=sefaz` gains `sefaz_rejected` (the SEFAZ answered the consulta with a rejection) and `readiness` gains `sefazCStat` and `sefazReason` (null otherwise), so the person sees what the SEFAZ said. Additive.
 - `POST /invoices/{id}/email` now also sends an authorized NF-e or NFC-e again (the XML and the DANFE or DANFCE), to the recipient or to the `email` in the body; same `202` answer `{ emailId, status }` and same codes (`DOCUMENTS_NOT_READY`, `INVOICE_CANCELLED_NO_EMAIL`, `CUSTOMER_EMAIL_MISSING`, `IDEMPOTENCY_KEY_INVALID`). Nothing changes for NFS-e.
 - The accountant monthly package now also carries the NFC-e (folder `nfce/`); `nfe-resumo.csv` gets a last column, `modelo` (55 or 65).

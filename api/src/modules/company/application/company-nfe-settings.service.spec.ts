@@ -231,7 +231,7 @@ describe('CompanyNfeSettingsService', () => {
       });
     });
 
-    it('257 do cadastro: mensagem clara, só aviso e não guarda a resposta', async () => {
+    it('257 do cadastro: mensagem clara, só aviso (guarda a resposta só para o readiness, sem travar a nota)', async () => {
       const c = company('SP');
       const { service, repo } = build(
         c,
@@ -253,7 +253,15 @@ describe('CompanyNfeSettingsService', () => {
       expect(view.message).toContain(
         'A empresa não está habilitada para emitir NF-e na SEFAZ de SP.',
       );
-      expect(repo.saveRegistrationCheck).not.toHaveBeenCalled();
+      expect(repo.saveRegistrationCheck).toHaveBeenCalledWith(
+        c.id,
+        tenantId,
+        expect.objectContaining({ status: 'sefaz_rejected' }),
+      );
+      expect(
+        (await service.get('c', tenantId, 'test', { check: true }))
+          .registrationWarning,
+      ).toContain('não está habilitada para emitir NF-e');
     });
 
     it('empresa sem IE (só serviço) não pode emitir', async () => {

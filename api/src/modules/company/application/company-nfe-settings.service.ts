@@ -126,7 +126,14 @@ export class CompanyNfeSettingsService {
     } else {
       readiness = this.storedReadiness(company, stored);
     }
-    return this.build(company, stored, tenantId, null, readiness);
+    // The same last-known warning that `update` returns.
+    const warning =
+      readiness &&
+      (WARNING_STATUSES.includes(readiness.status as RegistrationStatus) ||
+        readiness.sefazCStat === CSTAT_NOT_ISSUER)
+        ? readiness.message
+        : null;
+    return this.build(company, stored, tenantId, warning, readiness);
   }
 
   private readinessOf(
@@ -174,7 +181,15 @@ export class CompanyNfeSettingsService {
     return this.readinessOf(
       company,
       stored,
-      { status: check.status, suggested: null, registrations: [] },
+      {
+        status: check.status,
+        suggested: null,
+        registrations: [],
+        // Only the "not an NF-e issuer" answer is kept for `sefaz_rejected`.
+        ...(check.status === 'sefaz_rejected'
+          ? { sefaz: { cStat: CSTAT_NOT_ISSUER, reason: '' } }
+          : {}),
+      },
       check.checkedAt,
     );
   }
@@ -221,8 +236,11 @@ export class CompanyNfeSettingsService {
       defaultSeries: input.defaultSeries ?? NFE_SETTINGS_DEFAULTS.defaultSeries,
       nfceDefaultSeries:
         input.nfceDefaultSeries ?? NFE_SETTINGS_DEFAULTS.nfceDefaultSeries,
+      // Deprecated (the offline contingency is always on): a field that is not sent keeps the stored value.
       nfceAutoOffline:
-        input.nfceAutoOffline ?? NFE_SETTINGS_DEFAULTS.nfceAutoOffline,
+        input.nfceAutoOffline ??
+        (await this.settings.find(companyId, tenantId))?.nfceAutoOffline ??
+        NFE_SETTINGS_DEFAULTS.nfceAutoOffline,
       defaultNatOp: input.defaultNatOp ?? NFE_SETTINGS_DEFAULTS.defaultNatOp,
       defaultCsosn: input.defaultCsosn ?? NFE_SETTINGS_DEFAULTS.defaultCsosn,
       defaultOrigin: input.defaultOrigin ?? NFE_SETTINGS_DEFAULTS.defaultOrigin,
@@ -273,14 +291,21 @@ export class CompanyNfeSettingsService {
     }
   }
 
-  /** Keeps a conclusive answer for the validator; an inconclusive one leaves the last answer alone. */
+  /**
+   * Keeps a conclusive answer for the validator (and "not an NF-e issuer", cStat 257, so the readiness
+   * and the MCP warnings know it); an inconclusive one leaves the last answer alone. The validator
+   * never stops a note for 257: it is not in CONCLUSIVE_STATUSES.
+   */
   private async rememberCheck(
     companyId: string,
     tenantId: string,
     ie: string,
     assessment: RegistrationAssessment,
   ): Promise<void> {
-    if (!CONCLUSIVE_STATUSES.includes(assessment.status)) return;
+    const notIssuer =
+      assessment.status === 'sefaz_rejected' &&
+      assessment.sefaz?.cStat === CSTAT_NOT_ISSUER;
+    if (!CONCLUSIVE_STATUSES.includes(assessment.status) && !notIssuer) return;
     await this.settings.saveRegistrationCheck(companyId, tenantId, {
       status: assessment.status,
       checkedAt: new Date(),

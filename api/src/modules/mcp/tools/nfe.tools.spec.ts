@@ -478,12 +478,43 @@ describe('ferramentas só de NF-e', () => {
       { company_id: COMPANY, nfe: nfeBody },
       ctx,
     );
-    expect(out).toEqual({ valid: true, issues: [] });
+    expect(out).toEqual({
+      valid: true,
+      issues: [],
+      warnings: [expect.stringContaining('check_sefaz=true')],
+    });
     expect(routes.validate).toHaveBeenCalledWith(
       { ...nfeBody, companyId: COMPANY },
       false,
       expect.anything(),
     );
+  });
+
+  it('nfe_validate avisa quando a última consulta da SEFAZ diz que a empresa não emite', async () => {
+    const { nfe, settings } = build();
+    settings.get.mockResolvedValue({
+      readiness: { status: 'sefaz_rejected', message: 'Não habilitada (257).' },
+    });
+    const out = (await createNfeValidateHandler(nfe)(
+      { company_id: COMPANY, nfe: nfeBody },
+      ctx,
+    )) as { valid: boolean; warnings: string[] };
+    expect(out.valid).toBe(true);
+    expect(out.warnings[0]).toContain('sefaz_rejected');
+    expect(out.warnings[0]).toContain('Não habilitada (257).');
+    expect(settings.get).toHaveBeenCalledWith(COMPANY, 'tenant-1', 'test');
+  });
+
+  it('nfe_validate não traz warnings quando a empresa está pronta', async () => {
+    const { nfe, settings } = build();
+    settings.get.mockResolvedValue({
+      readiness: { status: 'ready', message: 'ok' },
+    });
+    const out = await createNfeValidateHandler(nfe)(
+      { company_id: COMPANY, nfe: nfeBody },
+      ctx,
+    );
+    expect(out).toEqual({ valid: true, issues: [] });
   });
 
   it('nfe_correct, nfe_inutilize e nfe_number_gaps chamam as rotas', async () => {
@@ -556,6 +587,27 @@ describe('ferramentas só de NF-e', () => {
         ctx,
       ),
     ).rejects.toThrow('crt');
+  });
+
+  it('nfe_settings_get e update não mostram nfceAutoOffline (obsoleto)', async () => {
+    const { nfe, settings } = build();
+    settings.get.mockResolvedValue({
+      companyId: COMPANY,
+      nfceAutoOffline: false,
+    });
+    settings.update.mockResolvedValue({
+      companyId: COMPANY,
+      nfceAutoOffline: false,
+    });
+    expect(
+      await createNfeSettingsGetHandler(nfe)({ company_id: COMPANY }, ctx),
+    ).toEqual({ companyId: COMPANY });
+    expect(
+      await createNfeSettingsUpdateHandler(nfe)(
+        { company_id: COMPANY, state_registration: '110042490114' },
+        ctx,
+      ),
+    ).toEqual({ companyId: COMPANY });
   });
 
   it('nfe_settings_get com check_sefaz pede a consulta ao vivo e exige só nfe.documents.view', async () => {
@@ -687,7 +739,11 @@ describe('type nfce', () => {
       { company_id: COMPANY, type: 'nfce', nfe: nfeBody },
       ctx,
     );
-    expect(out).toEqual({ valid: true, issues: [] });
+    expect(out).toEqual({
+      valid: true,
+      issues: [],
+      warnings: [expect.stringContaining('check_sefaz=true')],
+    });
     expect(router.forType).toHaveBeenCalledWith(
       'nfce',
       expect.anything(),
