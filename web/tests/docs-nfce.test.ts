@@ -68,10 +68,11 @@ describe("NFC-e docs", () => {
     expect(text).toContain("nfce.contingency.deadline_near");
   });
 
-  it.each(["en", "pt"] as const)("%s: explains the off-line NFC-e: the request, the option off by default, 20 and 24 hours, the locked fields", (locale) => {
+  it.each(["en", "pt"] as const)("%s: explains the off-line NFC-e: the request, the automatic contingency, 20 and 24 hours, the locked fields", (locale) => {
     const text = allText(page(locale, "nfce").blocks);
     expect(text).toContain('contingency: "offline"');
-    expect(text).toContain("nfceAutoOffline");
+    expect(text).toMatch(/nfceAutoOffline/);
+    expect(text).toMatch(/(always on|sempre automático)/);
     expect(text).toContain("contingency_pending");
     expect(text).toMatch(/20 (horas|hours)/);
     expect(text).toMatch(/24 (horas|hours)/);

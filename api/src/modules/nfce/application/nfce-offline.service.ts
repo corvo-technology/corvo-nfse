@@ -94,9 +94,10 @@ export class NfceOfflineService {
 
   /**
    * Is this sale to go off-line, and why (`xJust`)? The PDV's `contingency: 'offline'` always counts.
-   * Without it, only a company that turned `nfceAutoOffline` on goes off-line by itself, and only when
-   * the situation of the authority is not `normal` (the SEFAZ is down, or our way to it is). Off by
-   * default: the answer is then `null` and the note takes the normal path.
+   * Without it, the note goes off-line by itself, always, when
+   * the situation of the authority is not `normal` (the SEFAZ is down, or our way to it is); otherwise
+   * the answer is `null` and the note takes the normal path. (The old company option `nfceAutoOffline`
+   * is ignored: the contingency is always on.)
    */
   async reasonFor(
     tenantId: string,
@@ -108,7 +109,7 @@ export class NfceOfflineService {
       input.companyId,
       tenantId,
     );
-    if (!settings?.nfceAutoOffline) return null;
+    if (!settings) return null;
     const company = await this.companies.findById(
       input.companyId,
       tenantId,
@@ -131,7 +132,7 @@ export class NfceOfflineService {
     if (advice === 'normal') return null;
     this.logger.log(
       { tenantId, environment, advice, uf: issuer.uf },
-      'NFC-e goes off-line by the company option',
+      'NFC-e goes off-line by itself (SEFAZ out of reach)',
     );
     return advice === 'authority_down'
       ? OFFLINE_REASON_AUTHORITY_DOWN

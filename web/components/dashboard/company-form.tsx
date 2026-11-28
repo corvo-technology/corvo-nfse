@@ -19,6 +19,8 @@ import type { Company, CompanyFormInput, TaxRegime } from "@/lib/types";
 import { useBillingEnabled } from "@/lib/deployment-config-context";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { Select } from "@/components/ui/select";
+import { NfeFields, NFE_FIELD_DEFAULTS, type NfeFieldValues } from "@/components/companies/nfe-fields";
+import { updateNfeSettings } from "@/lib/nfe";
 
 const posthogConfigured = Boolean(
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN && process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -79,6 +81,10 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const [reached, setReached] = useState(0);
   const [created, setCreated] = useState<Company | null>(null);
   const [uploaded, setUploaded] = useState(false);
+  // Optional: the company will also issue NF-e/NFC-e. Its data is saved right after the company exists.
+  const [nfeOn, setNfeOn] = useState(false);
+  const [nfeValues, setNfeValues] = useState<NfeFieldValues>(NFE_FIELD_DEFAULTS);
+  const [nfeOutcome, setNfeOutcome] = useState<"saved" | "failed" | "needs_ie" | null>(null);
   const step: Step = wizard ? STEPS[stepIndex] : "cnpj";
   // Review step: the summary card, until the person asks to edit the data.
   const [editing, setEditing] = useState(false);
@@ -87,6 +93,8 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
   const rateValue = (name: string) => values[name].trim().replace(",", ".");
   const showTaxId = !wizard || step === "cnpj";
   const showFiscal = !wizard || step === "fiscal";
+  // NF-e is for Simples Nacional and MEI for now; only who manages NF-e can set it up.
+  const nfeAvailable = wizard && step === "fiscal" && can("nfe.documents.manage") && (values.taxRegime === "Simples Nacional" || values.taxRegime === "MEI");
 
   const set = (name: string, value: string) => {
     setValues((previous) => ({ ...previous, [name]: value }));
@@ -259,6 +267,19 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
             has_default_service_code: Boolean(values.defaultServiceCode),
           });
         }
+        // The company exists now; a failure here never undoes it, the person is sent to the company page.
+        let outcome: typeof nfeOutcome = null;
+        if (nfeOn && nfeAvailable) {
+          const ie = nfeValues.stateRegistration.trim();
+          if (!ie) outcome = "needs_ie";
+          else {
+            try {
+              await updateNfeSettings(result.id, { stateRegistration: ie, defaultSeries: Number(nfeValues.series || 1), nfceDefaultSeries: Number(nfeValues.nfceSeries || 1), defaultNatOp: nfeValues.natOp.trim() || undefined, defaultCsosn: nfeValues.csosn });
+              outcome = "saved";
+            } catch { outcome = "failed"; }
+          }
+        }
+        setNfeOutcome(outcome);
         setCreated(result); setStepIndex(3); setReached(3);
         if (!canUploadCertificate) onFinish?.(result);
       }
@@ -289,6 +310,7 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
           <Check size={16} aria-hidden className="mt-0.5 flex-none" />
           <p>{t("created", { name: created.tradeName || created.legalName })}</p>
         </div>
+        {nfeOutcome && <p role={nfeOutcome === "saved" ? "status" : "alert"} className={nfeOutcome === "saved" ? "banner banner-ok" : "banner banner-warn"}><span>{t(`nfe.${nfeOutcome}`)}{nfeOutcome !== "saved" && <>{" "}<Link href={`/app/companies/${created.id}#nfe`} className="underline">{t("nfe.openCompany")}</Link></>}</span></p>}
         {uploaded ? (
           <div className="flex flex-col items-start gap-3 rounded-[12px] border border-accent-border bg-accent-surface px-5 py-8 text-left">
             <ShieldCheck size={28} aria-hidden className="text-accent" />
@@ -406,6 +428,15 @@ export function CompanyForm({ company, onSave, onCancel, onFinish }: CompanyForm
         </div>
       )}
       {!wizard && <p className="field-hint sm:col-span-2">{t("editFiscalHint")}</p>}
+    </fieldset>}
+
+    {nfeAvailable && <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
+      {section(t("nfe.section"))}
+      <label className="flex items-start gap-2.5 text-[14px] text-text sm:col-span-2">
+        <input type="checkbox" className="mt-0.5" checked={nfeOn} onChange={(event) => setNfeOn(event.target.checked)} />
+        <span>{t("nfe.question")}<span className="mt-0.5 block text-[12.5px] text-text-4">{t("nfe.hint")}</span></span>
+      </label>
+      {nfeOn && <NfeFields nfce values={nfeValues} onChange={(patch) => setNfeValues((current) => ({ ...current, ...patch }))} uf={values.state.toUpperCase()} ieOptionalLabel={t("optional")} ieHint={t("nfe.ieHint")} />}
     </fieldset>}
 
     {error && <p role="alert" className="banner banner-danger">{error}</p>}

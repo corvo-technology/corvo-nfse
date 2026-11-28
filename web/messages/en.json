@@ -1679,6 +1679,16 @@
     "backToOverview": "Back to overview"
   },
   "CompanyForm": {
+    "nfe": {
+      "section": "Product invoices",
+      "question": "Will you issue product invoices (NF-e / NFC-e)?",
+      "hint": "Optional. You can set it up later, on the company page.",
+      "ieHint": "Numbers only. The SEFAZ check happens after the certificate is uploaded.",
+      "saved": "NF-e data saved.",
+      "failed": "The company was created, but we could not save the NF-e data. Finish it on the company page.",
+      "needs_ie": "The state registration for NF-e is missing. Fill it in on the company page, after you upload the certificate.",
+      "openCompany": "Open the company"
+    },
     "legalName": "Legal name",
     "tradeName": "Trade name",
     "taxId": "Tax ID (CNPJ)",
@@ -1817,6 +1827,7 @@
     }
   },
   "CompanyDetail": {
+    "stateRegistration": "State registration (IE)",
     "dps": {
       "title": "Note number (DPS)",
       "hint": "If you already issued notes on the government portal, enter the number of your next note so it does not repeat.",
@@ -3943,9 +3954,7 @@
       "crtUnsupported": "NF-e is only for Simples Nacional and MEI for now. Check the regime in the company's tax profile.",
       "natOpPlaceholder": "Sale of goods",
       "nfceSeries": "NFC-e series",
-      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1.",
-      "nfceAutoOffline": "Issue in offline contingency automatically",
-      "nfceAutoOfflineHint": "When the SEFAZ does not answer, the NFC-e is issued at once with the contingency notice and sent later. It can still be rejected afterwards, after the customer already has it. Off by default."
+      "nfceSeriesHint": "The series used on consumer sales. If unsure, leave 1."
     },
     "detail": {
       "title": "NF-e",

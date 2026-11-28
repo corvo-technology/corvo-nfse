@@ -15836,7 +15836,8 @@
             "type": "array"
           },
           "nfceAutoOffline": {
-            "description": "Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off by default.",
+            "deprecated": true,
+            "description": "Deprecated and ignored: the NFC-e is always issued off-line (contingency) by itself when the SEFAZ cannot be reached.",
             "type": "boolean"
           },
           "nfceDefaultSeries": {
@@ -17554,7 +17555,8 @@
           },
           "nfceAutoOffline": {
             "default": false,
-            "description": "Issue the NFC-e off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be reached. Off by default: a note issued off-line can still be rejected afterwards.",
+            "deprecated": true,
+            "description": "Deprecated and ignored. The NFC-e is always issued off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be reached. Still accepted so older integrations keep working.",
             "type": "boolean"
           },
           "nfceDefaultSeries": {

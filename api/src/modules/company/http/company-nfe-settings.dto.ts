@@ -60,8 +60,9 @@ export class UpdateCompanyNfeSettingsDto {
 
   @ApiPropertyOptional({
     default: false,
+    deprecated: true,
     description:
-      'Issue the NFC-e off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be reached. Off by default: a note issued off-line can still be rejected afterwards.',
+      'Deprecated and ignored. The NFC-e is always issued off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be reached. Still accepted so older integrations keep working.',
   })
   @IsOptional()
   @IsBoolean()

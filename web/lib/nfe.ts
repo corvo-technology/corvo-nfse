@@ -55,7 +55,7 @@ export interface NfeInutilization { id: string; companyId: string; series: numbe
 export interface NfeNumberGap { companyId: string; series: number; start: number; end: number }
 export type NfeMissingField = string;
 export interface NfeSettings {
-  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; /** Series of the NFC-e (1 when never set). */ nfceDefaultSeries?: number; /** Issue the NFC-e off-line by itself when the SEFAZ cannot be reached (off when never set). */ nfceAutoOffline?: boolean; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
+  companyId: string; stateRegistration: string | null; crt: number | null; /** Tax regime of the company (its fiscal profile), as the company API names it: `Simples Nacional`, `MEI`... */ taxRegime?: string | null; defaultSeries: number; /** Series of the NFC-e (1 when never set). */ nfceDefaultSeries?: number; /** @deprecated Ignored: the NFC-e always goes off-line by itself when the SEFAZ cannot be reached. */ nfceAutoOffline?: boolean; defaultNatOp: string; defaultCsosn: string; defaultOrigin: number; defaultPisCst: string; defaultCofinsCst: string;
   enabledAt: string | null;
   /** What the company still lacks to issue an NF-e (`state_registration`, `crt`, `address`...). */
   missing: NfeMissingField[];
@@ -67,7 +67,7 @@ export interface NfeSettings {
 export type NfeReadinessStatus = "ready" | "ie_suggested" | "ie_choose" | "no_registration" | "not_enabled" | "not_credentialed" | "ie_mismatch" | "unavailable" | "sefaz_rejected" | "no_certificate" | "company_incomplete";
 /** Can the company issue NF-e/NFC-e? Checked at the SEFAZ cadastro (`readiness` of `GET /companies/{id}/nfe-settings?check=sefaz`). */
 export interface NfeReadiness { companyId: string; ready: boolean; status: NfeReadinessStatus; message: string; stateRegistration: string | null; suggestedStateRegistration: string | null; registrations: { stateRegistration: string; enabled: boolean }[]; /** With `sefaz_rejected`: what the SEFAZ answered. */ sefazCStat?: string | null; sefazReason?: string | null; missing: NfeMissingField[]; checkedAt: string | null }
-export interface NfeSettingsInput { /** Left out, the IE the SEFAZ has for the CNPJ is used (when exactly one is enabled). */ stateRegistration?: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; nfceAutoOffline?: boolean; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
+export interface NfeSettingsInput { /** Left out, the IE the SEFAZ has for the CNPJ is used (when exactly one is enabled). */ stateRegistration?: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; /** @deprecated Ignored by the API. */ nfceAutoOffline?: boolean; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
 export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus; /** NF-e when omitted. */ type?: NfeKind }
 export interface NfeDownload { downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }
 

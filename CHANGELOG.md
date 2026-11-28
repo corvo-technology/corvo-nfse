@@ -16,6 +16,8 @@ There are no tagged releases yet: the maintained version is the current code on 
 - Stripe promotion codes at checkout (#136).
 
 ### Changed
+- **NFC-e: a contingência off-line agora é sempre automática.** Com a SEFAZ fora do alcance, a NFC-e sai off-line sozinha; não há mais o que ligar. O campo `nfceAutoOffline` de `PUT /v1/companies/:id/nfe-settings` continua sendo aceito, mas está obsoleto e é ignorado.
+- **Tela da empresa:** a Inscrição estadual aparece no resumo, o bloco de NF-e/NFC-e vem logo depois do certificado, avisos da SEFAZ não aparecem mais junto do "Tudo certo", os campos de série não têm mais as setinhas, e ao criar a empresa dá para já informar os dados de nota de produto.
 - Transactional e-mails are built in code, with no templates to maintain in the e-mail provider's dashboard (#131).
 - Payment integrations documentation restored, with the API reference and permissions (#139).
 
