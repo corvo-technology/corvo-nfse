@@ -19,6 +19,7 @@
       "stripe": "Sale (Stripe)",
       "kiwify": "Sale (Kiwify)",
       "hotmart": "Sale (Hotmart)",
+      "asaas": "Sale (Asaas)",
       "generic": "Integration sale"
     }
   },
@@ -2992,6 +2993,7 @@
       "stripe": "Card, Pix and boleto paid on Stripe.",
       "kiwify": "Approved sales on Kiwify.",
       "hotmart": "Digital product purchases paid on Hotmart.",
+      "asaas": "Pix, boleto and card payments received on Asaas.",
       "other": "Confirmed payments."
     },
     "status": {
@@ -3020,7 +3022,8 @@
         }
       },
       "hints": {
-        "apiKey": "Optional. Do not use the secret key (sk_). Create a read-only restricted key (rk_): Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without it, sales missing a tax ID go to \"Pending sales\"."
+        "apiKey": "Optional. Do not use the secret key (sk_). Create a read-only restricted key (rk_): Corvo only looks up the tax ID, e-mail and sale items; it cannot charge, refund or change anything. Without it, sales missing a tax ID go to \"Pending sales\".",
+        "access_token": "Optional but recommended. Create the key under Integrations > API keys in Asaas. Corvo only looks up the charge's customer (name, tax ID, e-mail and address); it does not create, charge or change anything. Without it, sales have no tax ID and go to \"Pending sales\"."
       },
       "awaitingSecret": {
         "title": "Webhook still to connect",

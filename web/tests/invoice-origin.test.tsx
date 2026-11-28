@@ -31,6 +31,7 @@ describe("invoiceOrigin", () => {
     ["integ_abc", "stripe_charge:ch_3SabcdefGHIJ", "Sale (Stripe) · charge ch_3Sabc"],
     ["integ_abc", "kiwify:9b1c2d3e-0000-4000-8000-000000000001", "Sale (Kiwify) · charge 9b1c2d3e"],
     ["integ_abc", "hotmart:HP16015479281022", "Sale (Hotmart) · charge HP160154"],
+    ["integ_abc", "asaas:pay_080225913252", "Sale (Asaas) · charge pay_0802"],
     ["integ_abc", "weird", "Integration sale"],
     ["schedule:s1:2026-01-05", null, "Schedule"],
     ["import:i1:3", "linha-3", "Spreadsheet import"],

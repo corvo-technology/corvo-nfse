@@ -7,13 +7,13 @@ export type InvoiceOriginKind = (typeof INVOICE_ORIGINS)[number];
 export interface InvoiceOrigin {
   kind: InvoiceOriginKind;
   /** Integrations only: the platform the sale came from, when the reference tells. */
-  provider?: "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "kiwify";
+  provider?: "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "kiwify" | "asaas";
   /** Integrations only: the short id of the charge. */
   charge?: string;
 }
 
-/** The reference an integration writes is `<kind>:<id>`; `charge` is Woovi, `stripe_charge` Stripe, `pushinpay` PushinPay, `hotmart` Hotmart, `kiwify` Kiwify, the others AbacatePay. */
-const PROVIDER_BY_REFERENCE: Record<string, "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "kiwify"> = { charge: "woovi", stripe_charge: "stripe", checkout: "abacatepay", transparent: "abacatepay", pushinpay: "pushinpay", hotmart: "hotmart", kiwify: "kiwify" };
+/** The reference an integration writes is `<kind>:<id>`; `charge` is Woovi, `stripe_charge` Stripe, `pushinpay` PushinPay, `hotmart` Hotmart, `kiwify` Kiwify, `asaas` Asaas, the others AbacatePay. */
+const PROVIDER_BY_REFERENCE: Record<string, "woovi" | "abacatepay" | "stripe" | "pushinpay" | "hotmart" | "kiwify" | "asaas"> = { charge: "woovi", stripe_charge: "stripe", checkout: "abacatepay", transparent: "abacatepay", pushinpay: "pushinpay", hotmart: "hotmart", kiwify: "kiwify", asaas: "asaas" };
 
 const shortId = (id: string) => (id.length > 12 ? id.slice(0, 8) : id);
 

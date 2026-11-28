@@ -29,6 +29,7 @@ import { WooviConnectorModule } from '@/modules/integrations/connectors/woovi/wo
 import { AbacatePayConnectorModule } from '@/modules/integrations/connectors/abacatepay/abacatepay.module';
 import { PushinPayConnectorModule } from '@/modules/integrations/connectors/pushinpay/pushinpay.module';
 import { StripeConnectorModule } from '@/modules/integrations/connectors/stripe/stripe.module';
+import { AsaasConnectorModule } from '@/modules/integrations/connectors/asaas/asaas.module';
 import { KiwifyConnectorModule } from '@/modules/integrations/connectors/kiwify/kiwify.module';
 import { HotmartConnectorModule } from '@/modules/integrations/connectors/hotmart/hotmart.module';
 import { PublicConfigModule } from '@/modules/public-config/public-config.module';
@@ -75,6 +76,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     PushinPayConnectorModule,
     StripeConnectorModule,
     KiwifyConnectorModule,
+    AsaasConnectorModule,
     HotmartConnectorModule,
     McpModule,
     PlatformAdminModule,

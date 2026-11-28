@@ -2810,7 +2810,7 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
     ...nfePages("en"),
     "payment-integrations": {
       title: "Payment integrations",
-      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart or Kiwify and issue the NFS-e automatically for every confirmed payment.",
+      description: "Connect Woovi, AbacatePay, Stripe, PushinPay, Hotmart, Kiwify or Asaas and issue the NFS-e automatically for every confirmed payment.",
       blocks: [
         {
           kind: "text",
@@ -2904,6 +2904,21 @@ export function verifyWebhook(rawBody, signatureHeader, secret) {
             "Invoice amount: `total` uses the amount paid (`full_price`); `mine` (\"my share\") subtracts coproducer and affiliate commissions. If the notice has no commissions, the sale goes to attention and does not issue.",
             "A refund (`PURCHASE_REFUNDED`) and a chargeback (`PURCHASE_CHARGEBACK`) cancel the invoice only if the rule has automatic cancellation on; a partial refund is ignored. A protest (`PURCHASE_PROTEST`) only flags the sale, without cancelling.",
             "Hotmart does not report the environment in the notice: the environment chosen on the connection applies. The notice fields still need to be confirmed with a real notice.",
+          ],
+        },
+        { kind: "heading", level: 3, body: "Asaas" },
+        {
+          kind: "list",
+          items: [
+            "Credential: `access_token`, the Asaas API key (optional but recommended; under Integrations > API keys). Corvo uses the key only to look up the charge's customer (`GET /v3/customers/{id}`): name, tax ID, e-mail and address. Corvo generates the `webhookToken`, shown once when the connection is created. Copy and keep that token and the `webhookUrl`.",
+            "Steps: (1) in Asaas, under Integrations > Webhooks, create a Charges webhook with the `webhookUrl`; (2) paste the `webhookToken` in \"Authentication token\"; (3) select the events `PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_REFUNDED` and `PAYMENT_CHARGEBACK_REQUESTED`; (4) make a test charge in the sandbox (use a `test` connection, which calls `api-sandbox.asaas.com`).",
+            "Asaas does not sign the notice: Corvo compares the `asaas-access-token` header with the `webhookToken` in constant time. The token Corvo generates has 32 characters, the minimum Asaas accepts.",
+            "Keep Asaas's own invoice issuing turned off, or the invoice is issued twice.",
+            "Each paid charge becomes one invoice, identified by `asaas:<charge id>`. `PAYMENT_CONFIRMED` (paid, balance not yet available) and `PAYMENT_RECEIVED` (balance available) are the same sale and never produce a duplicate invoice. Works with Pix, boleto and card. The invoice amount is the charge `value`.",
+            "The notice only carries the customer id. With the key, Corvo fetches name, tax ID, e-mail and address. Without the key, or if the customer has no CPF/CNPJ, the sale stays pending (`customer_tax_id_missing`) or is issued without a customer if the rule has `allowAnonymousCustomer`. Without an e-mail, the invoice is issued without sending.",
+            "The service description on the invoice is the charge `description`; without it, the rule's or the company default applies. BRL only.",
+            "Refund: `PAYMENT_REFUNDED` (full) links to the sale by the charge id and cancels the invoice only if the rule has automatic cancellation on; `PAYMENT_PARTIALLY_REFUNDED` is ignored. `PAYMENT_CHARGEBACK_REQUESTED` only flags the sale, without cancelling. Other events are ignored.",
+            "The notices were built from the examples in Asaas's documentation and still need to be confirmed with a real sale.",
           ],
         },
         { kind: "heading", level: 2, body: "Sales that need attention" },

@@ -11,7 +11,7 @@ import type { IntegrationSale } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useIntegrationErrorText } from "@/lib/use-integration-error";
 
-const PROVIDER_NAMES: Record<string, string> = { woovi: "Woovi", abacatepay: "AbacatePay", stripe: "Stripe", pushinpay: "PushinPay", hotmart: "Hotmart", kiwify: "Kiwify" };
+const PROVIDER_NAMES: Record<string, string> = { woovi: "Woovi", abacatepay: "AbacatePay", stripe: "Stripe", pushinpay: "PushinPay", hotmart: "Hotmart", kiwify: "Kiwify", asaas: "Asaas" };
 const PIX_PROVIDERS = new Set(["woovi", "pushinpay", "abacatepay"]);
 
 interface PendingSalesPanelProps {
