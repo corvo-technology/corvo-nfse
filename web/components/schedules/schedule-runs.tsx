@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { formatDay } from "@/components/schedules/schedule-list";
 
 /** The log of every attempt to run a schedule, newest first. */
-export function ScheduleRuns({ scheduleId }: { scheduleId: string }) {
+export function ScheduleRuns({ scheduleId, type = "nfse" }: { scheduleId: string; type?: "nfse" | "nfe" }) {
   const t = useTranslations("Schedules.runs");
   const locale = useLocale();
   const [runs, setRuns] = useState<ScheduleRun[] | null>(null);
@@ -58,7 +58,7 @@ export function ScheduleRuns({ scheduleId }: { scheduleId: string }) {
             <span className="text-text-3">{t("ranOn", { date: formatDay(run.ranOn, locale) })}</span>
             <span className="text-text-3">{t("attempt", { n: run.attempt })}</span>
             {run.invoiceId ? (
-              <Link href={`/app/invoices/${run.invoiceId}`} className="text-accent underline-offset-4 hover:underline">{t("viewNote")}</Link>
+              <Link href={`/app/${type === "nfe" ? "nfe" : "invoices"}/${run.invoiceId}`} className="text-accent underline-offset-4 hover:underline">{t("viewNote")}</Link>
             ) : (
               <span className="min-w-0 text-warn">{run.errorMessage ?? run.errorCode}</span>
             )}

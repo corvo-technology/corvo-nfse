@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, type FindOptionsWhere } from 'typeorm';
+import { DataSource, EntityManager, In, type FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
   runAsSystem,
@@ -28,6 +28,7 @@ function toProps(row: InvoiceScheduleOrmEntity): InvoiceScheduleProps {
     tenantId: row.tenantId,
     environment: row.environment as InvoiceScheduleProps['environment'],
     companyId: row.companyId,
+    documentType: row.documentType as InvoiceScheduleProps['documentType'],
     kind: row.kind as InvoiceScheduleProps['kind'],
     frequency: row.frequency as InvoiceScheduleProps['frequency'],
     anchorOn: row.anchorOn,
@@ -122,6 +123,7 @@ export class TypeOrmInvoiceScheduleRepository extends InvoiceScheduleRepository 
       if (filter.status) where.status = filter.status;
       if (filter.companyId) where.companyId = filter.companyId;
       if (filter.environment) where.environment = filter.environment;
+      if (filter.documentTypes) where.documentType = In(filter.documentTypes);
       const [rows, total] = await this.schedules().findAndCount({
         where,
         order: { createdAt: 'DESC', id: 'DESC' },

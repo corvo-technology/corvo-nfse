@@ -3428,9 +3428,15 @@
       "cancelled": "Agenda cancelada.",
       "failed": "Não foi possível concluir essa ação."
     },
+    "type": {
+      "nfse": "NFS-e",
+      "nfe": "NF-e"
+    },
+    "stockWarning": "Os itens e o preço ficam como estão hoje: a Corvo não controla estoque.",
     "unknownCompany": "Empresa",
     "form": {
       "titleNew": "Nova agenda",
+      "nfeHint": "Aqui só mudam as datas e a repetição. Para trocar itens ou preço de uma NF-e agendada, cancele e crie outra.",
       "titleEdit": "Editar agenda",
       "company": "Empresa",
       "companyPlaceholder": "Escolha uma empresa",
@@ -3475,6 +3481,9 @@
     "to": "Para: {name}",
     "noCustomer": "sem tomador",
     "detail": {
+      "recipient": "Destinatário",
+      "items": "Itens",
+      "noRecipient": "sem destinatário",
       "back": "Voltar para agendadas",
       "note": "A nota",
       "company": "Empresa",
@@ -3965,6 +3974,20 @@
       "fixFields": "Corrija os campos marcados e tente de novo.",
       "validate": "Validar",
       "validOk": "Tudo certo com os dados. A chave da nota seria {key}. Nada foi enviado.",
+      "schedule": {
+        "title": "Quando emitir",
+        "now": "Emitir agora",
+        "once": "Agendar para uma data",
+        "recurring": "Repetir",
+        "frequency": "Frequência",
+        "firstDate": "Data da primeira emissão",
+        "firstDateHint": "A partir de amanhã. A nota sai às 09h (Brasília) em dias úteis; uma data de fim de semana sai na segunda.",
+        "endsOn": "Último dia",
+        "endsOnHint": "Sem ele, a repetição segue até você pausar ou cancelar.",
+        "dateRequired": "Escolha a data da primeira emissão.",
+        "submitOnce": "Agendar NF-e",
+        "submitRecurring": "Criar repetição"
+      },
       "issue": "Emitir NF-e",
       "resubmit": "Reenviar NF-e",
       "issuer": "Quem emite",

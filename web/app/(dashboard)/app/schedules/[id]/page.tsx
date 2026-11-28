@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatBRL } from "@/components/pricing/plan-picker";
 import { formatDay } from "@/components/schedules/schedule-list";
+import { scheduleRecipient, scheduleTotal } from "@/lib/schedule-summary";
 import { ScheduleForm } from "@/components/schedules/schedule-form";
 import { ScheduleRuns } from "@/components/schedules/schedule-runs";
 import { useScheduleActions } from "@/components/schedules/use-schedule-actions";
@@ -41,7 +42,6 @@ export default function ScheduleDetailPage() {
   const d = useTranslations("Schedules.detail");
   const locale = useLocale();
   const { can } = useAuth();
-  const canManage = can("nfse.invoices.issue");
   const [schedule, setSchedule] = useState<InvoiceSchedule | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
@@ -77,13 +77,18 @@ export default function ScheduleDetailPage() {
   if (!schedule) return <DetailSkeleton label={d("loading")} />;
 
   const body = schedule.invoice as Body;
+  const isNfe = schedule.type === "nfe";
+  const canManage = can(isNfe ? "nfe.documents.issue" : "nfse.invoices.issue");
   const customer = sub(body, "customer");
   const service = sub(body, "service");
   const day = (value: string) => formatDay(value, locale);
-  const amount = typeof body.amount === "number" ? formatBRL(Math.round(body.amount * 100)) : "-";
+  const total = scheduleTotal(schedule);
+  const amount = total === null ? "-" : formatBRL(Math.round(total * 100));
+  const recipient = sub(body, "recipient");
+  const items = Array.isArray(body.items) ? (body.items as Array<Record<string, unknown>>) : [];
   const open = schedule.status === "active" || schedule.status === "paused";
   const rowBusy = busy?.id === schedule.id;
-  const sendsEmail = Boolean(sub(sub(body, "options"), "email").send);
+  const sendsEmail = isNfe ? body.sendEmail !== false : Boolean(sub(sub(body, "options"), "email").send);
 
   return (
     <div className="flex max-w-[900px] flex-col gap-6">
@@ -92,7 +97,7 @@ export default function ScheduleDetailPage() {
       </Link>
       <PageHeader
         title={companyName ?? t("unknownCompany")}
-        subtitle={`${schedule.frequency ? t(`frequency.${schedule.frequency}`) : t("kind.once")} · ${amount}`}
+        subtitle={`${t(`type.${schedule.type}`)} · ${schedule.frequency ? t(`frequency.${schedule.frequency}`) : t("kind.once")} · ${amount}`}
         actions={
           <>
             <Badge variant={STATUS_VARIANT[schedule.status]}>{t(`status.${schedule.status}`)}</Badge>
@@ -108,16 +113,30 @@ export default function ScheduleDetailPage() {
         }
       />
       {schedule.status === "paused" && <p className="banner banner-warn">{schedule.pauseReason === "failures" ? t("pausedByFailures") : t("pausedByYou")}</p>}
+      {isNfe && open && <p role="note" className="banner">{t("stockWarning")}</p>}
       {schedule.status === "active" && schedule.attempts > 0 && <p className="banner banner-warn">{t("failures", { count: schedule.attempts })}</p>}
 
       <Card className="p-5 sm:p-6">
         <h2 className="mb-1 text-[15px] font-medium text-text">{d("note")}</h2>
         <dl className="divide-y divide-border">
           <Row label={d("company")}>{companyName ?? t("unknownCompany")}</Row>
-          <Row label={d("customer")}>{String(customer.name ?? "") || t("noCustomer")}</Row>
-          {Boolean(customer.taxId) && <Row label={d("taxId")}><span className="font-mono tabular-nums">{maskTaxId(String(customer.taxId))}</span></Row>}
-          {Boolean(customer.email) && <Row label={d("email")}>{String(customer.email)}</Row>}
-          <Row label={d("service")}>{String(service.description ?? "") || d("noService")}</Row>
+          {isNfe ? (
+            <>
+              <Row label={d("recipient")}>{scheduleRecipient(schedule) ?? d("noRecipient")}</Row>
+              {Boolean(recipient.taxId) && <Row label={d("taxId")}><span className="font-mono tabular-nums">{maskTaxId(String(recipient.taxId))}</span></Row>}
+              {Boolean(recipient.email) && <Row label={d("email")}>{String(recipient.email)}</Row>}
+              <Row label={d("items")}>
+                <ul className="flex flex-col gap-0.5">{items.map((item, index) => <li key={index}>{String(item.quantity ?? "")} × {String(item.description ?? "")}</li>)}</ul>
+              </Row>
+            </>
+          ) : (
+            <>
+              <Row label={d("customer")}>{String(customer.name ?? "") || t("noCustomer")}</Row>
+              {Boolean(customer.taxId) && <Row label={d("taxId")}><span className="font-mono tabular-nums">{maskTaxId(String(customer.taxId))}</span></Row>}
+              {Boolean(customer.email) && <Row label={d("email")}>{String(customer.email)}</Row>}
+              <Row label={d("service")}>{String(service.description ?? "") || d("noService")}</Row>
+            </>
+          )}
           <Row label={d("amount")}><span className="tabular-nums">{amount}</span></Row>
           {typeof body.deduction === "number" && <Row label={d("deduction")}><span className="tabular-nums">{formatBRL(Math.round(body.deduction * 100))}</span></Row>}
           {typeof body.purchaseOrder === "string" && body.purchaseOrder.trim() !== "" && <Row label={d("purchaseOrder")}>{body.purchaseOrder}</Row>}
@@ -140,7 +159,7 @@ export default function ScheduleDetailPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-[15px] font-medium text-text">{d("history")}</h2>
-        <ScheduleRuns scheduleId={schedule.id} />
+        <ScheduleRuns scheduleId={schedule.id} type={schedule.type} />
       </section>
 
       {editing && <ScheduleForm key={schedule.id} open onClose={() => setEditing(false)} companies={companyOptions} schedule={schedule} onSaved={setSchedule} />}

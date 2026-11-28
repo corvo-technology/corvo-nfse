@@ -617,6 +617,27 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
             enum: ['nfe'],
             description: 'Selects the NF-e (model 55) instead of the NFS-e.',
           }),
+          competenceDate: str({
+            format: 'date',
+            description:
+              'Only with `options.type` `SCHEDULE` or `RECURRING`: the day of the first run, from tomorrow on.',
+          }),
+          options: {
+            type: 'object',
+            description:
+              'Only to schedule: `type` `SCHEDULE` (once) or `RECURRING` (needs `recurrence.frequency`). Same rules as the NFS-e. A NFC-e cannot be scheduled (`422 INVOICE_OPERATION_NOT_SUPPORTED`).',
+            properties: {
+              type: str({ enum: ['SCHEDULE', 'RECURRING'] }),
+              recurrence: {
+                type: 'object',
+                required: ['frequency'],
+                properties: {
+                  frequency: str({ enum: ['WEEKLY', 'BIWEEKLY', 'MONTHLY'] }),
+                  endsOn: str({ format: 'date' }),
+                },
+              },
+            },
+          },
         },
       },
     ],

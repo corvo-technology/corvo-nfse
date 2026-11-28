@@ -227,6 +227,81 @@ describe('permissão', () => {
   });
 });
 
+describe('nfse_issue com type nfe e agendamento', () => {
+  const schedule = {
+    props: {
+      id: 'sched-1',
+      kind: 'recurring',
+      frequency: 'MONTHLY',
+      status: 'active',
+      nextRunOn: '2026-12-01',
+      endsOn: null,
+    },
+  };
+  const base = {
+    type: 'nfe',
+    company_id: COMPANY,
+    nfe: nfeBody,
+    idempotency_key: 'k1',
+    emission_type: 'RECURRING',
+    competence_date: '2026-12-01',
+    recurrence_frequency: 'MONTHLY',
+  };
+
+  it('RECURRING cria o agendamento da NF-e, nao emite, e devolve o schedule_id', async () => {
+    const { nfe, routes } = build();
+    const scheduler = { scheduleNfe: jest.fn().mockResolvedValue(schedule) };
+    const out = await createNfeIssueHandler(nfe, 'nfe', scheduler)(base, ctx);
+    expect(out).toEqual({
+      type: 'nfe',
+      schedule_id: 'sched-1',
+      kind: 'recurring',
+      frequency: 'MONTHLY',
+      status: 'active',
+      next_run_on: '2026-12-01',
+      ends_on: null,
+    });
+    expect(scheduler.scheduleNfe).toHaveBeenCalledWith(
+      {
+        ...nfeBody,
+        companyId: COMPANY,
+        competenceDate: '2026-12-01',
+        options: { type: 'RECURRING', recurrence: { frequency: 'MONTHLY' } },
+      },
+      'tenant-1',
+      ctx,
+      'k1',
+    );
+    expect(routes.create).not.toHaveBeenCalled();
+  });
+
+  it('exige a data da primeira emissao e a frequencia', async () => {
+    const { nfe } = build();
+    const scheduler = { scheduleNfe: jest.fn() };
+    const issue = createNfeIssueHandler(nfe, 'nfe', scheduler);
+    await expect(
+      issue({ ...base, competence_date: undefined }, ctx),
+    ).rejects.toThrow('competence_date');
+    await expect(
+      issue({ ...base, recurrence_frequency: undefined }, ctx),
+    ).rejects.toThrow('recurrence_frequency');
+    expect(scheduler.scheduleNfe).not.toHaveBeenCalled();
+  });
+
+  it('NFC-e nao pode ser agendada: venda presencial', async () => {
+    const { nfe } = build();
+    const scheduler = { scheduleNfe: jest.fn() };
+    await expect(
+      createNfeIssueHandler(
+        nfe,
+        'nfce',
+        scheduler,
+      )({ ...base, type: 'nfce' }, ctx),
+    ).rejects.toThrow('INVOICE_OPERATION_NOT_SUPPORTED');
+    expect(scheduler.scheduleNfe).not.toHaveBeenCalled();
+  });
+});
+
 describe('type nfe nas ferramentas compartilhadas', () => {
   it('nfse_issue: exige idempotency_key e company_id, monta o corpo da API e devolve o id', async () => {
     const { nfe, routes } = build();

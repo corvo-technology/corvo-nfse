@@ -24,6 +24,22 @@ export class EmissionRouterService {
     private readonly schedules: ScheduleService,
   ) {}
 
+  /** `type: "nfe"` with SCHEDULE or RECURRING: a schedule that issues an NF-e on each run. */
+  scheduleNfe(
+    body: Record<string, unknown>,
+    tenantId: string,
+    authContext: AuthContext,
+    idempotencyKey?: string,
+  ): Promise<InvoiceSchedule> {
+    return this.schedules.createNfeFromEmission(
+      body,
+      tenantId,
+      authContext,
+      undefined,
+      idempotencyKey,
+    );
+  }
+
   async emit(
     dto: CreateInvoiceDto,
     tenantId: string,
