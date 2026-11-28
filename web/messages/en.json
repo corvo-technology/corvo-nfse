@@ -3930,6 +3930,7 @@
         "ie_mismatch": "State registration {ie} does not belong to this CNPJ at the {uf} SEFAZ. Check the number.",
         "unavailable": "We could not check the SEFAZ right now, or this state does not offer the check. Look up the state registration at the CCC (sintegra.gov.br).",
         "sefaz_rejected": "The SEFAZ answered: {cstat} – {reason}",
+        "sefaz_not_issuer": "The company is not enabled to issue NF-e at the SEFAZ of {uf}. Ask for the credentialing/state registration on the SEFAZ website (or through your accountant) before issuing.",
         "no_certificate": "Upload the digital certificate of the company to check the state registration at the SEFAZ."
       },
       "crt": "Tax regime",

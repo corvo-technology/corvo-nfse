@@ -185,6 +185,15 @@ describe("NfeSettingsForm", () => {
     await screen.findByText("The SEFAZ answered: 243 – XML Mal Formado");
   });
 
+  it("says the company is not enabled to issue NF-e when the SEFAZ answers 257, with the real response shape", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    mocks.readiness.mockResolvedValue(readiness({ ready: false, status: "sefaz_rejected", stateRegistration: "110042490114", sefazCStat: "257", sefazReason: "Rejeição: Solicitante não habilitado para emissão da NF-e", checkedAt: "2026-11-28T12:00:00.000Z" }));
+    renderForm(true, false);
+    await screen.findByText(/is not enabled to issue NF-e at the SEFAZ of/);
+    expect(screen.queryByText(/Look up the state registration at the CCC/)).toBeNull();
+    expect(screen.queryByText("All set: the company can issue NF-e.")).toBeNull();
+  });
+
   it("shows a neutral message when the check cannot be done", async () => {
     mocks.readiness.mockRejectedValue(new Error("boom"));
     renderForm();

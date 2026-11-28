@@ -1,4 +1,5 @@
 import { UnprocessableEntityException } from '@nestjs/common';
+import { parseRetConsCad } from '@/infra/external/nfe/sefaz/cadastro';
 import { Company } from '../domain/company';
 import type { ICompanyNfeSettingsRepository } from '../domain/company-nfe-settings.repository';
 import type { ICadastroLookup } from '../domain/cadastro-lookup';
@@ -228,6 +229,31 @@ describe('CompanyNfeSettingsService', () => {
         status: 'ie_suggested',
         suggestedStateRegistration: '110042490114',
       });
+    });
+
+    it('257 do cadastro: mensagem clara, só aviso e não guarda a resposta', async () => {
+      const c = company('SP');
+      const { service, repo } = build(
+        c,
+        'Simples Nacional',
+        { ...settingsRow(c.id), crt: 1 as const },
+        parseRetConsCad(
+          '<retConsCad xmlns="http://www.portalfiscal.inf.br/nfe" versao="2.00"><infCons><cStat>257</cStat><xMotivo>Rejeição: Solicitante não habilitado para emissão da NF-e</xMotivo></infCons></retConsCad>',
+        ),
+      );
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
+      expect(view).toMatchObject({
+        ready: false,
+        status: 'sefaz_rejected',
+        sefazCStat: '257',
+        sefazReason:
+          'Rejeição: Solicitante não habilitado para emissão da NF-e',
+      });
+      expect(view.message).toContain(
+        'A empresa não está habilitada para emitir NF-e na SEFAZ de SP.',
+      );
+      expect(repo.saveRegistrationCheck).not.toHaveBeenCalled();
     });
 
     it('empresa sem IE (só serviço) não pode emitir', async () => {
