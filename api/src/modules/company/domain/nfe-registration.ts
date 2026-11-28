@@ -21,6 +21,8 @@ export type RegistrationStatus =
   | 'ie_mismatch'
   /** The UF has no consulta or it did not answer: nothing is known. */
   | 'unavailable'
+  /** The SEFAZ answered the consulta with a cStat that is neither "found" nor "not a contributor". */
+  | 'sefaz_rejected'
   /** The company has no usable certificate, so the consulta cannot be asked. */
   | 'no_certificate';
 
@@ -31,6 +33,8 @@ export interface RegistrationAssessment {
   /** The one enabled IE the SEFAZ has, when there is exactly one. */
   suggested: string | null;
   registrations: { stateRegistration: string; enabled: boolean }[];
+  /** Only for `sefaz_rejected`: what the SEFAZ said. */
+  sefaz?: { cStat: string; reason: string };
 }
 
 /** The answers that say for sure the next note would be refused (or that it cannot be sent). */
@@ -64,6 +68,12 @@ export function assessRegistration(
   if (lookup.kind === 'no_certificate')
     return { status: 'no_certificate', ...empty };
   if (lookup.kind === 'unavailable') return { status: 'unavailable', ...empty };
+  if (lookup.kind === 'rejected')
+    return {
+      status: 'sefaz_rejected',
+      ...empty,
+      sefaz: { cStat: lookup.cStat, reason: lookup.reason },
+    };
   if (lookup.kind === 'not_found')
     return { status: 'no_registration', ...empty };
 
@@ -97,6 +107,7 @@ export interface RegistrationMessageContext {
   stateRegistration: string | null;
   suggested?: string | null;
   registrations?: { stateRegistration: string; enabled: boolean }[];
+  sefaz?: { cStat: string; reason: string } | null;
 }
 
 /** Plain pt-BR sentence of a status. */
@@ -131,6 +142,10 @@ export function registrationMessage(
         : `A inscrição estadual ${ie ?? ''} não é deste CNPJ na SEFAZ de ${uf}. Confira o número.`;
     case 'unavailable':
       return `Consulta indisponível agora ou neste estado. Confira a inscrição estadual no CCC: ${CCC_URL}`;
+    case 'sefaz_rejected':
+      return context.sefaz
+        ? `A SEFAZ respondeu: ${context.sefaz.cStat}${context.sefaz.reason ? ` – ${context.sefaz.reason}` : ''}`
+        : `A SEFAZ de ${uf} recusou a consulta. Confira a inscrição estadual no CCC: ${CCC_URL}`;
     case 'no_certificate':
       return 'Envie o certificado digital da empresa para consultar a inscrição estadual na SEFAZ.';
   }

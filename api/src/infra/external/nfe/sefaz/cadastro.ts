@@ -89,7 +89,9 @@ export type CadastroAnswer =
   | { kind: 'found'; registrations: CadastroRegistration[] }
   /** cStat 259: the CNPJ is not a contributor in the UF (no IE at all). */
   | { kind: 'not_found' }
-  /** Anything else: the service is off, the UF is not served, the answer is not understood. */
+  /** The SEFAZ answered with another cStat (a rejection, the service paused...): its own reason. */
+  | { kind: 'rejected'; cStat: string; reason: string }
+  /** The service is off, the UF is not served, the answer is not understood. */
   | { kind: 'unavailable' };
 
 const parser = new XMLParser({
@@ -118,11 +120,24 @@ function credential(
   return 'unknown';
 }
 
+/** Finds `key` in the tree, even inside a wrapper the SOAP unwrapping left (`consultaCadastroResult`...). */
+function findKey(node: unknown, key: string, depth = 0): Tree | undefined {
+  const tree = asTree(node);
+  if (!tree || depth > 6) return undefined;
+  const direct = asTree(tree[key]);
+  if (direct) return direct;
+  for (const child of Object.values(tree)) {
+    const found = findKey(child, key, depth + 1);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 /** Reads `retConsCad`. Never throws: an answer it does not understand is `unavailable`. */
 export function parseRetConsCad(answerXml: string): CadastroAnswer {
   let ret: Tree | undefined;
   try {
-    ret = asTree(asTree(parser.parse(answerXml))?.retConsCad);
+    ret = findKey(parser.parse(answerXml), 'retConsCad');
   } catch {
     return { kind: 'unavailable' };
   }
@@ -130,7 +145,12 @@ export function parseRetConsCad(answerXml: string): CadastroAnswer {
   const cStat = text(info?.cStat);
   if (!info || !cStat) return { kind: 'unavailable' };
   if (cStat === '259') return { kind: 'not_found' };
-  if (cStat !== '111' && cStat !== '112') return { kind: 'unavailable' };
+  if (cStat !== '111' && cStat !== '112')
+    return {
+      kind: 'rejected',
+      cStat,
+      reason: (text(info.xMotivo) ?? '').trim().slice(0, 300),
+    };
   const entries = Array.isArray(info.infCad) ? info.infCad : [];
   const registrations: CadastroRegistration[] = [];
   for (const entry of entries) {
@@ -148,6 +168,27 @@ export function parseRetConsCad(answerXml: string): CadastroAnswer {
     : { kind: 'unavailable' };
 }
 
+/** What is logged about an answer: never the CNPJ, the IE or the body, only what says why. */
+export interface CadastroLogEntry {
+  authority: string;
+  service: 'CadConsultaCadastro4';
+  kind: CadastroAnswer['kind'];
+  cStat?: string;
+  xMotivo?: string;
+  /** Only for an answer that was not understood: first element name and size, never content. */
+  hint?: string;
+}
+
+function unreadableHint(bodyXml: string): string {
+  const root = /<(?:[\w-]+:)?([\w-]+)/.exec(
+    bodyXml.replace(/<\?xml[^>]*\?>/, ''),
+  );
+  return `root=${root?.[1] ?? 'none'} length=${bodyXml.length}`;
+}
+
+const stdoutLog = (entry: CadastroLogEntry) =>
+  process.stdout.write(`${JSON.stringify(entry)}\n`);
+
 /** Asks the SEFAZ of the UF for the registrations of a CNPJ, with the A1 certificate of the company. */
 export async function lookupCadastro(
   soap: Pick<SefazSoapClient, 'call'>,
@@ -155,6 +196,7 @@ export async function lookupCadastro(
   uf: Uf,
   cnpj: string,
   certificate: LoadedCertificate,
+  log: (entry: CadastroLogEntry) => void = stdoutLog,
 ): Promise<CadastroAnswer> {
   const endpoint = cadastroEndpointFor(uf);
   if (!endpoint || !/^\d{14}$/.test(cnpj)) return { kind: 'unavailable' };
@@ -164,7 +206,19 @@ export async function lookupCadastro(
     certificate,
     timeoutMs,
   });
-  return result.kind === 'ok'
-    ? parseRetConsCad(result.bodyXml)
-    : { kind: 'unavailable' };
+  if (result.kind !== 'ok') return { kind: 'unavailable' };
+  const answer = parseRetConsCad(result.bodyXml);
+  const entry: CadastroLogEntry = {
+    authority: endpoint.authority,
+    service: 'CadConsultaCadastro4',
+    kind: answer.kind,
+  };
+  if (answer.kind === 'rejected') {
+    entry.cStat = answer.cStat;
+    entry.xMotivo = answer.reason;
+  } else if (answer.kind === 'unavailable') {
+    entry.hint = unreadableHint(result.bodyXml);
+  }
+  log(entry);
+  return answer;
 }

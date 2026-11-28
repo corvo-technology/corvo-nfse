@@ -75,6 +75,9 @@ export interface NfeReadinessView {
   /** The one enabled IE of the CNPJ at the SEFAZ, when there is exactly one. */
   suggestedStateRegistration: string | null;
   registrations: { stateRegistration: string; enabled: boolean }[];
+  /** Only for `sefaz_rejected`: the code and the reason the SEFAZ gave. */
+  sefazCStat: string | null;
+  sefazReason: string | null;
   missing: NfeMissingField[];
   checkedAt: Date | null;
 }
@@ -150,6 +153,8 @@ export class CompanyNfeSettingsService {
       stateRegistration: ie,
       suggestedStateRegistration: assessment.suggested,
       registrations: assessment.registrations,
+      sefazCStat: assessment.sefaz?.cStat ?? null,
+      sefazReason: assessment.sefaz?.reason ?? null,
       missing,
       checkedAt,
     };
@@ -291,6 +296,7 @@ export class CompanyNfeSettingsService {
       stateRegistration: ie,
       suggested: assessment.suggested,
       registrations: assessment.registrations,
+      sefaz: assessment.sefaz,
     });
   }
 

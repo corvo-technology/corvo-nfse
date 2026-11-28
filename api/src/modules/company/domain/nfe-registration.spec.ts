@@ -17,6 +17,26 @@ const found = (...registrations: CadastroRegistration[]) =>
   ({ kind: 'found', registrations }) as const;
 
 describe('assessRegistration', () => {
+  it('a SEFAZ rejection keeps its cStat and reason, and says them in the message', () => {
+    const assessment = assessRegistration('1', {
+      kind: 'rejected',
+      cStat: '243',
+      reason: 'XML Mal Formado',
+    });
+    expect(assessment.status).toBe('sefaz_rejected');
+    expect(assessment.sefaz).toEqual({
+      cStat: '243',
+      reason: 'XML Mal Formado',
+    });
+    expect(
+      registrationMessage('sefaz_rejected', {
+        uf: 'SP',
+        stateRegistration: '1',
+        sefaz: assessment.sefaz,
+      }),
+    ).toBe('A SEFAZ respondeu: 243 – XML Mal Formado');
+  });
+
   it('maps what the consulta cannot say', () => {
     expect(assessRegistration('1', { kind: 'no_certificate' }).status).toBe(
       'no_certificate',

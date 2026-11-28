@@ -97,14 +97,36 @@ describe('parseRetConsCad', () => {
     ).toEqual({ kind: 'not_found' });
   });
 
-  it('any other cStat, garbage or an empty answer is unavailable', () => {
-    expect(parseRetConsCad(ret(head('999', 'Erro não catalogado')))).toEqual({
-      kind: 'unavailable',
+  it('a rejection carries the cStat and the reason of the SEFAZ', () => {
+    expect(
+      parseRetConsCad(ret(head('243', 'Rejeição: XML Mal Formado'))),
+    ).toEqual({
+      kind: 'rejected',
+      cStat: '243',
+      reason: 'Rejeição: XML Mal Formado',
     });
-    expect(parseRetConsCad(ret(head('108', 'Paralisado')))).toEqual({
-      kind: 'unavailable',
+    expect(parseRetConsCad(ret(head('656', 'Consumo Indevido')))).toEqual({
+      kind: 'rejected',
+      cStat: '656',
+      reason: 'Consumo Indevido',
     });
+  });
+
+  it('finds retConsCad inside a wrapper the unwrapping left', () => {
+    const wrapped = `<consultaCadastroResult><nfeResultMsg>${ret(
+      head('111', 'ok') + infCad('110042490114', '1'),
+    )}</nfeResultMsg></consultaCadastroResult>`;
+    expect(parseRetConsCad(wrapped).kind).toBe('found');
+    expect(
+      parseRetConsCad(`<wrap>${ret(head('243', 'Mal formado'))}</wrap>`),
+    ).toMatchObject({ kind: 'rejected', cStat: '243' });
+  });
+
+  it('garbage, an empty answer or 111 without IE is unavailable', () => {
     expect(parseRetConsCad('not xml at all')).toEqual({ kind: 'unavailable' });
+    expect(parseRetConsCad('<other><x>1</x></other>')).toEqual({
+      kind: 'unavailable',
+    });
     expect(parseRetConsCad(ret(head('111', 'sem infCad')))).toEqual({
       kind: 'unavailable',
     });
@@ -191,5 +213,50 @@ describe('lookupCadastro', () => {
     expect(
       await lookupCadastro(client, 5000, 'SP', '11222333000181', certificate),
     ).toEqual({ kind: 'unavailable' });
+  });
+
+  it('logs the kind, cStat and reason, never the CNPJ', async () => {
+    const log = jest.fn();
+    const client = soap({
+      kind: 'ok',
+      bodyXml: ret(head('243', 'Rejeição: XML Mal Formado')),
+      durationMs: 5,
+    });
+    await lookupCadastro(
+      client,
+      5000,
+      'SP',
+      '11222333000181',
+      certificate,
+      log,
+    );
+    expect(log).toHaveBeenCalledWith({
+      authority: 'SP',
+      service: 'CadConsultaCadastro4',
+      kind: 'rejected',
+      cStat: '243',
+      xMotivo: 'Rejeição: XML Mal Formado',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('11222333000181');
+  });
+
+  it('logs only a safe hint (root element and size) for an answer it does not understand', async () => {
+    const log = jest.fn();
+    const body = '<weird><CNPJ>11222333000181</CNPJ></weird>';
+    await lookupCadastro(
+      soap({ kind: 'ok', bodyXml: body, durationMs: 5 }),
+      5000,
+      'SP',
+      '11222333000181',
+      certificate,
+      log,
+    );
+    expect(log).toHaveBeenCalledWith({
+      authority: 'SP',
+      service: 'CadConsultaCadastro4',
+      kind: 'unavailable',
+      hint: `root=weird length=${body.length}`,
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('11222333000181');
   });
 });

@@ -173,7 +173,7 @@ function RegistrationStatus({ readiness, checking, failed, uf, canManage, onChec
   const status = readiness?.status;
   const good = status === "ready" || status === "ie_suggested";
   const text = failed ? t("unavailable") : readiness && status && status !== "company_incomplete"
-    ? t(status, { uf: uf || "?", ie: readiness.stateRegistration ?? "", suggested: readiness.suggestedStateRegistration ?? "", list: readiness.registrations.filter((item) => item.enabled).map((item) => item.stateRegistration).join(", ") })
+    ? t(status, { uf: uf || "?", ie: readiness.stateRegistration ?? "", suggested: readiness.suggestedStateRegistration ?? "", cstat: readiness.sefazCStat ?? "", reason: readiness.sefazReason ?? "", list: readiness.registrations.filter((item) => item.enabled).map((item) => item.stateRegistration).join(", ") })
     : null;
   return (
     <div data-testid="nfe-readiness" role="status" className="flex flex-col gap-2">

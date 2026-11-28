@@ -392,11 +392,12 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         'not_credentialed',
         'ie_mismatch',
         'unavailable',
+        'sefaz_rejected',
         'no_certificate',
         'company_incomplete',
       ],
       description:
-        '`unavailable`: the UF has no consulta or the SEFAZ did not answer (nothing is known; check the IE at the CCC).',
+        '`unavailable`: the UF has no consulta or the SEFAZ did not answer (nothing is known; check the IE at the CCC). `sefaz_rejected`: the SEFAZ answered the consulta with a rejection; see `sefazCStat` and `sefazReason`.',
     }),
     message: str({
       description: 'The status in a plain pt-BR sentence, ready to show.',
@@ -409,6 +410,16 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       }),
     ),
     registrations: array(obj({ stateRegistration: str(), enabled: bool() })),
+    sefazCStat: nullable(
+      str({
+        description: 'With `sefaz_rejected`: the cStat the SEFAZ answered.',
+      }),
+    ),
+    sefazReason: nullable(
+      str({
+        description: 'With `sefaz_rejected`: the xMotivo the SEFAZ answered.',
+      }),
+    ),
     missing: array(str()),
     checkedAt: nullable(dateTime()),
   }),
