@@ -17,11 +17,14 @@ import { NfeNumberSequenceOrmEntity } from '@/modules/nfe/infra/nfe-number-seque
 import { PaymentIntentOrmEntity } from '@/modules/billing/infra/payment-intent.orm-entity';
 import { previousMonth } from '@/modules/invoice/application/package/package-month';
 import { brtMonthWindow } from '@/modules/lifecycle-emails/brt-time';
+import { ImportOrmEntity } from '@/modules/import/infra/import.orm-entity';
 import { TenantBillingOrmEntity } from './entities/tenant-billing.orm-entity';
 
 export type TenantWork =
   | 'invoice-recovery'
   | 'manual-review-sweep'
+  | 'stalled-queued'
+  | 'import-emitting'
   | 'certificate-expiry'
   | 'portal-sync'
   | 'webhook-delivery'
@@ -67,6 +70,22 @@ export class TenantWorkDiscovery {
           .getRepository(InvoiceOrmEntity)
           .createQueryBuilder('work')
           .where("work.status = 'manual_review'");
+      } else if (kind === 'stalled-queued') {
+        // Invoices still `queued` after the outbox should have released them.
+        query = this.database
+          .getRepository(InvoiceOrmEntity)
+          .createQueryBuilder('work')
+          .where(
+            "work.status = 'queued' AND work.created_at < :stalledBefore",
+            {
+              stalledBefore: new Date(now.getTime() - 30 * 60_000),
+            },
+          );
+      } else if (kind === 'import-emitting') {
+        query = this.database
+          .getRepository(ImportOrmEntity)
+          .createQueryBuilder('work')
+          .where("work.status = 'emitting'");
       } else if (kind === 'certificate-expiry') {
         owner = 'company.tenant_id';
         query = this.database

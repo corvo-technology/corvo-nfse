@@ -21,6 +21,16 @@ export interface IOutboxRepository {
     at: Date,
     attempt: number,
   ): Promise<boolean>;
+  /**
+   * Gives a second life to the messages of invoices left `queued` since before `createdBefore`
+   * whose messages are finished (dead or completed) and none is waiting: sets them pending again.
+   * Returns how many invoices were revived. Scheduled invoices keep a pending message, so never match.
+   */
+  reviveStalledInvoices(
+    tenantId: string,
+    createdBefore: Date,
+    limit: number,
+  ): Promise<number>;
   markDead(
     id: string,
     tenantId: string,

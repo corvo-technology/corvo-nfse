@@ -165,6 +165,36 @@ describe('ImportEmitService', () => {
     });
   });
 
+  describe('recover', () => {
+    const testRef = { ...ref, environment: 'test' as const };
+
+    it('queues the job again when rows are waiting, on the queue of its environment, then reads the import to close it', async () => {
+      repo.listRows.mockResolvedValue({ items: [queuedRow(2)] });
+      review.get.mockResolvedValue(view('emitting'));
+
+      await service.recover(testRef);
+
+      expect(testQueue.add).toHaveBeenCalledWith(
+        'emit',
+        testRef,
+        expect.objectContaining({ jobId: 'import-emit-i1' }),
+      );
+      expect(queue.add).not.toHaveBeenCalled();
+      expect(review.get).toHaveBeenCalledWith(T, 'test', 'i1');
+    });
+
+    it('only reads the import when no row is waiting (the invoices are what is left)', async () => {
+      repo.listRows.mockResolvedValue({ items: [] });
+      review.get.mockResolvedValue(view('done'));
+
+      await service.recover(ref);
+
+      expect(queue.add).not.toHaveBeenCalled();
+      expect(testQueue.add).not.toHaveBeenCalled();
+      expect(review.get).toHaveBeenCalledWith(T, 'live', 'i1');
+    });
+  });
+
   describe('failRun', () => {
     it('after the last attempt, rejects what is still queued with a retryable code so the import can settle', async () => {
       repo.rejectQueued.mockResolvedValue(undefined);

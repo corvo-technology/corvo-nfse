@@ -325,6 +325,96 @@ describePostgres('outbox repository with restricted PostgreSQL role', () => {
     });
   });
 
+  describe('reviveStalledInvoices', () => {
+    const old = new Date(Date.now() - 3_600_000);
+    const cutoff = new Date(Date.now() - 1_800_000);
+    let company: string;
+    beforeAll(async () => {
+      company = randomUUID();
+      await admin.query(
+        `INSERT INTO "${schema}".nfse_companies (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Fixture','11222333000181','test')`,
+        [company, tenantA],
+      );
+    });
+    const invoice = async (status: string, createdAt: Date) => {
+      const id = randomUUID();
+      await admin.query(
+        `INSERT INTO "${schema}".nfse_invoices (id,company_id,tenant_id,status,customer_snapshot,service_snapshot,tax_snapshot,amount,competence_date,environment,created_at) VALUES ($1,$2,$3,$4,'{}','{}','{}',10,'2026-10-11','test',$5)`,
+        [id, company, tenantA, status, createdAt],
+      );
+      return id;
+    };
+    const message = async (
+      aggregateId: string,
+      type: string,
+      status: string,
+      updatedAt: Date,
+    ) => {
+      await runWithTenant(tenantA, () =>
+        repo.insert({
+          ...base(`${type}:${aggregateId}`),
+          type,
+          aggregateId,
+        }),
+      );
+      await admin.query(
+        `UPDATE "${schema}".outbox_messages SET status=$2, attempts=5, updated_at=$3 WHERE aggregate_id=$1 AND type=$4`,
+        [aggregateId, status, updatedAt, type],
+      );
+    };
+    const statusOf = async (aggregateId: string) =>
+      (
+        await admin.query<Array<{ status: string }>>(
+          `SELECT type, status, attempts FROM "${schema}".outbox_messages WHERE aggregate_id=$1 ORDER BY type`,
+          [aggregateId],
+        )
+      ).map((r) => r.status);
+
+    it('puts the messages of an invoice stuck in queued back to pending', async () => {
+      const dead = await invoice('queued', old);
+      await message(dead, 'invoice.calculate-taxes', 'completed', old);
+      await message(dead, 'invoice.emit', 'dead', old);
+      const revived = await runWithTenant(tenantA, () =>
+        repo.reviveStalledInvoices(tenantA, cutoff, 100),
+      );
+      expect(revived).toBeGreaterThanOrEqual(1);
+      expect(await statusOf(dead)).toEqual(['pending', 'pending']);
+      const [row] = await admin.query<Array<{ attempts: number }>>(
+        `SELECT attempts FROM "${schema}".outbox_messages WHERE aggregate_id=$1 AND type='invoice.emit'`,
+        [dead],
+      );
+      expect(row?.attempts).toBe(0);
+    });
+
+    it('leaves alone a scheduled or in-flight invoice, a recent one and one already final', async () => {
+      const scheduled = await invoice('queued', old);
+      await message(scheduled, 'invoice.emit', 'pending', old);
+      const inFlight = await invoice('queued', old);
+      await message(inFlight, 'invoice.emit', 'claimed', old);
+      const recent = await invoice('queued', new Date());
+      await message(recent, 'invoice.emit', 'dead', old);
+      const authorized = await invoice('authorized', old);
+      await message(authorized, 'invoice.emit', 'dead', old);
+      await runWithTenant(tenantA, () =>
+        repo.reviveStalledInvoices(tenantA, cutoff, 100),
+      );
+      expect(await statusOf(scheduled)).toEqual(['pending']);
+      expect(await statusOf(inFlight)).toEqual(['claimed']);
+      expect(await statusOf(recent)).toEqual(['dead']);
+      expect(await statusOf(authorized)).toEqual(['dead']);
+    });
+
+    it('never touches another workspace', async () => {
+      const mine = await invoice('queued', old);
+      await message(mine, 'invoice.emit', 'dead', old);
+      const revived = await runWithTenant(tenantB, () =>
+        repo.reviveStalledInvoices(tenantB, cutoff, 100),
+      );
+      expect(revived).toBe(0);
+      expect(await statusOf(mine)).toEqual(['dead']);
+    });
+  });
+
   it('RLS hides tenant A messages from tenant B', async () => {
     const rows = await runWithTenant(tenantB, () =>
       runtime.query(

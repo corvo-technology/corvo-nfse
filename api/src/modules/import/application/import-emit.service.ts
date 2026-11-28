@@ -103,6 +103,23 @@ export class ImportEmitService {
     );
   }
 
+  /**
+   * Recovery for an import left `emitting` (called by the periodic check): enqueues the job again
+   * when rows are still waiting (a no-op while a job for this import is alive), then reads the import,
+   * which closes it once every invoice is final.
+   */
+  async recover(ref: ImportRef): Promise<void> {
+    const waiting = await this.repo.listRows(
+      ref.tenantId,
+      ref.environment,
+      ref.importId,
+      { status: 'queued', limit: 1 },
+    );
+    if (waiting.items.length > 0)
+      await this.enqueue(ref.tenantId, ref.environment, ref.importId);
+    await this.review.get(ref.tenantId, ref.environment, ref.importId);
+  }
+
   /** The job gave up: turn what is still queued into a retryable rejection so the import can settle. */
   async failRun(ref: ImportRef): Promise<void> {
     await this.repo.rejectQueued(ref.tenantId, ref.importId, {

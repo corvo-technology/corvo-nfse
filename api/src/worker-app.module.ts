@@ -37,6 +37,8 @@ import { NfseDocPrepProcessor } from '@/modules/invoice/jobs/nfse-doc-prep.proce
 import { TEST_QUEUE_PROCESSORS } from '@/modules/invoice/jobs/test-queue.processors';
 import { FiscalReconciliationProcessor } from '@/modules/invoice/jobs/fiscal-reconciliation.processor';
 import { DocsRecoveryScheduler } from '@/modules/invoice/jobs/docs-recovery.scheduler';
+import { StalledQueuedRecoveryScheduler } from '@/modules/invoice/jobs/stalled-queued-recovery.scheduler';
+import { ImportEmitRecoveryCron } from '@/modules/import/jobs/import-emit-recovery.cron';
 import { ManualReviewSweepScheduler } from '@/modules/invoice/jobs/manual-review-sweep.scheduler';
 import { AccountantPackageScheduler } from '@/modules/invoice/jobs/accountant-package.scheduler';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -137,11 +139,13 @@ import { DpsBuilder } from '@/modules/invoice/domain/fiscal/dps/dps-builder';
     ...TEST_QUEUE_PROCESSORS,
     DocsRecoveryScheduler,
     ManualReviewSweepScheduler,
+    StalledQueuedRecoveryScheduler,
     AccountantPackageScheduler,
     ImportReadProcessor,
     ImportEmitProcessor,
     ImportEmitTestProcessor,
     ImportCleanupCron,
+    ImportEmitRecoveryCron,
     PortalSyncScheduler,
     AccountAuditRetentionScheduler,
     OutboxRetentionScheduler,
