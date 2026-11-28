@@ -66,6 +66,9 @@ export default function NfeListPage() {
     { id: "amount", header: t("table.amount"), align: "right", cell: (nfe) => <span className="font-mono text-[13px] text-text-2">{money.format(Number(nfe.totals.vNF))}</span> },
     { id: "status", header: t("table.status"), cell: (nfe) => <NfeStatusBadge status={nfe.status} /> },
     { id: "created", header: t("table.created"), align: "right", cell: (nfe) => <span className="text-[13px] text-text-3">{new Date(nfe.createdAt).toLocaleDateString(locale === "pt" ? "pt-BR" : "en-US")}</span> },
+    ...(can("nfe.documents.issue")
+      ? [{ id: "copy", header: t("table.copy"), align: "right" as const, action: true, cell: (nfe: NfeDocument) => <Link href={`/app/nfe/new?from=${nfe.id}`} className="text-[13px] text-accent hover:underline" aria-label={`${t("table.copy")} ${nfe.recipient?.name || t("table.consumerAnonymous")}`}>{t("table.copy")}</Link> }]
+      : []),
   ];
 
   return (

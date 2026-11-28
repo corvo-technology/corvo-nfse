@@ -17,19 +17,19 @@ import {
   TypeormNfePackageQuery,
   type PackageNfe,
 } from '../infra/typeorm-nfe-package.query';
-import { DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
+import { DANFCE_FILE, DANFE_FILE, NFE_PROC_FILE } from './nfe-files';
 import { buildNfeSummaryCsv } from './nfe-package-csv';
 
-/** `nfe/{series}-{number}`: one folder per NF-e, with its own files and its events. */
+/** `nfe/{series}-{number}` (NFC-e: `nfce/...`): one folder per note, with its own files and its events. */
 function folderOf(row: PackageNfe): string {
   const number = String(row.number ?? 0).padStart(6, '0');
-  return `nfe/${row.series ?? 0}-${number}`;
+  return `${row.model === 65 ? 'nfce' : 'nfe'}/${row.series ?? 0}-${number}`;
 }
 
 /**
- * Puts the NF-e of the month into the accountant package: for each authorized or cancelled NF-e,
- * the `nfeProc`, the DANFE and the XML of its events, plus `nfe-resumo.csv`. A month without NF-e
- * adds nothing, so the ZIP stays exactly as it was.
+ * Puts the NF-e and NFC-e of the month into the accountant package: for each authorized or cancelled
+ * note, the `nfeProc`, the DANFE (the DANFCE for a NFC-e) and the XML of its events, plus
+ * `nfe-resumo.csv`. A month without them adds nothing, so the ZIP stays exactly as it was.
  */
 @Injectable()
 export class NfePackageContributor implements PackageContributor, OnModuleInit {
@@ -107,7 +107,10 @@ export class NfePackageContributor implements PackageContributor, OnModuleInit {
             `events/${event.tpEvento}-${event.nSeq}.xml`,
           );
     }
-    if (include.includes('pdf')) await take(DANFE_FILE, DANFE_FILE);
+    if (include.includes('pdf')) {
+      const pdf = row.model === 65 ? DANFCE_FILE : DANFE_FILE;
+      await take(pdf, pdf);
+    }
     return files;
   }
 }

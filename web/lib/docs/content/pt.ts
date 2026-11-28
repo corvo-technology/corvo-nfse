@@ -1726,7 +1726,7 @@ console.log(body.data); // { data: { emailId, status } }`,
 }`,
           },
           notes: [
-            { kind: "callout", tone: "accent", body: "Corpo opcional: `email` troca o destinatário. Header opcional `Idempotency-Key`: 1–64 caracteres, somente letras, números, `_` e `-`; a deduplicação verifica a existência do job dessa nota/chave na fila. Em repetição, o status pode refletir o último estado do email. `202` não confirma entrega." },
+            { kind: "callout", tone: "accent", body: "A mesma rota reenvia uma NF-e ou NFC-e (o XML e o DANFE ou DANFCE). Corpo opcional: `email` troca o destinatário. Header opcional `Idempotency-Key`: 1–64 caracteres, somente letras, números, `_` e `-`; a deduplicação verifica a existência do job dessa nota/chave na fila. Em repetição, o status pode refletir o último estado do email. `202` não confirma entrega." },
             { kind: "callout", tone: "warn", body: "A nota precisa estar autorizada e com documentos prontos. Erros: `404` nota ausente; `409` documentos não prontos; `422` cliente sem email ou chave de idempotência inválida." },
           ],
         },
@@ -3421,10 +3421,11 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
           "kind": "list",
           "items": [
             "`nfe_validate` (`nfse:write`): teste a seco, devolve os problemas campo a campo e nunca o XML. Aceita `type` (`nfe` ou `nfce`). Rode antes de emitir.",
+            "`nfe_repeat` (`nfse:write`): emite uma NF-e ou NFC-e nova copiando uma anterior (`invoice_id`, `type`, `idempotency_key`, `additional_info` opcional). Número, chave e data são novos; nota que não é venda normal responde `NFE_REPEAT_NOT_NORMAL`. O `nfse_email_resend` também aceita `type` para reenviar o e-mail de uma NF-e ou NFC-e.",
             "`nfe_settings_get` (`nfse:read`) e `nfe_settings_update` (`nfse:write`): IE, CRT, série e padrões da empresa, e o que falta para emitir.",
             "`nfe_correct` (`nfse:write`): carta de correção de uma NF-e autorizada (numa NFC-e responde `INVOICE_OPERATION_NOT_SUPPORTED`).",
             "`nfe_number_gaps` (`nfse:read`) e `nfe_inutilize` (`nfse:write`): números pulados e a inutilização de uma faixa, com `model` 55 (NF-e, padrão) ou 65 (NFC-e); peça a confirmação da pessoa antes de inutilizar. `nfe_settings_update` também grava `nfce_default_series`, a série da NFC-e.",
-            "Essas seis aparecem na lista de ferramentas de toda conta; cancelar, corrigir e inutilizar exigem papel com `nfe.documents.manage`, e emitir e validar, `nfe.documents.issue`."
+            "Essas aparecem na lista de ferramentas de toda conta; cancelar, corrigir e inutilizar exigem papel com `nfe.documents.manage`, e emitir e validar, `nfe.documents.issue`."
           ]
         },
         {

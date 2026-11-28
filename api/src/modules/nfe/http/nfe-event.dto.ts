@@ -41,6 +41,18 @@ export class CorrectNfeDto {
   correction!: string;
 }
 
+/** Body of `POST /v1/invoices/{id}/repeat` (MCP `nfe_repeat`): the note is copied as it is. */
+export class RepeatNfeDto {
+  @ApiPropertyOptional({
+    maxLength: 5000,
+    description: 'Replaces the additional information of the copied note.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  additionalInfo?: string;
+}
+
 export class InutilizeNfeDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()

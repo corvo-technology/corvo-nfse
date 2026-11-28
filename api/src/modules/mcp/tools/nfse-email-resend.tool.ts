@@ -9,6 +9,7 @@ import {
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { InvoiceService } from '@/modules/invoice/application/invoice.service';
+import { TYPE_PROPERTY } from './nfe.tools';
 import { invalidInput } from './tool-input-errors';
 
 export class NfseEmailResendInput {
@@ -19,10 +20,11 @@ export class NfseEmailResendInput {
 export const NFSE_EMAIL_RESEND_TOOL = {
   name: 'nfse_email_resend',
   description:
-    'Resend an authorized NFS-e (PDF and XML) by email. By default it goes to the customer email on the invoice; pass email to send to another address. Fails when the invoice is not authorized yet, is cancelled, or has no customer email and none is given. Confirm the destination with the user before calling.',
+    'Resend an authorized NFS-e, NF-e or NFC-e (PDF and XML) by email. By default it goes to the customer email on the invoice; pass email to send to another address. Fails when the invoice is not authorized yet, is cancelled, or has no customer email and none is given. Confirm the destination with the user before calling.',
   inputSchema: {
     type: 'object',
     properties: {
+      type: TYPE_PROPERTY,
       invoice_id: {
         type: 'string',
         description: 'UUID of the authorized invoice',

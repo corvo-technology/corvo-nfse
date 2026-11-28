@@ -376,11 +376,21 @@ function files(locale: DocsLocale): DocSection {
       list([
         l("`GET /v1/invoices/:id/xml` and `GET /v1/invoices/:id/pdf` answer the file itself.", "`GET /v1/invoices/:id/xml` e `GET /v1/invoices/:id/pdf` respondem o próprio arquivo."),
         l("`POST /v1/invoices/:id/download-url` with `{ \"format\": \"xml\" | \"pdf\" }` answers a temporary link (`downloadUrl`, `expiresAt`). Another format answers `NFE_DOWNLOAD_FORMAT_INVALID`.", "`POST /v1/invoices/:id/download-url` com `{ \"format\": \"xml\" | \"pdf\" }` responde um link temporário (`downloadUrl`, `expiresAt`). Outro formato responde `NFE_DOWNLOAD_FORMAT_INVALID`."),
-        l("The monthly package for the accountant (`GET /v1/companies/:id/invoice-package`) also carries the NF-e of the month.", "O pacote mensal do contador (`GET /v1/companies/:id/invoice-package`) também leva as NF-e do mês."),
+        l("The monthly package for the accountant (`GET /v1/companies/:id/invoice-package`) also carries the NF-e and the NFC-e of the month (folders `nfe/` and `nfce/`, with `nfe-resumo.csv`).", "O pacote mensal do contador (`GET /v1/companies/:id/invoice-package`) também leva as NF-e e NFC-e do mês (pastas `nfe/` e `nfce/`, com o `nfe-resumo.csv`)."),
       ]),
       callout("accent", l(
         "The XML has the personal data of the recipient. Corvo never writes a whole XML in its logs and never hands one out without your key.",
         "O XML tem dados pessoais do destinatário. A Corvo nunca escreve um XML inteiro nos logs e nunca entrega um sem a sua chave.",
+      )),
+      heading(l("Send the e-mail again", "Reenviar o e-mail")),
+      text(l(
+        "`POST /v1/invoices/:id/email` sends an authorized NF-e or NFC-e again, with the XML and the DANFE (the DANFCE for a NFC-e). It goes to the e-mail of the recipient, or to the address you send in `{ \"email\": \"someone@example.com\" }`. The same `Idempotency-Key` is one send. A note that is not authorized yet or has no files ready answers `409` `DOCUMENTS_NOT_READY`; a cancelled one, `409` `INVOICE_CANCELLED_NO_EMAIL`; no address at all, `422` `CUSTOMER_EMAIL_MISSING`. In the dashboard, the button is **Resend e-mail** on the note page.",
+        "`POST /v1/invoices/:id/email` envia de novo uma NF-e ou NFC-e autorizada, com o XML e o DANFE (o DANFCE na NFC-e). Vai para o e-mail do destinatário, ou para o endereço que você mandar em `{ \"email\": \"alguem@exemplo.com\" }`. A mesma `Idempotency-Key` vale um envio só. Nota ainda não autorizada ou sem arquivos prontos responde `409` `DOCUMENTS_NOT_READY`; nota cancelada, `409` `INVOICE_CANCELLED_NO_EMAIL`; sem nenhum endereço, `422` `CUSTOMER_EMAIL_MISSING`. No painel, o botão é **Reenviar e-mail** na página da nota.",
+      )),
+      heading(l("Copy a note", "Copiar uma nota")),
+      text(l(
+        "In the dashboard, **Copy** on the note page (or in the list) opens the form already filled with the recipient, items, payments, nature of operation and additional information of that note. You review it and issue: the new note has its own number, key and the date of the moment. Only a normal NF-e is copied (never a return or a complement), and prices are copied as they were, so check them before issuing. Through the agent, `nfe_repeat` does the same with `invoice_id`, `type` (`nfe` or `nfce`) and an `idempotency_key`, and answers `NFE_REPEAT_NOT_NORMAL` for a note that is not a normal sale.",
+        "No painel, **Copiar** na página da nota (ou na lista) abre o formulário já preenchido com o destinatário, os itens, os pagamentos, a natureza da operação e as informações adicionais dessa nota. Você confere e emite: a nota nova tem número e chave próprios e a data do momento. Só se copia NF-e normal (nunca devolução nem complemento), e os preços vão como estavam, então confira antes de emitir. Pelo agente, `nfe_repeat` faz o mesmo com `invoice_id`, `type` (`nfe` ou `nfce`) e uma `idempotency_key`, e responde `NFE_REPEAT_NOT_NORMAL` para nota que não é venda normal.",
       )),
       heading(l("Webhooks", "Webhooks")),
       text(l(

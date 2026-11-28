@@ -20,7 +20,8 @@ export default function NewNfePage() {
 
 /**
  * A new NF-e or consumer sale (NFC-e), or (with `?resubmit=<id>`) a rejected note filled in to be
- * fixed and sent again. The chooser lets the person pick one; `?type=nfce` opens on the sale.
+ * fixed and sent again, or (with `?from=<id>`) a copy of a note, filled in to be reviewed and issued as
+ * a new one. The chooser lets the person pick one; `?type=nfce` opens on the sale.
  */
 function NewNfe() {
   const t = useTranslations("Nfe.new");
@@ -28,6 +29,8 @@ function NewNfe() {
   const apiError = useApiErrorText();
   const params = useSearchParams();
   const resubmitId = params.get("resubmit") ?? undefined;
+  const copyId = resubmitId ? undefined : (params.get("from") ?? undefined);
+  const sourceId = resubmitId ?? copyId;
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [doc, setDoc] = useState<NfeDocument | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -38,7 +41,7 @@ function NewNfe() {
     const abort = new AbortController();
     Promise.all([
       collectAll((cursor) => companiesApi.list({ cursor, limit: 100 }, abort.signal)),
-      resubmitId ? getNfe(resubmitId, abort.signal) : Promise.resolve(null),
+      sourceId ? getNfe(sourceId, abort.signal) : Promise.resolve(null),
     ])
       .then(([rows, found]) => {
         if (abort.signal.aborted) return;
@@ -49,15 +52,19 @@ function NewNfe() {
       .catch((cause) => { if (!abort.signal.aborted) setError(apiError(cause, t("failed"))); });
     return () => abort.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the texts change with the language, not with the data
-  }, [resubmitId]);
+  }, [sourceId]);
 
   // The kind is a fact of the note being fixed; otherwise the person chooses.
   const kind: NfeKind = doc ? doc.type : chosen;
-  const chooser = !resubmitId;
+  const chooser = !sourceId;
   const only = companies && companies.length === 1 ? companies[0].id : "";
   const nfeInitial: NfeFormState | null = loaded ? (doc && doc.type === "nfe" ? fromDocument(doc) : emptyForm(only)) : null;
-  const title = kind === "nfce" ? (resubmitId ? tc("resubmitTitle") : tc("title")) : resubmitId ? t("resubmitTitle") : t("title");
-  const subtitle = kind === "nfce" ? (resubmitId ? tc("resubmitSubtitle") : tc("subtitle")) : resubmitId ? t("resubmitSubtitle") : t("subtitle");
+  const title = kind === "nfce"
+    ? (resubmitId ? tc("resubmitTitle") : copyId ? tc("copyTitle") : tc("title"))
+    : resubmitId ? t("resubmitTitle") : copyId ? t("copyTitle") : t("title");
+  const subtitle = kind === "nfce"
+    ? (resubmitId ? tc("resubmitSubtitle") : copyId ? tc("copySubtitle") : tc("subtitle"))
+    : resubmitId ? t("resubmitSubtitle") : copyId ? t("copySubtitle") : t("subtitle");
 
   return (
     <div className="flex max-w-[900px] flex-col gap-6">

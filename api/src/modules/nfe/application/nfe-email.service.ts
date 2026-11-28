@@ -102,7 +102,58 @@ export class NfeEmailService {
     }
   }
 
-  private async deliver(doc: NfeDocument, to: string): Promise<Date> {
+  /**
+   * The e-mail sent again, because the customer asked (`emailId` is the request). Unlike `send` it
+   * goes even when the first e-mail was sent; a refusal or the last failed try ends it `failed`
+   * only when nothing was ever sent, so a note that was delivered keeps saying so.
+   */
+  async resend(
+    documentId: string,
+    tenantId: string,
+    environment: ExecutionEnvironment,
+    request: { emailId: string; toEmail?: string },
+    lastAttempt: boolean,
+  ): Promise<void> {
+    const doc = await this.documents.findById(
+      documentId,
+      tenantId,
+      environment,
+    );
+    if (!doc) return;
+    const s = doc.toSnapshot();
+    const to = request.toEmail ?? s.recipient?.email;
+    if (s.status !== 'authorized' || !s.documentsReadyAt || !to) return;
+
+    try {
+      const sentAt = await this.deliver(doc, to, request.emailId);
+      await this.transitions.touch(keyOf(doc), {
+        change: (locked) => locked.recordEmail('sent', sentAt),
+      });
+      await this.publish(doc, 'document.email_sent', {
+        emailStatus: 'sent',
+        sentAt: sentAt.toISOString(),
+      });
+    } catch (error: unknown) {
+      if (!(error instanceof PermanentEmailError) && !lastAttempt) throw error;
+      this.logger.warn(
+        { documentId, permanent: error instanceof PermanentEmailError },
+        'NF-e e-mail resend failed, not trying again',
+      );
+      if (s.emailStatus !== 'sent')
+        await this.transitions.touch(keyOf(doc), {
+          change: (locked) => locked.recordEmail('failed'),
+        });
+      await this.publish(doc, 'document.email_failed', {
+        emailStatus: 'failed',
+      });
+    }
+  }
+
+  private async deliver(
+    doc: NfeDocument,
+    to: string,
+    emailId?: string,
+  ): Promise<Date> {
     if (!this.mailer) throw new Error('The e-mail provider is not available');
     const s = doc.toSnapshot();
     const ref: StorageRef = {
@@ -151,7 +202,7 @@ export class NfeEmailService {
           contentType: 'application/pdf',
         },
       ],
-      idempotencyKey: `${isNfce ? 'nfce' : 'nfe'}-email-${doc.id}`,
+      idempotencyKey: `${isNfce ? 'nfce' : 'nfe'}-email-${doc.id}${emailId ? `-${emailId}` : ''}`,
     });
     return new Date();
   }

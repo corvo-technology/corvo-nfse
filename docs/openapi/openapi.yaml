@@ -5443,7 +5443,7 @@ paths:
         than the customer address (the invoice must be authorized with its documents ready).
 
 
-        Permission: `nfse.invoices.issue`.
+        Permission: `nfse.invoices.issue` or `nfe.documents.issue`.
       operationId: invoices_sendEmail
       parameters:
         - description: Identifier (UUID) of the invoice.
@@ -5500,6 +5500,7 @@ paths:
         - Invoices
       x-required-permissions:
         - nfse.invoices.issue
+        - nfe.documents.issue
   /invoices/{id}/events:
     get:
       description: >-

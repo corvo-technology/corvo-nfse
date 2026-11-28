@@ -45,6 +45,8 @@ import { NfeEmailService } from './application/nfe-email.service';
 import { NfePrepareDocumentsHandler } from './application/nfe-prepare-documents.handler';
 import { NfeReconcileHandler } from './application/nfe-reconcile.handler';
 import { NfeSendEmailHandler } from './application/nfe-send-email.handler';
+import { NfeResendEmailHandler } from './application/nfe-resend-email.handler';
+import { NfeResendEmailService } from './application/nfe-resend-email.service';
 import { NfeResubmitService } from './application/nfe-resubmit.service';
 import { NfeSefazAccess } from './application/nfe-sefaz-access';
 import { NfeSvcAnnouncer } from './application/nfe-svc.announcer';
@@ -151,6 +153,8 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfePackageContributor,
     TypeormNfePackageQuery,
     NfeSendEmailHandler,
+    NfeResendEmailHandler,
+    NfeResendEmailService,
     DocumentCreditLedger,
     FiscalWebhookPublisher,
     OutboxService,
@@ -177,6 +181,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NfeCancelService,
     NfeTimelineService,
     NfeFilesService,
+    NfeResendEmailService,
     NfeInutilizeService,
     TypeormNfeInutilizations,
     NfeNumberGapsQuery,

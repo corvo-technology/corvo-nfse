@@ -57,6 +57,21 @@ export interface InvoiceRoutes {
     call: InvoiceCall,
     res: ResponseLike,
   ): Promise<unknown>;
+  /** A new note with the content of this one (NF-e and NFC-e only): new key, new number, issued now. */
+  repeat(
+    id: string,
+    body: unknown,
+    idempotencyKey: string | undefined,
+    call: InvoiceCall,
+    res: ResponseLike,
+  ): Promise<unknown>;
+  /** Sends the authorized note again by e-mail, to the recipient or to `email`. */
+  email(
+    id: string,
+    email: string | undefined,
+    idempotencyKey: string | undefined,
+    call: InvoiceCall,
+  ): Promise<unknown>;
   discard(id: string, call: InvoiceCall): Promise<unknown>;
   sync(id: string, call: InvoiceCall): Promise<unknown>;
   cancel(id: string, body: unknown, call: InvoiceCall): Promise<unknown>;

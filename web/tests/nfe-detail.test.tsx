@@ -7,10 +7,12 @@ import { ApiError } from "@/lib/api";
 import type { NfeDocument } from "@/lib/nfe";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), events: vi.fn(), sync: vi.fn(), cancel: vi.fn(), correct: vi.fn(), discard: vi.fn(), file: vi.fn(), save: vi.fn(), permissions: new Set<string>() }));
+const mocks = vi.hoisted(() => ({ email: vi.fn(), get: vi.fn(), events: vi.fn(), sync: vi.fn(), cancel: vi.fn(), correct: vi.fn(), discard: vi.fn(), file: vi.fn(), save: vi.fn(), permissions: new Set<string>() }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "n1" }) }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => mocks.permissions.has(permission) }) }));
+vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), invoices: { email: mocks.email } }));
+vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }));
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,AAAA") } }));
 vi.mock("@/lib/download", () => ({ saveBlob: mocks.save }));
 vi.mock("@/lib/nfe", async (original) => ({
@@ -33,7 +35,7 @@ const button = (name: string | RegExp) => screen.queryByRole("button", { name })
 
 beforeEach(() => {
   mocks.permissions = new Set(["nfe.documents.view", "nfe.documents.issue", "nfe.documents.manage"]);
-  for (const mock of [mocks.get, mocks.events, mocks.sync, mocks.cancel, mocks.correct, mocks.discard, mocks.file, mocks.save]) mock.mockReset();
+  for (const mock of [mocks.email, mocks.get, mocks.events, mocks.sync, mocks.cancel, mocks.correct, mocks.discard, mocks.file, mocks.save]) mock.mockReset();
   mocks.get.mockResolvedValue(nfe());
   mocks.events.mockResolvedValue([{ kind: "status", at: "2026-11-26T12:00:00.000Z", status: "authorized", from: "processing", tpEvento: null, sequence: null, eventId: null, cStat: "100", xMotivo: "Autorizado" }]);
 });
@@ -162,6 +164,38 @@ describe("NF-e detail", () => {
     expect(screen.getByText(/^Registered/)).toBeTruthy();
   });
 
+  it("offers to copy the note, to the form filled from it, only with permission to issue", async () => {
+    await renderPage();
+    expect(screen.getByRole("link", { name: "Copy" }).getAttribute("href")).toBe("/app/nfe/new?from=n1");
+    cleanup();
+    mocks.permissions = new Set(["nfe.documents.view"]);
+    await renderPage();
+    expect(screen.queryByRole("link", { name: "Copy" })).toBeNull();
+    expect(button("Resend e-mail")).toBeNull();
+  });
+
+  it("resends the e-mail of an authorized note to the recipient or to another address", async () => {
+    mocks.email.mockResolvedValue({ emailId: "e1", status: "queued" });
+    mocks.get.mockResolvedValue(nfe({ recipient: { name: "Maria da Silva", taxId: "12345678909", email: "maria@example.com" } as never }));
+    await renderPage();
+    fireEvent.click(button("Resend e-mail")!);
+    const field = (await screen.findByDisplayValue("maria@example.com")) as HTMLInputElement;
+    fireEvent.change(field, { target: { value: "contador@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Send/ }));
+    await waitFor(() => expect(mocks.email).toHaveBeenCalledTimes(1));
+    expect(mocks.email).toHaveBeenCalledWith("n1", expect.any(String), "contador@example.com");
+  });
+
+  it("no resend while the note is not authorized with its files ready", async () => {
+    mocks.get.mockResolvedValue(nfe({ status: "cancelled" }));
+    await renderPage();
+    expect(button("Resend e-mail")).toBeNull();
+    cleanup();
+    mocks.get.mockResolvedValue(nfe({ documentsReady: false }));
+    await renderPage();
+    expect(button("Resend e-mail")).toBeNull();
+  });
+
   describe("NFC-e", () => {
     const nfce = (over: Partial<NfeDocument> = {}) => nfe({ type: "nfce", recipient: null as never, natOp: "Venda", qrCode: "https://www.nfce.fazenda.sp.gov.br/qrcode?p=abc", urlChave: "https://www.nfce.fazenda.sp.gov.br/consulta", ...over } as Partial<NfeDocument>);
 
@@ -179,6 +213,13 @@ describe("NF-e detail", () => {
       fireEvent.click(button("DANFCE (A4)")!);
       await waitFor(() => expect(mocks.file).toHaveBeenCalledWith("n1", "pdf", "a4"));
       expect(button("DANFE (PDF)")).toBeNull();
+    });
+
+    it("a NFC-e can be copied and have its e-mail sent again too", async () => {
+      mocks.get.mockResolvedValue(nfe({ type: "nfce", recipient: null }));
+      await renderPage();
+      expect(screen.getByRole("link", { name: "Copy" }).getAttribute("href")).toBe("/app/nfe/new?from=n1");
+      expect(button("Resend e-mail")).toBeTruthy();
     });
 
     it("says that the cancellation is easy only in the first 30 minutes", async () => {

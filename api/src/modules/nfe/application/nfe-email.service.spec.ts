@@ -99,4 +99,63 @@ describe('NfeEmailService', () => {
     );
     await expect(run(service)).rejects.toThrow('provider is not available');
   });
+
+  describe('resend', () => {
+    const again = (
+      service: NfeEmailService,
+      request: { emailId: string; toEmail?: string } = { emailId: 'r1' },
+      lastAttempt = false,
+    ) => service.resend('d', 't', 'test', request, lastAttempt);
+
+    it('sends again even when it was sent before, to the other address, with a key of its own', async () => {
+      const { service, mailer, transitions } = build(
+        readyDocument('maria@example.com', { emailStatus: 'sent' }),
+      );
+      await again(service, { emailId: 'r1', toEmail: 'outro@example.com' });
+      const mail = (mailer.send.mock.calls as unknown[][])[0][0] as {
+        to: string[];
+        idempotencyKey: string;
+        attachments: unknown[];
+      };
+      expect(mail.to).toEqual(['outro@example.com']);
+      expect(mail.attachments).toHaveLength(2);
+      expect(mail.idempotencyKey).toMatch(/^nfe-email-.+-r1$/);
+      expect(transitions.touch).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing for a note that is not authorized or has no address at all', async () => {
+      for (const doc of [
+        null,
+        readyDocument('a@b.com', { status: 'cancelled' }),
+        readyDocument('a@b.com', { documentsReadyAt: null }),
+        readyDocument(null),
+      ]) {
+        const { service, mailer } = build(doc);
+        await again(service);
+        expect(mailer.send).not.toHaveBeenCalled();
+      }
+    });
+
+    it('on the last failed try says failed, but a note already delivered keeps its status', async () => {
+      const failing = (doc: NfeDocument) => {
+        const built = build(doc);
+        built.mailer.send.mockRejectedValue(new Error('boom'));
+        return built;
+      };
+      const first = failing(readyDocument('a@b.com'));
+      await expect(again(first.service)).rejects.toThrow('boom');
+      await again(first.service, { emailId: 'r1' }, true);
+      expect(first.transitions.touch).toHaveBeenCalledTimes(1);
+      expect(first.webhooks.publish).toHaveBeenCalledWith(
+        expect.anything(),
+        'nfe.document.email_failed',
+        expect.anything(),
+      );
+      const delivered = failing(
+        readyDocument('a@b.com', { emailStatus: 'sent' }),
+      );
+      await again(delivered.service, { emailId: 'r1' }, true);
+      expect(delivered.transitions.touch).not.toHaveBeenCalled();
+    });
+  });
 });

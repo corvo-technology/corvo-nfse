@@ -1753,7 +1753,7 @@ console.log(body.data.status); // { data: { emailId, status } }`,
           },
           notes: [
             { kind: "callout", tone: "accent", body: "Optional `Idempotency-Key` header: 1–64 characters, letters, numbers, `_` and `-` only. Deduplication checks for the existence of this invoice/key job in the queue." },
-            { kind: "callout", tone: "warn", body: "`202` does not confirm delivery. On a repeat request the status may reflect the last state of the email. Errors: `404` invoice missing; `409` documents not ready; `422` customer without email or invalid idempotency key." },
+            { kind: "callout", tone: "warn", body: "The same route sends an NF-e or NFC-e again (the XML and the DANFE or DANFCE). `202` does not confirm delivery. On a repeat request the status may reflect the last state of the email. Errors: `404` invoice missing; `409` documents not ready; `422` customer without email or invalid idempotency key." },
           ],
         },
         {
@@ -3424,10 +3424,11 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
           "kind": "list",
           "items": [
             "`nfe_validate` (`nfse:write`): dry-run, returns the problems field by field and never the XML. Takes `type` (`nfe` or `nfce`). Run it before issuing.",
+            "`nfe_repeat` (`nfse:write`): issues a new NF-e or NFC-e copying a previous one (`invoice_id`, `type`, `idempotency_key`, optional `additional_info`). The number, key and date are new; a note that is not a normal sale answers `NFE_REPEAT_NOT_NORMAL`. `nfse_email_resend` also takes `type` to send an NF-e or NFC-e e-mail again.",
             "`nfe_settings_get` (`nfse:read`) and `nfe_settings_update` (`nfse:write`): IE, CRT, series and defaults of the company, and what is missing to issue.",
             "`nfe_correct` (`nfse:write`): correction letter for an authorized NF-e (on a NFC-e it answers `INVOICE_OPERATION_NOT_SUPPORTED`).",
             "`nfe_number_gaps` (`nfse:read`) and `nfe_inutilize` (`nfse:write`): skipped numbers and the inutilization of a range, with `model` 55 (NF-e, default) or 65 (NFC-e); ask the person to confirm before inutilizing. `nfe_settings_update` also sets `nfce_default_series`, the NFC-e series.",
-            "These six show in the tool list for every account; cancelling, correcting and inutilizing need a role with `nfe.documents.manage`, issuing and validating `nfe.documents.issue`."
+            "These show in the tool list for every account; cancelling, correcting and inutilizing need a role with `nfe.documents.manage`, issuing and validating `nfe.documents.issue`."
           ]
         },
         {
