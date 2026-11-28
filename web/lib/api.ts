@@ -1,5 +1,5 @@
 import type { InvoiceOriginKind } from "@/lib/invoice-origin";
-import type { ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
+import type { ProductFavorite, ProductFavoriteInput, CustomerPatch, ServiceFavorite, ServiceFavoriteInput, ForeignCustomer, SavedCustomer, CustomerRegistryInfo, ImportJob, ImportRow, ImportStart, ImportStatus, InvoiceSchedule, ScheduleFrequency, ScheduleRun, PaymentRecord, PixSubscription, ApiKey, ApiKeyCreated, CreditBalance, CreditTransaction, PlanSlug, Company, Certificate, Invoice, InvoiceStatus, CancellationReasonCode, InvoiceEvent, BillingPlan, BillingUsage, CreateCompanyInput, CompanyFormInput, InvoiceCalculation, CompanyFiscalProfile, FiscalProfileInput, CompanyServiceTaxProfile, ServiceTaxProfileInput, UpdateCompanyInput, CreateInvoiceInput, PlanQuote, WebhookEndpoint, WebhookDelivery, WebhookDeliveriesQuery, WebhookEvent, DeliveryStats } from "./types";
 import type { AuditActorFilter, AuditEvent } from "./audit";
 export type { ApiKey, ApiKeyCreated, WebhookEndpoint, WebhookDelivery, WebhookEvent, DeliveryStats } from "./types";
 
@@ -356,6 +356,12 @@ export const serviceFavorites = {
   create: async (companyId: string, input: ServiceFavoriteInput) => unwrap(await request<Envelope<ServiceFavorite>>(`/companies/${idPath(companyId)}/service-favorites`, json(input))),
   remove: async (companyId: string, id: string): Promise<void> => { await request<Envelope<{ deleted: true }>>(`/companies/${idPath(companyId)}/service-favorites/${idPath(id)}`, { method: "DELETE" }); },
 };
+export const productFavorites = {
+  list: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<ProductFavorite[]>>(`/companies/${idPath(companyId)}/product-favorites`, { signal })),
+  save: async (companyId: string, input: ProductFavoriteInput) => unwrap(await request<Envelope<ProductFavorite>>(`/companies/${idPath(companyId)}/product-favorites`, json(input))),
+  remove: async (companyId: string, id: string): Promise<void> => { await request<Envelope<{ deleted: true }>>(`/companies/${idPath(companyId)}/product-favorites/${idPath(id)}`, { method: "DELETE" }); },
+};
+
 export const customers = {
   list: async (params: PageParams & { search?: string } = {}, signal?: AbortSignal): Promise<Page<SavedCustomer>> => toPage(await request<ListBody<SavedCustomer>>(`/customers${query(params)}`, { signal })),
   /** Null when the document was never saved (the API answers 404). */
@@ -368,7 +374,7 @@ export const customers = {
     try { return unwrap(await request<Envelope<CustomerRegistryInfo | null>>(`/customers/registry/${idPath(cnpj)}`, { signal })); }
     catch { return null; }
   },
-  update: async (taxId: string, patch: { name?: string; email?: string | null }) => unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, json(patch, "PATCH"))),
+  update: async (taxId: string, patch: CustomerPatch) => unwrap(await request<Envelope<SavedCustomer>>(`/customers/${idPath(taxId)}`, json(patch, "PATCH"))),
   remove: async (taxId: string): Promise<void> => { await request<Envelope<null>>(`/customers/${idPath(taxId)}`, { method: "DELETE" }); },
 };
 export const webhooks = {

@@ -591,10 +591,17 @@ export interface ImportStart { id: string; status: ImportStatus; duplicateOf: st
 
 /** A service the company bills often, saved to fill the new-invoice form in one click. */
 export interface ServiceFavorite { id: string; companyId: string; label: string; description: string; serviceCode: string; amountCents: number | null; municipalityCode: string | null; createdAt: string }
+/** A product saved on the server, to fill the items of an NF-e or NFC-e. */
+export interface ProductFavorite { id: string; companyId: string; description: string; code: string; gtin: string | null; ncm: string; cest: string | null; cfop: string | null; unit: string; unitPrice: number; csosn: "102" | "400" | null; origin: number | null; createdAt: string }
+export interface ProductFavoriteInput { description: string; code?: string; gtin?: string | null; ncm: string; cest?: string | null; cfop?: string | null; unit?: string; unitPrice: number; csosn?: "102" | "400" | null; origin?: number | null }
 export interface ServiceFavoriteInput { label: string; description: string; serviceCode: string; amountCents?: number | null; municipalityCode?: string | null }
 
 /** A customer (tomador) saved from an accepted invoice: the next invoice for the same document needs no name. */
-export interface SavedCustomer { taxId: string; name: string; email: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
+/** Address of a saved customer, as the NF-e recipient needs it (`cityCode` is the IBGE code). */
+export interface CustomerAddress { street: string; number: string; complement: string | null; district: string; zip: string; cityCode: string; city: string; state: string }
+export interface SavedCustomer { taxId: string; name: string; email: string | null; address?: CustomerAddress | null; indIeDest?: 1 | 2 | 9 | null; stateRegistration?: string | null; lastUsedAt: string; createdAt: string; updatedAt: string }
+/** Fields of a saved customer the person can correct; null clears one. */
+export interface CustomerPatch { name?: string; email?: string | null; address?: CustomerAddress | null; indIeDest?: 1 | 2 | 9 | null; stateRegistration?: string | null }
 
 /** What the public CNPJ registry says about a company: enough to start a new customer. No email on purpose. */
 export interface CustomerRegistryInfo { name: string; city: string | null; state: string | null }

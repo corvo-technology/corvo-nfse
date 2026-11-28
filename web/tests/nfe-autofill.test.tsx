@@ -4,11 +4,11 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NfeForm } from "@/components/nfe/nfe-form";
 import { emptyForm, ieExample, lineTotal, maskNcm, suggestedCfop, toCreateInput, toNumber } from "@/lib/nfe-form";
-import { loadProducts, rememberProducts } from "@/lib/nfe-products";
+import { LOCAL_PRODUCTS_KEY } from "@/lib/nfe-products";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn(), find: vi.fn(), cnpj: vi.fn(), cep: vi.fn(), settings: vi.fn() }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn(), find: vi.fn(), cnpj: vi.fn(), cep: vi.fn(), settings: vi.fn(), products: vi.fn(), saveProduct: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 const auth = vi.hoisted(() => ({ env: "test" as "test" | "live", nfeProduction: false }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: auth.env, features: { nfeProduction: auth.nfeProduction } }) }));
@@ -16,7 +16,7 @@ beforeEach(() => { auth.env = "test"; auth.nfeProduction = false; });
 vi.mock("@/lib/nfe", async (original) => ({ ...(await original<typeof import("@/lib/nfe")>()), createNfe: mocks.create, getNfeSettings: mocks.settings }));
 vi.mock("@/lib/api", async (original) => {
   const api = await original<typeof import("@/lib/api")>();
-  return { ...api, customers: { ...api.customers, find: mocks.find }, cnpj: { lookup: mocks.cnpj } };
+  return { ...api, customers: { ...api.customers, find: mocks.find }, cnpj: { lookup: mocks.cnpj }, productFavorites: { ...api.productFavorites, list: mocks.products, save: mocks.saveProduct } };
 });
 vi.mock("@/lib/viacep", () => ({ lookupCep: mocks.cep }));
 
@@ -33,6 +33,7 @@ beforeEach(() => {
   mocks.find.mockResolvedValue(null);
   mocks.cnpj.mockRejectedValue(new Error("no lookup"));
   mocks.cep.mockResolvedValue(null);
+  mocks.products.mockResolvedValue([]);
   mocks.settings.mockResolvedValue({ defaultNatOp: "Venda de mercadoria", defaultCsosn: "400" });
 });
 afterEach(cleanup);
@@ -154,15 +155,68 @@ describe("items and payment", () => {
     expect((screen.getByLabelText(/^Nature of the operation/) as HTMLInputElement).placeholder).toBe("Venda de mercadoria");
   });
 
-  it("a product used on a note is offered on the next one", () => {
-    const form = emptyForm("c1");
-    rememberProducts([{ ...form.items[0], description: "Camiseta", ncm: "61091000", unitPrice: "10,00" }]);
-    expect(loadProducts()).toHaveLength(1);
+  const camiseta = { id: "p1", companyId: "c1", description: "Camiseta", code: "CAM-1", gtin: null, ncm: "61091000", cest: null, cfop: "5102", unit: "UN", unitPrice: 10, csosn: null, origin: null, createdAt: "2026-11-01T00:00:00Z" };
+
+  it("a saved product is searched by name or code and fills the item", async () => {
+    mocks.products.mockResolvedValue([camiseta, { ...camiseta, id: "p2", description: "Calça", code: "CAL-2" }]);
     renderForm();
-    const select = screen.getByLabelText("Use a product from earlier notes");
-    act(() => { fireEvent.change(select, { target: { value: "0" } }); });
+    const search = await screen.findByLabelText("Search a saved product (name or code)");
+    fireEvent.change(search, { target: { value: "cal-2" } });
+    expect(screen.queryByRole("option", { name: /Camiseta/ })).toBeNull();
+    fireEvent.change(search, { target: { value: "camis" } });
+    act(() => { fireEvent.mouseDown(screen.getByRole("option", { name: /Camiseta/ })); });
     expect(value(/^Description/)).toBe("Camiseta");
     expect(value(/^NCM/)).toBe("6109.10.00");
+    expect(value(/^Unit price/)).toBe("10,00");
+  });
+
+  it("saves an item as a product of the company", async () => {
+    mocks.saveProduct.mockResolvedValue(camiseta);
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "Save as product" }));
+    expect(await screen.findByText(/fill in the description and the 8-digit NCM/)).toBeTruthy();
+    expect(mocks.saveProduct).not.toHaveBeenCalled();
+    type(/^Description/, "Camiseta");
+    type(/^NCM/, "61091000");
+    type(/^Unit price/, "10,00");
+    fireEvent.click(screen.getByRole("button", { name: "Save as product" }));
+    await waitFor(() => expect(mocks.saveProduct).toHaveBeenCalledWith("c1", expect.objectContaining({ description: "Camiseta", ncm: "61091000", unitPrice: 10, unit: "UN", cfop: "5102" })));
+    expect(await screen.findByText(/Product saved/)).toBeTruthy();
+  });
+
+  it("moves the old list kept in the browser to the server once, then stops using it", async () => {
+    localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify([
+      { code: "", description: "Nova", ncm: "61091000", cfop: "5102", unit: "UN", unitPrice: "5,00", csosn: "" },
+      { code: "", description: "Sem NCM", ncm: "", cfop: "5102", unit: "UN", unitPrice: "1,00", csosn: "" },
+      { code: "X", description: "Velha", ncm: "62034200", cfop: "5102", unit: "UN", unitPrice: "20,50", csosn: "102" },
+    ]));
+    mocks.saveProduct.mockResolvedValue(camiseta);
+    renderForm();
+    await waitFor(() => expect(localStorage.getItem(LOCAL_PRODUCTS_KEY)).toBeNull());
+    // The oldest goes first and a product without a valid NCM is left out.
+    expect(mocks.saveProduct.mock.calls.map((call) => (call[1] as { description: string }).description)).toEqual(["Velha", "Nova"]);
+    expect(mocks.saveProduct).toHaveBeenCalledWith("c1", expect.objectContaining({ description: "Velha", unitPrice: 20.5, csosn: "102" }));
+    expect(mocks.products).toHaveBeenCalledWith("c1", expect.anything());
+  });
+
+  it("keeps the old list in the browser when the server does not take it", async () => {
+    localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify([{ code: "", description: "Nova", ncm: "61091000", cfop: "5102", unit: "UN", unitPrice: "5,00", csosn: "" }]));
+    mocks.saveProduct.mockRejectedValue(new Error("down"));
+    renderForm();
+    await waitFor(() => expect(mocks.saveProduct).toHaveBeenCalled());
+    expect(localStorage.getItem(LOCAL_PRODUCTS_KEY)).not.toBeNull();
+  });
+
+  it("a saved customer fills the address, the IBGE code and the state registration", async () => {
+    mocks.find.mockResolvedValue({ taxId: CNPJ, name: "Loja Azul Ltda", email: null, indIeDest: 1, stateRegistration: "111222333444", address: { street: "Av. Paulista", number: "1000", complement: null, district: "Bela Vista", zip: "01310100", cityCode: "3550308", city: "São Paulo", state: "SP" } });
+    renderForm();
+    type(/^CPF or CNPJ/, CNPJ);
+    await waitFor(() => expect(value(/^Street/)).toBe("Av. Paulista"));
+    expect(value(/^ZIP/)).toBe("01310-100");
+    expect(value(/^District/)).toBe("Bela Vista");
+    expect(screen.getByText(/3550308/)).toBeTruthy();
+    expect(value(/^Recipient's state registration/)).toBe("1");
+    expect(value(/^State registration/)).toBe("111222333444");
   });
 });
 

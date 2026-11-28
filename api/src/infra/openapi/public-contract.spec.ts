@@ -91,6 +91,7 @@ describe('public OpenAPI contract', () => {
       'customers_update',
       'customers_delete',
       'serviceFavorites_list',
+      'productFavorites_list',
       'accountantPackage_send',
       'dpsSequence_set',
       'fiscalProfiles_upsert',

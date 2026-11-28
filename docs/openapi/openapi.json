@@ -56,6 +56,10 @@
       "name": "Service favorites"
     },
     {
+      "description": "Products a company sells often, saved to fill NF-e and NFC-e items.",
+      "name": "Product favorites"
+    },
+    {
       "description": "Scheduled and recurring invoices.",
       "name": "Schedules"
     },
@@ -1304,6 +1308,267 @@
         ],
         "x-required-permissions": [
           "nfse.invoices.view"
+        ]
+      }
+    },
+    "/companies/{companyId}/product-favorites": {
+      "get": {
+        "description": "The products the company saved to fill NF-e and NFC-e items. Permission: `nfe.documents.view`.\n\nPermission: `nfe.documents.view`.",
+        "operationId": "productFavorites_list",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the company.",
+            "in": "path",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/ProductFavorite"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "List the saved products of a company",
+        "tags": [
+          "Product favorites"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.view"
+        ]
+      },
+      "post": {
+        "description": "Saves a product (description, NCM, unit price and, optionally, code, barcode, CEST, CFOP, unit, CSOSN and origin). The same description (any case) updates the saved product. Up to 500 per company. Permission: `nfe.documents.issue`.\n\nPermission: `nfe.documents.issue`.",
+        "operationId": "productFavorites_save",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the company.",
+            "in": "path",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveProductFavorite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProductFavorite"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Save a product (the same description updates the saved one)",
+        "tags": [
+          "Product favorites"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.issue"
+        ]
+      }
+    },
+    "/companies/{companyId}/product-favorites/{productId}": {
+      "delete": {
+        "description": "Removes a saved product. Issued notes are not changed. Permission: `nfe.documents.issue`.\n\nPermission: `nfe.documents.issue`.",
+        "operationId": "productFavorites_delete",
+        "parameters": [
+          {
+            "description": "Identifier (UUID) of the company.",
+            "in": "path",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Identifier (UUID) of the saved product.",
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Deleted"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "X-RateLimit-Limit": {
+                "$ref": "#/components/headers/X-RateLimit-Limit"
+              },
+              "X-RateLimit-Remaining": {
+                "$ref": "#/components/headers/X-RateLimit-Remaining"
+              },
+              "X-RateLimit-Reset": {
+                "$ref": "#/components/headers/X-RateLimit-Reset"
+              },
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Remove a saved product",
+        "tags": [
+          "Product favorites"
+        ],
+        "x-required-permissions": [
+          "nfe.documents.issue"
         ]
       }
     },
@@ -3678,7 +3943,7 @@
         ]
       },
       "patch": {
-        "description": "Corrects the name or e-mail of a saved customer. Send `email: null` to clear it. Issued invoices are not changed.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Corrects the name, e-mail, NF-e address (`address`), `indIeDest` or state registration of a saved customer. Send a field as `null` to clear it. An NF-e that is accepted saves its recipient here, and the NF-e form fills the recipient from it. Issued invoices are not changed.\n\nPermission: `nfse.invoices.issue`.",
         "operationId": "customers_update",
         "parameters": [
           {
@@ -3759,7 +4024,7 @@
             "ApiKeyAuth": []
           }
         ],
-        "summary": "Correct the name or the email of a saved customer",
+        "summary": "Correct the name, email, address or state registration of a saved customer",
         "tags": [
           "Customers"
         ],
@@ -12020,27 +12285,54 @@
       "CustomerAddress": {
         "properties": {
           "city": {
+            "maxLength": 60,
             "type": "string"
           },
-          "country": {
-            "type": "string"
-          },
-          "municipalityCode": {
-            "description": "Incidence municipality (7 digits, IBGE code), when known.",
+          "cityCode": {
+            "description": "IBGE city code, 7 digits.",
             "example": "3550308",
             "pattern": "^\\d{7}$",
             "type": "string"
           },
+          "complement": {
+            "maxLength": 60,
+            "nullable": true,
+            "type": "string"
+          },
+          "district": {
+            "maxLength": 60,
+            "type": "string"
+          },
+          "number": {
+            "example": "100",
+            "maxLength": 60,
+            "type": "string"
+          },
           "state": {
+            "example": "SP",
+            "pattern": "^[A-Z]{2}$",
             "type": "string"
           },
           "street": {
+            "maxLength": 60,
             "type": "string"
           },
           "zip": {
+            "description": "CEP, 8 digits.",
+            "example": "01310100",
+            "pattern": "^\\d{8}$",
             "type": "string"
           }
         },
+        "required": [
+          "street",
+          "number",
+          "district",
+          "zip",
+          "cityCode",
+          "city",
+          "state"
+        ],
         "type": "object"
       },
       "CustomerSnapshot": {
@@ -16193,6 +16485,85 @@
         ],
         "type": "object"
       },
+      "ProductFavorite": {
+        "properties": {
+          "cest": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cfop": {
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "csosn": {
+            "enum": [
+              "102",
+              "400",
+              null
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "gtin": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ncm": {
+            "description": "8 digits.",
+            "type": "string"
+          },
+          "origin": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unitPrice": {
+            "description": "Price of one unit, in reais.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "companyId",
+          "description",
+          "code",
+          "gtin",
+          "ncm",
+          "cest",
+          "cfop",
+          "unit",
+          "unitPrice",
+          "csosn",
+          "origin",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "PurchasePreview": {
         "properties": {
           "totalCents": {
@@ -16455,6 +16826,20 @@
       },
       "SavedCustomer": {
         "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerAddress"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ]
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -16464,11 +16849,26 @@
             "nullable": true,
             "type": "string"
           },
+          "indIeDest": {
+            "description": "1 contributor, 2 exempt, 9 non-contributor.",
+            "enum": [
+              1,
+              2,
+              9,
+              null
+            ],
+            "nullable": true,
+            "type": "integer"
+          },
           "lastUsedAt": {
             "format": "date-time",
             "type": "string"
           },
           "name": {
+            "type": "string"
+          },
+          "stateRegistration": {
+            "nullable": true,
             "type": "string"
           },
           "taxId": {
@@ -16484,9 +16884,86 @@
           "taxId",
           "name",
           "email",
+          "address",
+          "indIeDest",
+          "stateRegistration",
           "lastUsedAt",
           "createdAt",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "SaveProductFavorite": {
+        "properties": {
+          "cest": {
+            "description": "CEST, 7 digits.",
+            "nullable": true,
+            "pattern": "^\\d{7}$",
+            "type": "string"
+          },
+          "cfop": {
+            "example": "5102",
+            "nullable": true,
+            "pattern": "^\\d{4}$",
+            "type": "string"
+          },
+          "code": {
+            "description": "Your own product code.",
+            "maxLength": 60,
+            "type": "string"
+          },
+          "csosn": {
+            "description": "Leave out to follow the company.",
+            "enum": [
+              "102",
+              "400",
+              null
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "example": "Camiseta algodão",
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "gtin": {
+            "description": "Barcode, 8 to 14 digits.",
+            "nullable": true,
+            "pattern": "^\\d{8}$|^\\d{12,14}$",
+            "type": "string"
+          },
+          "ncm": {
+            "description": "NCM, 8 digits.",
+            "example": "61091000",
+            "pattern": "^\\d{8}$",
+            "type": "string"
+          },
+          "origin": {
+            "maximum": 8,
+            "minimum": 0,
+            "nullable": true,
+            "type": "number"
+          },
+          "unit": {
+            "example": "UN",
+            "maxLength": 6,
+            "minLength": 1,
+            "type": "string"
+          },
+          "unitPrice": {
+            "description": "Price of one unit, in reais.",
+            "example": 49.9,
+            "maximum": 99999999999,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "description",
+          "ncm",
+          "unitPrice"
         ],
         "type": "object"
       },
@@ -17187,6 +17664,21 @@
       },
       "UpdateCustomer": {
         "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CustomerAddress"
+              },
+              {
+                "enum": [
+                  null
+                ],
+                "nullable": true,
+                "type": "object"
+              }
+            ],
+            "description": "Address used to fill the NF-e recipient. Send null to remove."
+          },
           "email": {
             "description": "Send null to remove the saved email.",
             "format": "email",
@@ -17194,8 +17686,25 @@
             "nullable": true,
             "type": "string"
           },
+          "indIeDest": {
+            "description": "1 contributor, 2 exempt, 9 non-contributor. Send null to remove.",
+            "enum": [
+              1,
+              2,
+              9,
+              null
+            ],
+            "nullable": true,
+            "type": "number"
+          },
           "name": {
             "maxLength": 300,
+            "type": "string"
+          },
+          "stateRegistration": {
+            "description": "State registration (IE). Send null to remove.",
+            "maxLength": 20,
+            "nullable": true,
             "type": "string"
           }
         },

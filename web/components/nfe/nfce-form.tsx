@@ -9,7 +9,6 @@ import { fieldIssues } from "@/lib/api-errors";
 import { createNfce, getNfeSettings, resubmitNfe, validateNfce, type NfeSettings } from "@/lib/nfe";
 import { CARD_BRANDS, CARD_MEANS, deliveryProblems, emptyNfcePayment, toNfceInput, type NfceFormState } from "@/lib/nfce-form";
 import { maskCurrency, maskState, maskTaxId, maskZip } from "@/lib/masks";
-import { rememberProducts } from "@/lib/nfe-products";
 import { issueErrors, paidPreview, PAYMENT_MEANS, toMoneyText, totalsPreview, type NfeFormState, type NfeItemForm } from "@/lib/nfe-form";
 import type { Company } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
@@ -107,7 +106,6 @@ export function NfceForm({ companies, initial, resubmitId }: NfceFormProps) {
       const body = JSON.stringify(input);
       if (key.current?.body !== body) key.current = { body, value: crypto.randomUUID() };
       const accepted = resubmitId ? await resubmitNfe(resubmitId, input, key.current.value) : await createNfce(input, key.current.value);
-      rememberProducts(form.items);
       router.push(`/app/nfe/${accepted.id}`);
     } catch (cause) { show(cause); }
     finally { inFlight.current = false; setBusy(null); }
@@ -144,7 +142,7 @@ export function NfceForm({ companies, initial, resubmitId }: NfceFormProps) {
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("items")}</h2>
         <p className="text-sm text-text-3">{tf("taxNotice")}</p>
-        <NfeItemsEditor items={form.items} onChange={setItems} errors={errors} defaultCsosn={settings?.defaultCsosn} />
+        <NfeItemsEditor companyId={form.companyId} items={form.items} onChange={setItems} errors={errors} defaultCsosn={settings?.defaultCsosn} />
         <p className="text-right text-sm text-text-2">{tf("totalPreview")}: <strong className="font-mono">{money(total)}</strong></p>
       </Card>
 

@@ -59,6 +59,33 @@ describe("Customers page", () => {
     await waitFor(() => expect(within(screen.getByRole("table")).getByText("Acme S.A.")).toBeTruthy());
   });
 
+  it("saves the NF-e address and state registration of a customer", async () => {
+    mocks.update.mockResolvedValue(acme);
+    renderPage();
+    fireEvent.click((await table()).getByRole("button", { name: "Correct Acme Ltda" }));
+    const dialog = screen.getByRole("dialog");
+    const type = (label: string, value: string) => fireEvent.change(within(dialog).getByLabelText(new RegExp(`^${label}(?! IBGE| registration)`)), { target: { value } });
+    type(t.edit.zip, "01310100");
+    fireEvent.click(within(dialog).getByRole("button", { name: t.edit.save }));
+    // Half an address is not sent.
+    expect(await within(dialog).findByText(t.edit.addressIncomplete)).toBeTruthy();
+    expect(mocks.update).not.toHaveBeenCalled();
+    type(t.edit.street, "Av. Paulista");
+    type(t.edit.number, "1000");
+    type(t.edit.district, "Bela Vista");
+    type(t.edit.city, "São Paulo");
+    type(t.edit.state, "sp");
+    type(t.edit.cityCode, "3550308");
+    fireEvent.change(within(dialog).getByLabelText(new RegExp(`^${t.edit.indIeDest}`)), { target: { value: "1" } });
+    type(t.edit.stateRegistration, " 111222333444 ");
+    fireEvent.click(within(dialog).getByRole("button", { name: t.edit.save }));
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("11222333000181", {
+      name: "Acme Ltda", email: "financeiro@acme.test",
+      address: { street: "Av. Paulista", number: "1000", complement: null, district: "Bela Vista", zip: "01310100", cityCode: "3550308", city: "São Paulo", state: "SP" },
+      indIeDest: 1, stateRegistration: "111222333444",
+    }));
+  });
+
   it("asks before deleting and reloads the list", async () => {
     mocks.remove.mockResolvedValue(undefined);
     renderPage();

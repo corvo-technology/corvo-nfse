@@ -131,11 +131,15 @@ Where each part lives:
 | `customers_delete` | DELETE | `/customers/{taxId}` | 0.3.0 | Forget a saved customer (issued invoices are not changed) |
 | `customers_get` | GET | `/customers/{taxId}` | 0.3.0 | Get a saved customer by CPF or CNPJ |
 | `customers_search` | GET | `/customers` | 0.3.0 | List saved customers, most recently used first |
-| `customers_update` | PATCH | `/customers/{taxId}` | 0.3.0 | Correct the name or the email of a saved customer |
+| `customers_update` | PATCH | `/customers/{taxId}` | 0.3.0 | Correct the name, email, address or state registration of a saved customer |
 | **Service favorites** | | | | |
 | `serviceFavorites_create` | POST | `/companies/{companyId}/service-favorites` | 0.3.0 | Save a favorite service for the company |
 | `serviceFavorites_delete` | DELETE | `/companies/{companyId}/service-favorites/{favoriteId}` | 0.3.0 | Remove a favorite service |
 | `serviceFavorites_list` | GET | `/companies/{companyId}/service-favorites` | 0.3.0 | List the favorite services of a company |
+| **Product favorites** | | | | |
+| `productFavorites_delete` | DELETE | `/companies/{companyId}/product-favorites/{productId}` | 0.3.0 | Remove a saved product |
+| `productFavorites_list` | GET | `/companies/{companyId}/product-favorites` | 0.3.0 | List the saved products of a company |
+| `productFavorites_save` | POST | `/companies/{companyId}/product-favorites` | 0.3.0 | Save a product (the same description updates the saved one) |
 | **Schedules** | | | | |
 | `schedules_cancel` | POST | `/schedules/{id}/cancel` | 0.3.0 | Cancel a schedule (final) |
 | `schedules_get` | GET | `/schedules/{id}` | 0.3.0 | Get a schedule |

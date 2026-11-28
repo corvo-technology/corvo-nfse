@@ -226,6 +226,61 @@ describePostgres('customer directory with restricted role', () => {
     expect(await directory.remove(live(tenantA), CPF)).toBe(false);
   });
 
+  it('keeps the NF-e recipient data: fills only what is empty and an edit changes it', async () => {
+    const address = {
+      street: 'Av. Paulista',
+      number: '1000',
+      complement: null,
+      district: 'Bela Vista',
+      zip: '01310100',
+      cityCode: '3550308',
+      city: 'São Paulo',
+      state: 'SP',
+    };
+    const scope = live(tenantA);
+    await directory.remember(scope, {
+      taxId: CNPJ,
+      name: 'Acme Ltda',
+      address,
+      indIeDest: 1,
+      stateRegistration: '111222333444',
+    });
+    expect(await directory.find(scope, CNPJ)).toMatchObject({
+      address,
+      indIeDest: 1,
+      stateRegistration: '111222333444',
+    });
+    // An automatic save never replaces what is there.
+    await directory.remember(scope, {
+      taxId: CNPJ,
+      name: 'Acme Ltda',
+      address: { ...address, street: 'Outra rua' },
+      indIeDest: 9,
+      stateRegistration: '999',
+    });
+    expect(await directory.find(scope, CNPJ)).toMatchObject({
+      address,
+      indIeDest: 1,
+      stateRegistration: '111222333444',
+    });
+    // An explicit edit does, and null removes.
+    const edited = await directory.update(scope, CNPJ, {
+      address: { ...address, number: '2000' },
+      indIeDest: 2,
+      stateRegistration: null,
+    });
+    expect(edited).toMatchObject({
+      address: { ...address, number: '2000' },
+      indIeDest: 2,
+      stateRegistration: null,
+    });
+    expect(
+      (await directory.update(scope, CNPJ, { address: null }))?.address,
+    ).toBeNull();
+    // The other workspace sees none of it.
+    expect(await directory.find(live(tenantB), CNPJ)).toBeNull();
+  });
+
   it('removes the customers together with the workspace', async () => {
     const tenant = randomUUID();
     await admin.query(`INSERT INTO "${schema}".tenants (id) VALUES ($1)`, [

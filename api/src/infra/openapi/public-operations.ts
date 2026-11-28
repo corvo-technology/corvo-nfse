@@ -116,6 +116,7 @@ const DELIVERY_PARAMS: Schema[] = [
  * operation already existed in 0.2.0. Used by the route table of docs/openapi/README.md.
  */
 export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
+  'DELETE /companies/{companyId}/product-favorites/{productId}',
   'DELETE /companies/{companyId}/service-favorites/{favoriteId}',
   'DELETE /customers/{taxId}',
   'DELETE /imports/{id}',
@@ -124,6 +125,7 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'GET /companies/{companyId}/accountant-package/sends',
   'GET /companies/{companyId}/invoice-package',
   'GET /companies/{companyId}/invoice-package/summary',
+  'GET /companies/{companyId}/product-favorites',
   'GET /companies/{companyId}/service-favorites',
   'GET /companies/{id}/dps-sequence',
   'POST /companies/{id}/dps-sequence/check',
@@ -156,6 +158,7 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'PATCH /integrations/operations/{id}/customer',
   'PATCH /schedules/{id}',
   'POST /companies/{companyId}/accountant-package/send',
+  'POST /companies/{companyId}/product-favorites',
   'POST /companies/{companyId}/service-favorites',
   'POST /imports',
   'POST /imports/{id}/emit',
@@ -186,6 +189,8 @@ export const TAGS: Record<string, string> = {
   Certificates: 'The A1 digital certificate (PKCS#12) of each company.',
   Customers: 'Customers saved from accepted invoices, and CNPJ lookup.',
   'Service favorites': 'Services a company issues often, saved to reuse.',
+  'Product favorites':
+    'Products a company sells often, saved to fill NF-e and NFC-e items.',
   Schedules: 'Scheduled and recurring invoices.',
   Imports: 'Bulk issuing from a CSV or Excel spreadsheet.',
   Webhooks:
@@ -784,7 +789,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'customers_update',
     tag: 'Customers',
     description:
-      'Corrects the name or e-mail of a saved customer. Send `email: null` to clear it. Issued invoices are not changed.',
+      'Corrects the name, e-mail, NF-e address (`address`), `indIeDest` or state registration of a saved customer. Send a field as `null` to clear it. An NF-e that is accepted saves its recipient here, and the NF-e form fills the recipient from it. Issued invoices are not changed.',
     ok: { 200: data(ref('SavedCustomer')) },
   },
   'DELETE /customers/{taxId}': {
@@ -812,6 +817,29 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'serviceFavorites_delete',
     tag: 'Service favorites',
     description: 'Removes a favorite service. Issued invoices are not changed.',
+    ok: { 200: data(ref('Deleted')) },
+  },
+
+  // --- Product favorites ---------------------------------------------------
+  'GET /companies/{companyId}/product-favorites': {
+    id: 'productFavorites_list',
+    tag: 'Product favorites',
+    description:
+      'The products the company saved to fill NF-e and NFC-e items. Permission: `nfe.documents.view`.',
+    ok: { 200: list(ref('ProductFavorite')) },
+  },
+  'POST /companies/{companyId}/product-favorites': {
+    id: 'productFavorites_save',
+    tag: 'Product favorites',
+    description:
+      'Saves a product (description, NCM, unit price and, optionally, code, barcode, CEST, CFOP, unit, CSOSN and origin). The same description (any case) updates the saved product. Up to 500 per company. Permission: `nfe.documents.issue`.',
+    ok: { 201: data(ref('ProductFavorite')) },
+  },
+  'DELETE /companies/{companyId}/product-favorites/{productId}': {
+    id: 'productFavorites_delete',
+    tag: 'Product favorites',
+    description:
+      'Removes a saved product. Issued notes are not changed. Permission: `nfe.documents.issue`.',
     ok: { 200: data(ref('Deleted')) },
   },
 

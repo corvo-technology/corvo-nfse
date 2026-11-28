@@ -11,6 +11,7 @@ const ROUTE_PERMISSIONS: ReadonlyArray<readonly [prefix: string, permission: str
   ["/app/nfe/new", "nfe.documents.issue"],
   ["/app/nfe/number-gaps", "nfe.documents.view"],
   ["/app/nfe", "nfe.documents.view"],
+  ["/app/products", "nfe.documents.view"],
   ["/app/invoices/new", "nfse.invoices.issue"],
   ["/app/invoices/import", "nfse.invoices.issue"],
   ["/app/invoices", "nfse.invoices.view"],

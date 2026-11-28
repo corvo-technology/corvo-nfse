@@ -19,6 +19,7 @@ import { PlansModule } from '@/modules/plans/plans.module';
 import { PlanController } from '@/modules/plans/http/plan.controller';
 import { BillingModule } from '@/modules/billing/billing.module';
 import { CompanyModule } from '@/modules/company/company.module';
+import { ProductFavoritesModule } from '@/modules/product-favorites/product-favorites.module';
 import { ServiceFavoritesModule } from '@/modules/service-favorites/service-favorites.module';
 import { CertificateModule } from '@/modules/certificate/certificate.module';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
@@ -65,6 +66,7 @@ import { SentryModule } from '@/infra/observability/sentry.module';
     BillingModule,
     CompanyModule,
     ServiceFavoritesModule,
+    ProductFavoritesModule,
     CertificateModule,
     InvoiceModule,
     InvoiceScheduleModule,

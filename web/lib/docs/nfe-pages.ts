@@ -222,6 +222,15 @@ function issue(locale: DocsLocale): DocSection {
         l("`sendEmail` (default `true`): when the recipient has an e-mail, the XML and the DANFE are sent after the authorization.", "`sendEmail` (padrão `true`): quando o destinatário tem e-mail, o XML e o DANFE são enviados depois da autorização."),
         l("Text fields accept letters, digits and common punctuation. Emoji and line breaks are refused with the field named, before the SEFAZ.", "Os campos de texto aceitam letras, números e pontuação comum. Emoji e quebra de linha são recusados, com o campo indicado, antes da SEFAZ."),
       ]),
+      heading(l("Saved products and customers", "Produtos e clientes salvos")),
+      text(l(
+        "To avoid typing the same items again, save them as products of the company. `GET /v1/companies/:companyId/product-favorites` lists them (`nfe.documents.view`); `POST` saves one and `DELETE /v1/companies/:companyId/product-favorites/:productId` removes it (`nfe.documents.issue`). A product has `description`, `ncm` and `unitPrice`, and optionally `code`, `gtin`, `cest`, `cfop`, `unit`, `csosn` and `origin`. Saving the same `description` again updates the product. Up to 500 per company. On MCP: `product_favorite_list`, `product_favorite_create` and `product_favorite_delete`. In the dashboard, search them on each item, use \"Save as product\" and see the list in Products.",
+        "Para não digitar os mesmos itens de novo, salve-os como produtos da empresa. `GET /v1/companies/:companyId/product-favorites` lista (`nfe.documents.view`); `POST` salva um e `DELETE /v1/companies/:companyId/product-favorites/:productId` remove (`nfe.documents.issue`). O produto tem `description`, `ncm` e `unitPrice`, e, se quiser, `code`, `gtin`, `cest`, `cfop`, `unit`, `csosn` e `origin`. Salvar a mesma `description` de novo atualiza o produto. Até 500 por empresa. No MCP: `product_favorite_list`, `product_favorite_create` e `product_favorite_delete`. No painel, busque os produtos em cada item, use \"Salvar como produto\" e veja a lista em Produtos.",
+      )),
+      text(l(
+        "When an NF-e is accepted, Corvo also saves the recipient in the saved customers (`GET /v1/customers/:taxId`), now with the address (with the IBGE city code), the `indIeDest` and the state registration. The NF-e form fills the recipient from it, and you can correct it with `PATCH /v1/customers/:taxId` (`address`, `indIeDest`, `stateRegistration`) or on the Customers page.",
+        "Quando uma NF-e é aceita, a Corvo também salva o destinatário nos clientes salvos (`GET /v1/customers/:taxId`), agora com o endereço (com o código IBGE da cidade), o `indIeDest` e a inscrição estadual. O formulário da NF-e preenche o destinatário a partir dele, e você corrige com `PATCH /v1/customers/:taxId` (`address`, `indIeDest`, `stateRegistration`) ou na página Clientes.",
+      )),
       heading(l("3. Follow", "3. Acompanhar")),
       text(l(
         "Issuing is asynchronous, like the NFS-e. Read the note with `GET /v1/invoices/:id` or wait for the webhook. The states are:",

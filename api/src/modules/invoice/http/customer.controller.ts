@@ -124,7 +124,8 @@ export class CustomerController {
   @ApiKeyEndpoint()
   @RequirePermission('nfse.invoices.issue')
   @ApiOperation({
-    summary: 'Correct the name or the email of a saved customer',
+    summary:
+      'Correct the name, email, address or state registration of a saved customer',
   })
   async update(
     @Param('taxId') taxId: string,
@@ -134,7 +135,16 @@ export class CustomerController {
     const customer = await this.customers.update(
       this.scope(req),
       this.taxId(taxId),
-      { name: body.name, email: body.email },
+      {
+        name: body.name,
+        email: body.email,
+        address: body.address && {
+          ...body.address,
+          complement: body.address.complement ?? null,
+        },
+        indIeDest: body.indIeDest,
+        stateRegistration: body.stateRegistration,
+      },
     );
     if (!customer) throw notFound();
     return data(toCustomerResponse(customer));

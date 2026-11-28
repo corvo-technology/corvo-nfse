@@ -1260,7 +1260,7 @@ console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued"
         },
         { kind: "callout", tone: "warn", body: "The deadline to substitute and some rules (for example, an invoice without an identified customer) are set by each municipality. Corvo does not know that deadline in advance: if the Receita refuses, the error code comes on the substitute invoice. Send `Idempotency-Key` to repeat the call without issuing two substitutes. On MCP, the tool is `nfse_substitute`." },
         { kind: "heading", level: 2, body: "Saved customers" },
-        { kind: "text", body: "After an invoice with a customer is accepted, Corvo keeps the CPF or CNPJ, the name and the email of that customer. On the next invoice for the same document, send only `customer.taxId`: the `name` comes from the saved customer. What you send in the request always wins, and an invoice already issued never changes." },
+        { kind: "text", body: "After an invoice with a customer is accepted, Corvo keeps the CPF or CNPJ, the name and the email of that customer (an accepted NF-e also keeps the address, the `indIeDest` and the state registration, to fill the next NF-e). On the next invoice for the same document, send only `customer.taxId`: the `name` comes from the saved customer. What you send in the request always wins, and an invoice already issued never changes." },
         { kind: "table", head: ["Rule", "Detail"], rows: [
           ["Scope", "One saved customer per document in each workspace and environment. `test` and `live` never mix."],
           ["What is filled", "Only the `name`, and only when the request carries none. The saved email is not used to send the invoice."],
@@ -1345,11 +1345,14 @@ console.log(res.status, data?.name); // 200 "Acme Ltda"`,
           path: "/v1/customers/:taxId",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "200 OK",
-          summary: "Corrects the `name` or the `email` of a saved customer. Send only what changes; `email: null` removes the email. The correction applies to the next invoices.",
+          summary: "Corrects the `name`, the `email`, the NF-e address, `indIeDest` or the state registration of a saved customer. Send only what changes; `null` removes a field. The correction applies to the next invoices.",
           params: {
             rows: [
               { name: "name", type: "string", required: false, description: "New name, up to 300 characters." },
               { name: "email", type: "string | null", required: false, description: "New email, or `null` to remove it." },
+              { name: "address", type: "object | null", required: false, description: "Recipient address for NF-e: `street`, `number`, `complement?`, `district`, `zip` (8 digits), `cityCode` (IBGE, 7 digits), `city`, `state`. `null` removes it." },
+              { name: "indIeDest", type: "1 | 2 | 9 | null", required: false, description: "1 taxpayer, 2 exempt, 9 non-taxpayer." },
+              { name: "stateRegistration", type: "string | null", required: false, description: "State registration (IE) of the customer." },
             ],
           },
           examples: {
@@ -3269,8 +3272,8 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`customer_update`",
               "`nfse:write`",
-              "`tax_id` and what changes: `name?`, `email?` (`null` removes it)",
-              "`{ tax_id, name, email, last_used_at }`"
+              "`tax_id` and what changes: `name?`, `email?`, `address?` (`street`, `number`, `complement?`, `district`, `zip`, `city_code`, `city`, `state`), `ind_ie_dest?`, `state_registration?` (`null` removes each)",
+              "`{ tax_id, name, email, address, ind_ie_dest, state_registration, last_used_at }`"
             ],
             [
               "`customer_delete`",
@@ -3337,6 +3340,24 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
               "`nfse:write`",
               "`company_id`, `favorite_id`",
               "`{ favorite_id, deleted: true }`"
+            ],
+            [
+              "`product_favorite_list`",
+              "`nfse:read`",
+              "`company_id`",
+              "`{ products }`"
+            ],
+            [
+              "`product_favorite_create`",
+              "`nfse:write`",
+              "`company_id`, `description`, `ncm`, `unit_price`, `code?`, `gtin?`, `cest?`, `cfop?`, `unit?`, `csosn?`, `origin?`",
+              "The saved product (up to 500 per company; the same description updates it)"
+            ],
+            [
+              "`product_favorite_delete`",
+              "`nfse:write`",
+              "`company_id`, `product_id`",
+              "`{ product_id, deleted: true }`"
             ],
             [
               "`nfse_download_pdf`",

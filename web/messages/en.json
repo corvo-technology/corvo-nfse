@@ -2266,6 +2266,8 @@
     "service_profile_not_found": "Service profile not found.",
     "service_favorite_not_found": "Favorite service not found.",
     "service_favorites_limit": "You reached the limit of 50 favorite services. Remove one to save another.",
+    "product_favorite_not_found": "Saved product not found.",
+    "product_favorites_limit": "You reached the limit of 500 saved products. Remove one to save another.",
     "service_profile_not_effective": "The service profile is not effective on the invoice date.",
     "service_profile_still_effective": "This service profile is still effective and cannot be removed.",
     "no_effective_service_profile": "The company has no effective service profile for this date.",
@@ -3730,6 +3732,36 @@
     "ourSideTitle": "We are having trouble reaching the government.",
     "ourSideBody": "Your invoices stay in the queue and go out by themselves as soon as the connection is back."
   },
+  "Products": {
+    "title": "Products",
+    "subtitle": "The products saved for goods invoices (NF-e) and consumer sales (NFC-e). On the note, search by name or code and the item is filled in.",
+    "loadFailed": "Could not load the products.",
+    "company": "Company",
+    "search": {
+      "label": "Search product",
+      "placeholder": "Name or code"
+    },
+    "columns": {
+      "description": "Product",
+      "code": "Code",
+      "ncm": "NCM",
+      "unitPrice": "Price",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No saved product yet",
+      "body": "On a note, use the \"Save as product\" button on an item. Products you used before in this browser move here by themselves.",
+      "action": "Issue a note",
+      "noMatch": "No product with that name or code."
+    },
+    "remove": {
+      "open": "Delete {name}",
+      "title": "Delete this product?",
+      "body": "{name} no longer shows up when you search on a note. Issued notes do not change.",
+      "confirm": "Delete product",
+      "failed": "Could not delete the product."
+    }
+  },
   "Customers": {
     "title": "Customers",
     "subtitle": "Who you have invoiced. On the next invoice the CPF or CNPJ is enough: the name is filled in.",
@@ -3758,6 +3790,22 @@
       "title": "Correct customer",
       "optional": "optional",
       "emailHint": "Kept to fill in the form. Leave it empty to remove it.",
+      "addressTitle": "Address for the goods invoice (NF-e)",
+      "zip": "ZIP code",
+      "street": "Street",
+      "number": "Number",
+      "complement": "Complement",
+      "district": "District",
+      "city": "City",
+      "state": "State",
+      "cityCode": "City IBGE code",
+      "cityCodeHint": "7 digits.",
+      "indIeDest": "Taxpayer type",
+      "ie9": "Not a taxpayer",
+      "ie1": "ICMS taxpayer",
+      "ie2": "Exempt",
+      "stateRegistration": "State registration number",
+      "addressIncomplete": "To save the address, fill in every field, with an 8-digit ZIP code, the state and a 7-digit IBGE code. Or leave the whole address empty.",
       "note": "The correction applies to the next invoices and is no longer replaced by data from other invoices. Invoices already issued do not change.",
       "save": "Save",
       "nameRequired": "Enter the name.",
@@ -4021,7 +4069,13 @@
         "ncmLookup": "Don't know the NCM? Look it up on the government portal",
         "csosnDefaultWith": "Company default ({csosn})",
         "lineTotal": "Item total",
-        "useSaved": "Use a product from earlier notes"
+        "useSaved": "Search a saved product (name or code)",
+        "noSavedMatch": "No saved product with that name or code.",
+        "saveAsProduct": "Save as product",
+        "savedAsProduct": "Product saved. It shows up when you search on the next notes.",
+        "saveNeedsFields": "To save, fill in the description and the 8-digit NCM.",
+        "saveFailed": "Could not save the product.",
+        "manageProducts": "See saved products"
       },
       "payments": {
         "title": "Payment",
@@ -4058,6 +4112,7 @@
       "cityPlaceholder": "São Paulo",
       "cityCodeKnown": "City (IBGE code {code}) filled in from the ZIP code.",
       "cityCodeChange": "change",
+      "pickCustomer": "Search a saved customer",
       "autofilled": {
         "customer": "Filled in from the saved customer. Please check it.",
         "cnpj": "Filled in from the public CNPJ data. Please check it.",

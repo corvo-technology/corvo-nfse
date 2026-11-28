@@ -4,13 +4,31 @@ import type { NfeDocument } from '../domain/nfe-document';
 import { NfeOutcomeService } from './nfe-outcome.service';
 import type { NfeTransitionService } from './nfe-transition.service';
 
+const address = {
+  street: 'Rua A',
+  number: '10',
+  complement: null,
+  district: 'Centro',
+  zip: '01310100',
+  cityCode: '3550308',
+  city: 'São Paulo',
+  state: 'SP',
+};
+
 const doc = (name = 'Maria da Silva') =>
   ({
     id: 'n1',
     tenantId: 't1',
     environment: 'test',
     toSnapshot: () => ({
-      recipient: { taxId: '12345678909', name, email: 'maria@example.com' },
+      recipient: {
+        taxId: '12345678909',
+        name,
+        email: 'maria@example.com',
+        address,
+        indIeDest: 9,
+        stateRegistration: null,
+      },
     }),
   }) as unknown as NfeDocument;
 
@@ -45,6 +63,9 @@ describe('NfeOutcomeService: saving the recipient', () => {
         taxId: '12345678909',
         name: 'Maria da Silva',
         email: 'maria@example.com',
+        address,
+        indIeDest: 9,
+        stateRegistration: null,
       },
     );
   });

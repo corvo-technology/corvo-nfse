@@ -1,21 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import {
   CustomerDirectory,
   type CustomerListFilter,
   type CustomerListResult,
+  type CustomerNfeData,
   type CustomerScope,
   type SavedCustomer,
 } from '../domain/customer-directory';
 import { CustomerOrmEntity } from './customer.orm-entity';
+
+function toIndIeDest(value: number | null): 1 | 2 | 9 | null {
+  return value === 1 || value === 2 || value === 9 ? value : null;
+}
 
 function toCustomer(row: CustomerOrmEntity): SavedCustomer {
   return {
     taxId: row.taxId,
     name: row.name,
     email: row.email,
+    address: row.address ?? null,
+    indIeDest: toIndIeDest(row.indIeDest),
+    stateRegistration: row.stateRegistration ?? null,
     lastUsedAt: row.lastUsedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -47,7 +56,11 @@ export class TypeOrmCustomerDirectory extends CustomerDirectory {
 
   async remember(
     scope: CustomerScope,
-    customer: { taxId: string; name: string; email?: string | null },
+    customer: {
+      taxId: string;
+      name: string;
+      email?: string | null;
+    } & CustomerNfeData,
   ): Promise<void> {
     const repository = this.customers();
     // Schema-qualified and quoted, with an alias the conflict clause can refer to.
@@ -57,11 +70,14 @@ export class TypeOrmCustomerDirectory extends CustomerDirectory {
       .join('.');
     await runWithTenant(scope.tenantId, () =>
       repository.query(
-        `INSERT INTO ${table} AS saved (tenant_id, environment, tax_id, name, email)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO ${table} AS saved (tenant_id, environment, tax_id, name, email, address, ind_ie_dest, state_registration)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
          ON CONFLICT (tenant_id, environment, tax_id) DO UPDATE SET
            name = COALESCE(NULLIF(btrim(saved.name), ''), EXCLUDED.name),
            email = COALESCE(NULLIF(btrim(saved.email), ''), NULLIF(btrim(EXCLUDED.email), '')),
+           address = COALESCE(saved.address, EXCLUDED.address),
+           ind_ie_dest = COALESCE(saved.ind_ie_dest, EXCLUDED.ind_ie_dest),
+           state_registration = COALESCE(NULLIF(btrim(saved.state_registration), ''), EXCLUDED.state_registration),
            last_used_at = now(),
            updated_at = now()`,
         [
@@ -70,6 +86,9 @@ export class TypeOrmCustomerDirectory extends CustomerDirectory {
           customer.taxId,
           customer.name,
           customer.email ?? null,
+          customer.address ? JSON.stringify(customer.address) : null,
+          customer.indIeDest ?? null,
+          customer.stateRegistration?.trim() || null,
         ],
       ),
     );
@@ -113,18 +132,22 @@ export class TypeOrmCustomerDirectory extends CustomerDirectory {
   async update(
     scope: CustomerScope,
     taxId: string,
-    change: { name?: string; email?: string | null },
+    change: { name?: string; email?: string | null } & CustomerNfeData,
   ): Promise<SavedCustomer | null> {
     return runWithTenant(scope.tenantId, async () => {
       const customers = this.customers();
       const where = { ...scope, taxId };
       const row = await customers.findOne({ where });
       if (!row) return null;
-      const patch: { name?: string; email?: string | null; updatedAt: Date } = {
+      const patch: QueryDeepPartialEntity<CustomerOrmEntity> = {
         updatedAt: new Date(),
       };
       if (change.name !== undefined) patch.name = change.name;
       if (change.email !== undefined) patch.email = change.email;
+      if (change.address !== undefined) patch.address = change.address;
+      if (change.indIeDest !== undefined) patch.indIeDest = change.indIeDest;
+      if (change.stateRegistration !== undefined)
+        patch.stateRegistration = change.stateRegistration;
       await customers.update(where, patch);
       return toCustomer(await customers.findOneByOrFail(where));
     });

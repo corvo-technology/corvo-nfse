@@ -672,7 +672,20 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       });
       await call('PATCH /customers/{taxId}', {
         path: `/customers/${CUSTOMER_TAX_ID}`,
-        body: { name: 'Cliente Renomeado' },
+        body: {
+          name: 'Cliente Renomeado',
+          address: {
+            street: 'Av. Paulista',
+            number: '1000',
+            district: 'Bela Vista',
+            zip: '01310100',
+            cityCode: '3550308',
+            city: 'São Paulo',
+            state: 'SP',
+          },
+          indIeDest: 1,
+          stateRegistration: '111222333444',
+        },
         status: 200,
       });
       await call('DELETE /customers/{taxId}', {
@@ -701,6 +714,42 @@ describe('OpenAPI contract against the real API (e2e)', () => {
       });
       await call(
         'DELETE /companies/{companyId}/service-favorites/{favoriteId}',
+        { path: `${path}/${created.body.data.id}`, status: 200 },
+      );
+    });
+  });
+
+  describe('product favorites', () => {
+    it('product favorites: save 201, list, save again, delete', async () => {
+      const path = `/companies/${companyId}/product-favorites`;
+      const body = {
+        description: 'Camiseta algodão',
+        code: 'CAM-1',
+        ncm: '61091000',
+        cfop: '5102',
+        unit: 'UN',
+        unitPrice: 49.9,
+      };
+      const created = await call(
+        'POST /companies/{companyId}/product-favorites',
+        { path, body, status: 201 },
+      );
+      await call('POST /companies/{companyId}/product-favorites', {
+        path,
+        body: { ...body, description: 'CAMISETA ALGODÃO', unitPrice: 59.9 },
+        status: 201,
+      });
+      const listed = await call(
+        'GET /companies/{companyId}/product-favorites',
+        {
+          path,
+          status: 200,
+        },
+      );
+      expect(listed.body.data).toHaveLength(1);
+      expect(listed.body.data[0].unitPrice).toBe(59.9);
+      await call(
+        'DELETE /companies/{companyId}/product-favorites/{productId}',
         { path: `${path}/${created.body.data.id}`, status: 200 },
       );
     });

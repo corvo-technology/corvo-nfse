@@ -165,6 +165,15 @@ import {
   createServiceFavoriteDeleteHandler,
   createServiceFavoriteListHandler,
 } from './tools/service-favorite.tools';
+import {
+  PRODUCT_FAVORITE_CREATE_TOOL,
+  PRODUCT_FAVORITE_DELETE_TOOL,
+  PRODUCT_FAVORITE_LIST_TOOL,
+  createProductFavoriteCreateHandler,
+  createProductFavoriteDeleteHandler,
+  createProductFavoriteListHandler,
+} from './tools/product-favorite.tools';
+import { ProductFavoritesService } from '@/modules/product-favorites/application/product-favorites.service';
 import { AccountantPackageService } from '@/modules/invoice/application/package/accountant-package.service';
 import { ServiceFavoritesService } from '@/modules/service-favorites/application/service-favorites.service';
 import { InvoiceOverviewService } from '@/modules/invoice/application/invoice-overview.service';
@@ -273,6 +282,7 @@ export class McpService {
     private readonly packageLinks: PackageLinkService,
     private readonly accountantPackages: AccountantPackageService,
     private readonly serviceFavorites: ServiceFavoritesService,
+    private readonly productFavorites: ProductFavoritesService,
     private readonly invoiceOverview: InvoiceOverviewService,
     private readonly billingUsage: BillingUsageService,
     private readonly credits: CreditsService,
@@ -650,6 +660,30 @@ export class McpService {
         'nfse:write',
       ],
       [NFE_NUMBER_GAPS_TOOL, createNfeNumberGapsHandler(this.nfe), 'nfse:read'],
+      [
+        PRODUCT_FAVORITE_LIST_TOOL,
+        createProductFavoriteListHandler(
+          this.productFavorites,
+          this.companyService,
+        ),
+        'nfse:read',
+      ],
+      [
+        PRODUCT_FAVORITE_CREATE_TOOL,
+        createProductFavoriteCreateHandler(
+          this.productFavorites,
+          this.companyService,
+        ),
+        'nfse:write',
+      ],
+      [
+        PRODUCT_FAVORITE_DELETE_TOOL,
+        createProductFavoriteDeleteHandler(
+          this.productFavorites,
+          this.companyService,
+        ),
+        'nfse:write',
+      ],
       [
         NFE_SETTINGS_GET_TOOL,
         createNfeSettingsGetHandler(this.nfe),

@@ -8,13 +8,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { fieldIssues } from "@/lib/api-errors";
 import { createNfe, getNfeSettings, resubmitNfe, validateNfe, type NfeSettings } from "@/lib/nfe";
 import { maskCurrency, maskState, maskTaxId, maskZip } from "@/lib/masks";
-import { rememberProducts } from "@/lib/nfe-products";
 import { emptyPayment, ieExample, issueErrors, paidPreview, PAYMENT_MEANS, suggestedCfop, toCreateInput, toMoneyText, totalsPreview, type NfeFormState, type NfeItemForm } from "@/lib/nfe-form";
 import type { Company } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { NfeItemsEditor } from "@/components/nfe/nfe-items-editor";
-import { useRecipientAutofill } from "@/components/nfe/use-recipient-autofill";
+import { customerToRecipient, useRecipientAutofill } from "@/components/nfe/use-recipient-autofill";
+import { CustomerPicker } from "@/components/invoices/customer-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -101,7 +101,6 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
       const body = JSON.stringify(input);
       if (key.current?.body !== body) key.current = { body, value: crypto.randomUUID() };
       const accepted = resubmitId ? await resubmitNfe(resubmitId, input, key.current.value) : await createNfe(input, key.current.value);
-      rememberProducts(items);
       router.push(`/app/nfe/${accepted.id}`);
     } catch (cause) { show(cause); }
     finally { inFlight.current = false; setBusy(null); }
@@ -129,6 +128,7 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
 
       <Card className="grid items-start gap-4 p-5 sm:grid-cols-6">
         <h2 className="font-medium sm:col-span-6">{t("recipient")}</h2>
+        <Field className="sm:col-span-6" label={t("pickCustomer")} optionalLabel={t("optional")}>{(c) => <CustomerPicker id={c.id} onPick={(customer) => setRecipient({ taxId: maskTaxId(customer.taxId), ...customerToRecipient(customer) })} />}</Field>
         <Field className="sm:col-span-3" label={t("taxId")} hint={t("taxIdHint")} error={err("recipient.taxId")} required>{(c) => <Input {...c} inputMode="text" autoComplete="off" placeholder={t("taxIdPlaceholder")} value={form.recipient.taxId} onChange={(e) => setRecipient({ taxId: maskTaxId(e.target.value) })} />}</Field>
         <Field className="sm:col-span-3" label={t("name")} error={err("recipient.name")} required>{(c) => <Input {...c} maxLength={60} placeholder={t("namePlaceholder")} value={form.recipient.name} onChange={(e) => setRecipient({ name: e.target.value })} />}</Field>
         {autofilled && <p role="status" className="text-[12.5px] text-text-3 sm:col-span-6">{t(`autofilled.${autofilled}`)}</p>}
@@ -160,7 +160,7 @@ export function NfeForm({ companies, initial, resubmitId }: NfeFormProps) {
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="font-medium">{t("items.title")}</h2>
         <p className="text-sm text-text-3">{t("taxNotice")}</p>
-        <NfeItemsEditor items={items} onChange={setItems} errors={errors} defaultCsosn={settings?.defaultCsosn} suggestedCfop={cfop} />
+        <NfeItemsEditor companyId={form.companyId} items={items} onChange={setItems} errors={errors} defaultCsosn={settings?.defaultCsosn} suggestedCfop={cfop} />
         <p className="text-right text-sm text-text-2">{t("totalPreview")}: <strong className="font-mono">{money(total)}</strong></p>
       </Card>
 

@@ -221,6 +221,9 @@ export class NfeIntakeService {
             taxId: recipient.taxId,
             name: recipient.name,
             email: recipient.email,
+            address: recipient.address,
+            indIeDest: recipient.indIeDest,
+            stateRegistration: recipient.stateRegistration,
           },
         ),
       );

@@ -5,6 +5,7 @@ import { cnpj as cnpjApi, customers as customersApi } from "@/lib/api";
 import { cleanTaxId, isValidCnpj, isValidCpf, maskZip } from "@/lib/masks";
 import { lookupCep, type CepResult } from "@/lib/viacep";
 import type { NfeFormState } from "@/lib/nfe-form";
+import type { SavedCustomer } from "@/lib/types";
 
 type Recipient = NfeFormState["recipient"];
 const TYPING_PAUSE_MS = 300;
@@ -15,8 +16,20 @@ export type AutofillSource = "customer" | "cnpj" | "cep";
 const isComplete = (id: string) => (id.length === 11 ? isValidCpf(id) : id.length === 14 && isValidCnpj(id));
 const blank = (value: string) => value.trim() === "";
 
+/** What a saved customer knows of the NF-e recipient: name, e-mail, address (with the IBGE code) and the IE. */
+export function customerToRecipient(customer: SavedCustomer): Partial<Recipient> {
+  const a = customer.address;
+  return {
+    name: customer.name,
+    ...(customer.email ? { email: customer.email } : {}),
+    ...(a ? { street: a.street, number: a.number, complement: a.complement ?? "", district: a.district, zip: maskZip(a.zip), city: a.city, state: a.state, cityCode: a.cityCode } : {}),
+    ...(customer.indIeDest ? { indIeDest: String(customer.indIeDest) as Recipient["indIeDest"] } : {}),
+    ...(customer.stateRegistration ? { stateRegistration: customer.stateRegistration } : {}),
+  };
+}
+
 /**
- * Fills the recipient from what the NFS-e flow already knows: the saved customers (name and e-mail),
+ * Fills the recipient from what the NFS-e flow already knows: the saved customers (name, e-mail, address and IE),
  * the public CNPJ registry (name and address) and, for the address, the CEP. The document lookups fill
  * only empty fields, so nothing the person typed is lost; a new CEP replaces the street, district,
  * city, state and IBGE code, because the person is changing the address. A lookup that fails stays
@@ -39,8 +52,13 @@ export function useRecipientAutofill(recipient: Recipient, patch: (value: Partia
         const saved = await customersApi.find(taxId, controller.signal).catch(() => null);
         if (controller.signal.aborted) return;
         if (saved) {
-          if (blank(current.current.name)) fill.name = saved.name;
-          if (blank(current.current.email) && saved.email) fill.email = saved.email;
+          // Only what is still empty (the IE type counts as empty while it is the default "9").
+          const known = customerToRecipient(saved);
+          for (const key of Object.keys(known) as (keyof Recipient)[]) {
+            const now = current.current[key];
+            if (now === known[key]) continue;
+            if (key === "indIeDest" ? now === "9" : blank(now)) (fill as Record<string, string>)[key] = known[key] as string;
+          }
           from = "customer";
         }
         if (taxId.length === 14) {

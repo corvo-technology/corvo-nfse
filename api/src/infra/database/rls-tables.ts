@@ -25,6 +25,7 @@ export const TENANT_RLS_TABLES = [
   'company_fiscal_profiles',
   'company_service_tax_profiles',
   'service_favorites',
+  'product_favorites',
   'invoice_fiscal_snapshots',
   'invoice_fiscal_reconciliations',
   'integration_connections',
