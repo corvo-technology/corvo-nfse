@@ -521,7 +521,7 @@ export function createNfeReviewHandler(
 export const NFE_VALIDATE_TOOL = {
   name: 'nfe_validate',
   description:
-    'Dry-run of an NF-e or a NFC-e: checks the data and returns the problems field by field (issues), without numbering, sending or charging anything. Always run it before nfse_issue with type "nfe" or "nfce". Homologação (test) only for now.',
+    'Dry-run of an NF-e or a NFC-e: checks the data and returns the problems field by field (issues), without numbering, sending or charging anything. Always run it before nfse_issue with type "nfe" or "nfce". `valid` only says the data is fine: `warnings` (when present) comes from the last SEFAZ check kept for the company and says it may not be able to issue (for example the SEFAZ answered 257, no state registration or not enabled), or that it was never checked (run nfe_settings_get with check_sefaz=true). Warnings do not block. Homologação (test) only for now.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -649,7 +649,7 @@ export const NFE_NUMBER_GAPS_TOOL = {
 export const NFE_SETTINGS_GET_TOOL = {
   name: 'nfe_settings_get',
   description:
-    'NF-e and NFC-e settings of a company (state registration, CRT, default series, NFC-e series, nature of operation and tax defaults) and what is still missing (missing) before it can issue an NF-e. `readiness` says whether the company can issue NF-e and NFC-e: by default it is the last answer kept (null if never checked); with check_sefaz=true it asks the SEFAZ now (Consulta Cadastro, with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers `status`, a plain pt-BR `message` and `suggestedStateRegistration` (the IE to save with nfe_settings_update). Run it with check_sefaz=true BEFORE the first note: a company with no IE (service-only) cannot issue NF-e or NFC-e. `unavailable` means the state has no consulta or the SEFAZ did not answer: nothing is known.',
+    'NF-e and NFC-e settings of a company (state registration, CRT, default series, NFC-e series, nature of operation and tax defaults) and what is still missing (missing) before it can issue an NF-e. `readiness` says whether the company can issue NF-e and NFC-e: by default it is the last answer kept (null if never checked); with check_sefaz=true it asks the SEFAZ now (Consulta Cadastro, with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers `status`, a plain pt-BR `message` and `suggestedStateRegistration` (the IE to save with nfe_settings_update). Run it with check_sefaz=true BEFORE the first NF-e or NFC-e of a company, and again after a 245 rejection ("CNPJ Emitente não cadastrado"): a company with no IE (service-only) cannot issue NF-e or NFC-e. `unavailable` means the state has no consulta or the SEFAZ did not answer: nothing is known.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -711,8 +711,45 @@ export function createNfeValidateHandler(nfe: McpNfe): Handler {
       params.type ?? 'nfe',
     );
     const { xml: _xml, ...safe } = result;
-    return safe;
+    const warnings = await registrationWarnings(
+      nfe,
+      ctx,
+      params.company_id,
+      params.type ?? 'nfe',
+    );
+    return warnings.length > 0 ? { ...safe, warnings } : safe;
   };
+}
+
+/**
+ * Non-blocking notes from the LAST SEFAZ check kept with the settings (no SEFAZ call here): the
+ * company may not be able to issue even when the data is valid. Never fails the validation.
+ */
+async function registrationWarnings(
+  nfe: McpNfe,
+  ctx: AuthContext,
+  companyId: string,
+  type: McpGoodsType,
+): Promise<string[]> {
+  try {
+    const view = await nfe.withSettings(ctx, 'nfe.documents.view', (settings) =>
+      settings.get(companyId, ctx.activeTenantId, executionEnvironment(ctx)),
+    );
+    const readiness = view.readiness;
+    if (!readiness)
+      return [
+        'The SEFAZ was never asked about this company: run nfe_settings_get with check_sefaz=true before the first note to know whether it can issue.',
+      ];
+    if (readiness.status === 'ready' || readiness.status === 'ie_suggested')
+      return [];
+    // The NFC-e has its own credenciamento that the consulta does not show.
+    if (type === 'nfce' && readiness.status === 'not_credentialed') return [];
+    return [
+      `The last SEFAZ check says this company may not be able to issue (${readiness.status}): ${readiness.message} Run nfe_settings_get with check_sefaz=true to check again.`,
+    ];
+  } catch {
+    return [];
+  }
 }
 
 export function createNfeRepeatHandler(nfe: McpNfe): Handler {
@@ -795,41 +832,53 @@ export function createNfeNumberGapsHandler(nfe: McpNfe): Handler {
   };
 }
 
+/** `nfceAutoOffline` is deprecated (the offline contingency is always on): the agents never see it. */
+function withoutDeprecated(
+  view: NfeSettingsView,
+): Omit<NfeSettingsView, 'nfceAutoOffline'> {
+  const { nfceAutoOffline: _deprecated, ...rest } = view;
+  return rest;
+}
+
 export function createNfeSettingsGetHandler(nfe: McpNfe): Handler {
   return async (raw, ctx) => {
     const params = await parse(NfeSettingsGetInput, raw);
-    return nfe.withSettings(
-      ctx,
-      'nfe.documents.view',
-      (settings): Promise<NfeSettingsView> =>
-        settings.get(
-          params.company_id,
-          ctx.activeTenantId,
-          executionEnvironment(ctx),
-          { check: params.check_sefaz === true },
-        ),
-    );
+    return nfe
+      .withSettings(
+        ctx,
+        'nfe.documents.view',
+        (settings): Promise<NfeSettingsView> =>
+          settings.get(
+            params.company_id,
+            ctx.activeTenantId,
+            executionEnvironment(ctx),
+            { check: params.check_sefaz === true },
+          ),
+      )
+      .then(withoutDeprecated);
   };
 }
 
 export function createNfeSettingsUpdateHandler(nfe: McpNfe): Handler {
   return async (raw, ctx) => {
     const params = await parse(NfeSettingsUpdateInput, raw);
-    return nfe.withSettings(ctx, 'nfe.documents.manage', (settings) =>
-      settings.update(
-        params.company_id,
-        ctx.activeTenantId,
-        executionEnvironment(ctx),
-        {
-          stateRegistration: params.state_registration,
-          crt: params.crt,
-          defaultSeries: params.default_series,
-          nfceDefaultSeries: params.nfce_default_series,
-          defaultNatOp: params.default_nat_op,
-          defaultCsosn: params.default_csosn,
-          defaultOrigin: params.default_origin,
-        },
-      ),
-    );
+    return nfe
+      .withSettings(ctx, 'nfe.documents.manage', (settings) =>
+        settings.update(
+          params.company_id,
+          ctx.activeTenantId,
+          executionEnvironment(ctx),
+          {
+            stateRegistration: params.state_registration,
+            crt: params.crt,
+            defaultSeries: params.default_series,
+            nfceDefaultSeries: params.nfce_default_series,
+            defaultNatOp: params.default_nat_op,
+            defaultCsosn: params.default_csosn,
+            defaultOrigin: params.default_origin,
+          },
+        ),
+      )
+      .then(withoutDeprecated);
   };
 }
