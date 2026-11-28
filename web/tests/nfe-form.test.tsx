@@ -9,11 +9,12 @@ import type { NfeDocument } from "@/lib/nfe";
 import type { Company } from "@/lib/types";
 import messages from "@/messages/en.json";
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), validate: vi.fn(), resubmit: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), validate: vi.fn(), resubmit: vi.fn(), push: vi.fn(), schedule: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 const auth = vi.hoisted(() => ({ env: "test" as "test" | "live", nfeProduction: false }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ fiscalEnvironment: auth.env, features: { nfeProduction: auth.nfeProduction } }) }));
 beforeEach(() => { auth.env = "test"; auth.nfeProduction = false; });
+vi.mock("@/lib/api", async (original) => ({ ...(await original<typeof import("@/lib/api")>()), schedules: { createNfe: mocks.schedule } }));
 vi.mock("@/lib/nfe", async (original) => ({ ...(await original<typeof import("@/lib/nfe")>()), createNfe: mocks.create, validateNfe: mocks.validate, resubmitNfe: mocks.resubmit }));
 
 const companies = [{ id: "c1", legalName: "Acme Ltda", tradeName: "Acme" }] as Company[];
@@ -172,5 +173,59 @@ describe("form helpers", () => {
     expect(form.items[0]).toMatchObject({ quantity: "2", unitPrice: "10,00", csosn: "102", cfopManual: true });
     expect(form.payments).toEqual([{ tPag: "17", amount: "20,00" }]);
     expect(toCreateInput(form).recipient.address.complement).toBeUndefined();
+  });
+});
+
+describe("NF-e form: schedule and repeat", () => {
+  beforeEach(() => mocks.schedule.mockResolvedValue({ id: "sch1", type: "nfe" }));
+
+  it("issues now by default and does not ask for a date", () => {
+    renderForm();
+    expect((screen.getByLabelText("Issue now") as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByLabelText(/Date of the first issue/)).toBeNull();
+  });
+
+  it("scheduling shows the stock warning, asks for the date and sends it to the schedule, not to the NF-e", async () => {
+    renderForm();
+    fireEvent.click(screen.getByLabelText("Schedule for a date"));
+    expect(screen.getByText(messages.Schedules.stockWarning)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Schedule NF-e" }));
+    await screen.findByText(messages.Nfe.form.schedule.dateRequired);
+    expect(mocks.schedule).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Date of the first issue/), { target: { value: "2099-01-05" } });
+    fireEvent.click(screen.getByRole("button", { name: "Schedule NF-e" }));
+    await waitFor(() => expect(mocks.schedule).toHaveBeenCalledTimes(1));
+    const [input, when, key] = mocks.schedule.mock.calls[0] as [{ companyId: string }, { firstDate: string; frequency?: string }, string];
+    expect(input.companyId).toBe("c1");
+    expect(when).toEqual({ firstDate: "2099-01-05" });
+    expect(key).toMatch(/\S/);
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.push).toHaveBeenCalledWith("/app/schedules/sch1");
+  });
+
+  it("repeating sends the frequency and the last day", async () => {
+    renderForm();
+    fireEvent.click(screen.getByLabelText("Repeat"));
+    fireEvent.change(screen.getByLabelText(/Date of the first issue/), { target: { value: "2099-01-05" } });
+    fireEvent.change(screen.getByLabelText(/Last day/), { target: { value: "2099-12-31" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create repetition" }));
+    await waitFor(() => expect(mocks.schedule).toHaveBeenCalledTimes(1));
+    expect(mocks.schedule.mock.calls[0][1]).toEqual({ firstDate: "2099-01-05", frequency: "MONTHLY", endsOn: "2099-12-31" });
+  });
+
+  it("a note the API refuses is not scheduled: the problems show on the form", async () => {
+    mocks.schedule.mockRejectedValueOnce(new ApiError(422, "invalid", "NFE_VALIDATION_FAILED", undefined, [{ field: "items[1].ncm", code: "NCM_INVALID", message: "bad ncm" }]));
+    renderForm();
+    fireEvent.click(screen.getByLabelText("Schedule for a date"));
+    fireEvent.change(screen.getByLabelText(/Date of the first issue/), { target: { value: "2099-01-05" } });
+    fireEvent.click(screen.getByRole("button", { name: "Schedule NF-e" }));
+    await screen.findByText(messages.ApiErrors.ncm_invalid);
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("fixing a rejected note has no scheduling", () => {
+    renderForm(filled(), "n1");
+    expect(screen.queryByLabelText("Schedule for a date")).toBeNull();
   });
 });

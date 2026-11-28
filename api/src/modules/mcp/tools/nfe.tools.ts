@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsNumber,
@@ -17,6 +18,8 @@ import {
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { NfeSettingsView } from '@/modules/company/application/company-nfe-settings.service';
+import type { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
+import type { InvoiceSchedule } from '@/modules/invoice-schedule/domain/invoice-schedule';
 import { McpNfe, type McpGoodsType } from './nfe-access';
 import { toDetailedNfe, toPublicNfe } from './public-shapes';
 import { invalidInput } from './tool-input-errors';
@@ -98,6 +101,12 @@ class CompanyInput {
 
 class NfeIssueInput extends CompanyInput {
   @IsObject() nfe!: Record<string, unknown>;
+  @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE', 'RECURRING']) emission_type?:
+    'IMMEDIATE' | 'SCHEDULE' | 'RECURRING';
+  @IsOptional() @IsDateString() competence_date?: string;
+  @IsOptional() @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY']) recurrence_frequency?:
+    'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+  @IsOptional() @IsDateString() recurrence_ends_on?: string;
   @IsString() @MinLength(1) @MaxLength(255) idempotency_key!: string;
   @IsOptional() @IsString() @MaxLength(255) external_id?: string;
   @IsOptional() @IsBoolean() send_email?: boolean;
@@ -175,12 +184,87 @@ class NfeSettingsUpdateInput extends CompanyInput {
 
 type Accepted = { id: string; status: string; replayed?: true };
 
+async function scheduleNfe(
+  nfe: McpNfe,
+  scheduler: Pick<EmissionRouterService, 'scheduleNfe'>,
+  params: NfeIssueInput,
+  ctx: AuthContext,
+): Promise<unknown> {
+  if (!params.competence_date)
+    throw new Error(
+      'Invalid input: competence_date: required with SCHEDULE or RECURRING (the date of the first run, from tomorrow on)',
+    );
+  if (params.emission_type === 'RECURRING' && !params.recurrence_frequency)
+    throw new Error(
+      'Invalid input: recurrence_frequency: required when emission_type is RECURRING',
+    );
+  if (
+    params.emission_type !== 'RECURRING' &&
+    (params.recurrence_frequency || params.recurrence_ends_on)
+  )
+    throw new Error(
+      'Invalid input: recurrence_frequency and recurrence_ends_on are only allowed when emission_type is RECURRING',
+    );
+  const body = {
+    ...params.nfe,
+    companyId: params.company_id,
+    competenceDate: params.competence_date,
+    options: {
+      type: params.emission_type,
+      ...(params.recurrence_frequency
+        ? {
+            recurrence: {
+              frequency: params.recurrence_frequency,
+              endsOn: params.recurrence_ends_on,
+            },
+          }
+        : {}),
+    },
+    ...(params.external_id ? { externalId: params.external_id } : {}),
+    ...(params.send_email !== undefined
+      ? { sendEmail: params.send_email }
+      : {}),
+  };
+  const schedule = await nfe.run<InvoiceSchedule>(
+    ctx,
+    'nfe.documents.issue',
+    () =>
+      scheduler.scheduleNfe(body, ctx.tenantId, ctx, params.idempotency_key),
+  );
+  const p = schedule.props;
+  return {
+    type: 'nfe',
+    schedule_id: p.id,
+    kind: p.kind,
+    frequency: p.frequency,
+    status: p.status,
+    next_run_on: p.nextRunOn,
+    ends_on: p.endsOn,
+  };
+}
+
 export function createNfeIssueHandler(
   nfe: McpNfe,
   kind: McpGoodsType = 'nfe',
+  scheduler?: Pick<EmissionRouterService, 'scheduleNfe'>,
 ): Handler {
   return async (raw, ctx) => {
     const params = await parse(NfeIssueInput, raw);
+    if (
+      params.emission_type === 'SCHEDULE' ||
+      params.emission_type === 'RECURRING'
+    ) {
+      if (kind === 'nfce')
+        throw new Error(
+          'INVOICE_OPERATION_NOT_SUPPORTED: A NFC-e é venda presencial e não pode ser agendada nem recorrente: emita no momento da venda',
+        );
+      if (!scheduler) throw new Error('Scheduling is not available');
+      return scheduleNfe(nfe, scheduler, params, ctx);
+    }
+    if (params.recurrence_frequency || params.recurrence_ends_on)
+      throw new Error(
+        'Invalid input: recurrence_frequency and recurrence_ends_on are only allowed when emission_type is RECURRING',
+      );
     const body = {
       ...params.nfe,
       companyId: params.company_id,

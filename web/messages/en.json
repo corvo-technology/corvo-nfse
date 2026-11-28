@@ -3430,9 +3430,15 @@
       "cancelled": "Schedule cancelled.",
       "failed": "Could not complete that action."
     },
+    "type": {
+      "nfse": "NFS-e",
+      "nfe": "NF-e"
+    },
+    "stockWarning": "Items and price stay as they are today: Corvo does not control stock.",
     "unknownCompany": "Company",
     "form": {
       "titleNew": "New schedule",
+      "nfeHint": "Only the dates and the repetition change here. To change the items or the price of a scheduled NF-e, cancel it and create another.",
       "titleEdit": "Edit schedule",
       "company": "Company",
       "companyPlaceholder": "Choose a company",
@@ -3477,6 +3483,9 @@
     "to": "For: {name}",
     "noCustomer": "no customer",
     "detail": {
+      "recipient": "Recipient",
+      "items": "Items",
+      "noRecipient": "no recipient",
       "back": "Back to scheduled",
       "note": "The invoice",
       "company": "Company",
@@ -3980,6 +3989,20 @@
       "fixFields": "Fix the marked fields and try again.",
       "validate": "Validate",
       "validOk": "The data is fine. The note key would be {key}. Nothing was sent.",
+      "schedule": {
+        "title": "When to issue",
+        "now": "Issue now",
+        "once": "Schedule for a date",
+        "recurring": "Repeat",
+        "frequency": "Frequency",
+        "firstDate": "Date of the first issue",
+        "firstDateHint": "From tomorrow on. The note goes out at 09:00 (Brasília) on business days; a weekend date goes out on Monday.",
+        "endsOn": "Last day",
+        "endsOnHint": "Without it, the repetition goes on until you pause or cancel it.",
+        "dateRequired": "Choose the date of the first issue.",
+        "submitOnce": "Schedule NF-e",
+        "submitRecurring": "Create repetition"
+      },
       "issue": "Issue NF-e",
       "resubmit": "Send NF-e again",
       "issuer": "Issuer",

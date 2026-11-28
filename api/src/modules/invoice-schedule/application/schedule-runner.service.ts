@@ -21,6 +21,10 @@ import {
   type FailedScheduleItem,
 } from '../domain/schedule-failure.notifier';
 import {
+  SCHEDULE_NFE_PORT,
+  type ScheduleNfePort,
+} from './schedule-nfe.adapter';
+import {
   MAX_ACTIVE_SCHEDULES,
   SCHEDULE_INVOICE_PORT,
   type ScheduleInvoicePort,
@@ -83,6 +87,7 @@ export class ScheduleRunner {
     >,
     private readonly unitOfWork: UnitOfWorkPort,
     private readonly notifier: ScheduleFailureNotifier,
+    @Inject(SCHEDULE_NFE_PORT) private readonly nfe: ScheduleNfePort,
     @Optional()
     @Inject(SCHEDULE_TENANT_PAGE_SIZE)
     private readonly pageSize: number = 500,
@@ -239,6 +244,8 @@ export class ScheduleRunner {
   ): Promise<Step> {
     const occurrenceOn = schedule.props.nextRunOn ?? today;
     const key = `schedule:${schedule.props.id}:${occurrenceOn}`;
+    if (schedule.props.documentType === 'nfe')
+      return this.issueNfe(schedule, tenantId, occurrenceOn, key);
     try {
       const prepared = await this.invoices.prepareEmissionInEnvironment(
         {
@@ -272,6 +279,41 @@ export class ScheduleRunner {
         return this.alreadyCreated({ schedule, occurrenceOn, key }, tenantId);
       const item = toBatchItemError(error);
       // Anything unexpected must abort this tenant's transaction, not hide as a failed attempt.
+      if (!item) throw error;
+      return {
+        schedule,
+        occurrenceOn,
+        state: 'failed',
+        code: item.code,
+        message: item.message,
+      };
+    }
+  }
+
+  /**
+   * An NF-e is accepted right here: the intake validates it as a normal emission, charges the credit
+   * (live) and queues it for the SEFAZ, all inside this tenant's transaction. The key is the schedule
+   * and the occurrence, so a retry or a restart finds the note it already created instead of making
+   * another. A SEFAZ that is down is not a failure here: the worker sends the queued note later.
+   * A refusal (invalid note, company not ready, production closed, no credits) counts as a failed
+   * attempt: the third one in a row pauses the schedule and warns the workspace.
+   */
+  private async issueNfe(
+    schedule: InvoiceSchedule,
+    tenantId: string,
+    occurrenceOn: string,
+    key: string,
+  ): Promise<Step> {
+    try {
+      const { id } = await this.nfe.issue(
+        tenantId,
+        schedule.props.environment,
+        schedule.props.invoiceInput,
+        key,
+      );
+      return { schedule, occurrenceOn, state: 'issued', invoiceId: id };
+    } catch (error) {
+      const item = toBatchItemError(error);
       if (!item) throw error;
       return {
         schedule,

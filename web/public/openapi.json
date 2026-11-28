@@ -6588,7 +6588,7 @@
         ]
       },
       "post": {
-        "description": "Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: \"nfe\"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `NFE_PRODUCTION_DISABLED`; a NFC-e from a state that has no NFC-e addresses yet answers `UF_NOT_ENABLED`). Every workspace can issue in `test`; in `live` the answer is `NFE_PRODUCTION_DISABLED` until production is turned on. In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded.\n\n**With `type: \"nfce\"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples Nacional, homologation only, QR Code v3 online, no CSC). Same body as the dry-run `POST /invoices/validate` with `type: \"nfce\"`; the consumer is optional. Same rules as the NF-e: `Idempotency-Key` required, `202` with `{ type: \"nfce\", id, status: \"queued\" }`, the result by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The note carries `qrCode` and `urlChave` once the first attempt is built.\n\n**Off-line NFC-e (`contingency: \"offline\"`):** the PDV asks for the contingency `tpEmis` 9. Corvo numbers, signs and answers **`201` at once** with `{ type: \"nfce\", id, status: \"contingency_pending\", accessKey, qrCode, xmlUrl, pdfUrl }`; the DANFCE says \"EMITIDA EM CONTINGÊNCIA\". Nothing is sent to the SEFAZ in this call: Corvo transmits when the authority answers and warns by e-mail and by webhook `nfce.contingency.deadline_near` after 20 hours (the limit is 24). Without `contingency`, a company that turned on \"issue off-line automatically\" gets the same answer when the SEFAZ cannot be reached; otherwise the NFC-e goes the normal way. A state with no off-line QR Code address answers `422 NFCE_OFFLINE_NOT_AVAILABLE`. The note can still be rejected after it was handed to the consumer: fix it with `PUT /invoices/{id}` (only the description, barcode, NCM, CEST, unit and `additionalInfo` may change, `422 NFCE_CONTINGENCY_FIELD_LOCKED` otherwise).\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
+        "description": "Issues an NFS-e for a company. Issuing is asynchronous: the answer is 202 with the invoice `queued`, and the final result comes by webhook or by polling `GET /invoices/{id}`. In `live`, each accepted invoice reserves one credit. With `options.type` `SCHEDULE` or `RECURRING` nothing is issued now: the answer is the schedule (see Schedules). Send `Idempotency-Key` to make retries safe. A test key issues on the restricted-production environment, with no fiscal value.\n\n**With `type: \"nfe\"`:** Issues an NF-e (model 55, Simples Nacional, homologation only). The answer is asynchronous: `202` with the `id` and `status: queued`; the result comes by webhook (`nfe.document.*`) or by `GET /invoices/{id}`. Same body as `POST /invoices/validate`, which is the way to check a note without issuing it.\n\n`Idempotency-Key` (1 to 200 characters) is **required**: without it the answer is `400 IDEMPOTENCY_KEY_REQUIRED`. Repeating a key with the same body answers `200` with the same `id` and `replayed: true`; with another body, `409 IDEMPOTENCY_KEY_REUSED`.\n\nEverything that can be refused is refused here with `422` and nothing is saved or charged: `type` `validation` (fix the fields in `details`) or `configuration` (`COMPANY_NFE_INCOMPLETE`, `NFE_PRODUCTION_DISABLED`; a NFC-e from a state that has no NFC-e addresses yet answers `UF_NOT_ENABLED`). Every workspace can issue in `test`; in `live` the answer is `NFE_PRODUCTION_DISABLED` until production is turned on. In `live`, each accepted NF-e reserves one credit, given back if the note ends rejected, denied or discarded.\n\n**Scheduling an NF-e:** with `options.type` `SCHEDULE` or `RECURRING` (and `competenceDate` as the day of the first run) nothing is issued now: the whole NF-e is checked as `POST /invoices/validate` does, and the answer is `202` with the schedule (`type: \"nfe\"`). Each run, at 09:00 America/Sao_Paulo on business days, issues the NF-e as it was saved: items and prices stay as they are, because Corvo does not control stock. The credit is used at the run. If the SEFAZ is down at the run, the note is queued as usual; if the note is refused (invalid, company not ready, production closed, no credits), the attempt fails and the third failure in a row pauses the schedule. A NFC-e cannot be scheduled: it answers `422 INVOICE_OPERATION_NOT_SUPPORTED`.\n\n**With `type: \"nfce\"`:** Issues a NFC-e (model 65, sale to the final consumer, Simples Nacional, homologation only, QR Code v3 online, no CSC). Same body as the dry-run `POST /invoices/validate` with `type: \"nfce\"`; the consumer is optional. Same rules as the NF-e: `Idempotency-Key` required, `202` with `{ type: \"nfce\", id, status: \"queued\" }`, the result by webhook (`nfce.document.*`) or `GET /invoices/{id}`, one credit reserved in `live`. The note carries `qrCode` and `urlChave` once the first attempt is built.\n\n**Off-line NFC-e (`contingency: \"offline\"`):** the PDV asks for the contingency `tpEmis` 9. Corvo numbers, signs and answers **`201` at once** with `{ type: \"nfce\", id, status: \"contingency_pending\", accessKey, qrCode, xmlUrl, pdfUrl }`; the DANFCE says \"EMITIDA EM CONTINGÊNCIA\". Nothing is sent to the SEFAZ in this call: Corvo transmits when the authority answers and warns by e-mail and by webhook `nfce.contingency.deadline_near` after 20 hours (the limit is 24). Without `contingency`, a company that turned on \"issue off-line automatically\" gets the same answer when the SEFAZ cannot be reached; otherwise the NFC-e goes the normal way. A state with no off-line QR Code address answers `422 NFCE_OFFLINE_NOT_AVAILABLE`. The note can still be rejected after it was handed to the consumer: fix it with `PUT /invoices/{id}` (only the description, barcode, NCM, CEST, unit and `additionalInfo` may change, `422 NFCE_CONTINGENCY_FIELD_LOCKED` otherwise).\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "invoices_create",
         "parameters": [
           {
@@ -8955,7 +8955,7 @@
     },
     "/schedules": {
       "get": {
-        "description": "Scheduled (`once`) and recurring invoices. The `cursor` is the offset of the next page and is opaque to clients.\n\nPermission: `nfse.invoices.view`.",
+        "description": "Scheduled (`once`) and recurring invoices, NFS-e and NF-e (`type` says which; filter with `?type=`). The `cursor` is the offset of the next page and is opaque to clients.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "schedules_list",
         "parameters": [
           {
@@ -8998,6 +8998,18 @@
             "required": false,
             "schema": {
               "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "nfse",
+                "nfe"
+              ],
               "type": "string"
             }
           }
@@ -9068,13 +9080,14 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       }
     },
     "/schedules/{id}": {
       "get": {
-        "description": "One schedule with its next run and the invoice body each run issues.\n\nPermission: `nfse.invoices.view`.",
+        "description": "One schedule with its next run and the invoice body each run issues.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "schedules_get",
         "parameters": [
           {
@@ -9147,11 +9160,12 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       },
       "patch": {
-        "description": "Changes the schedule; the change applies to the next runs only. `invoice` is merged over the stored body and validated like an emission.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Changes the schedule; the change applies to the next runs only. `invoice` is merged over the stored body and validated like an emission; for an NF-e schedule each field sent replaces the stored one as a whole (send the full `items`).\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "schedules_update",
         "parameters": [
           {
@@ -9240,13 +9254,14 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.issue"
         ]
       }
     },
     "/schedules/{id}/cancel": {
       "post": {
-        "description": "Cancels a schedule for good. Invoices already issued are not changed.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Cancels a schedule for good. Invoices already issued are not changed.\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "schedules_cancel",
         "parameters": [
           {
@@ -9319,13 +9334,14 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.issue"
         ]
       }
     },
     "/schedules/{id}/pause": {
       "post": {
-        "description": "Pauses a schedule. Resume it to continue at its next occurrence.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Pauses a schedule. Resume it to continue at its next occurrence.\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "schedules_pause",
         "parameters": [
           {
@@ -9398,13 +9414,14 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.issue"
         ]
       }
     },
     "/schedules/{id}/resume": {
       "post": {
-        "description": "Resumes a paused schedule at its next occurrence.\n\nPermission: `nfse.invoices.issue`.",
+        "description": "Resumes a paused schedule at its next occurrence.\n\nPermission: `nfse.invoices.issue` or `nfe.documents.issue`.",
         "operationId": "schedules_resume",
         "parameters": [
           {
@@ -9477,13 +9494,14 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.issue"
+          "nfse.invoices.issue",
+          "nfe.documents.issue"
         ]
       }
     },
     "/schedules/{id}/runs": {
       "get": {
-        "description": "The log of every attempt to run the schedule, newest first. The `cursor` is the offset of the next page and is opaque to clients.\n\nPermission: `nfse.invoices.view`.",
+        "description": "The log of every attempt to run the schedule, newest first. The `cursor` is the offset of the next page and is opaque to clients.\n\nPermission: `nfse.invoices.view` or `nfe.documents.view`.",
         "operationId": "schedules_listRuns",
         "parameters": [
           {
@@ -9513,6 +9531,18 @@
             "name": "cursor",
             "required": false,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "nfse",
+                "nfe"
+              ],
               "type": "string"
             }
           }
@@ -9586,7 +9616,8 @@
           "Schedules"
         ],
         "x-required-permissions": [
-          "nfse.invoices.view"
+          "nfse.invoices.view",
+          "nfe.documents.view"
         ]
       }
     },
@@ -15254,6 +15285,44 @@
           },
           {
             "properties": {
+              "competenceDate": {
+                "description": "Only with `options.type` `SCHEDULE` or `RECURRING`: the day of the first run, from tomorrow on.",
+                "format": "date",
+                "type": "string"
+              },
+              "options": {
+                "description": "Only to schedule: `type` `SCHEDULE` (once) or `RECURRING` (needs `recurrence.frequency`). Same rules as the NFS-e. A NFC-e cannot be scheduled (`422 INVOICE_OPERATION_NOT_SUPPORTED`).",
+                "properties": {
+                  "recurrence": {
+                    "properties": {
+                      "endsOn": {
+                        "format": "date",
+                        "type": "string"
+                      },
+                      "frequency": {
+                        "enum": [
+                          "WEEKLY",
+                          "BIWEEKLY",
+                          "MONTHLY"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "frequency"
+                    ],
+                    "type": "object"
+                  },
+                  "type": {
+                    "enum": [
+                      "SCHEDULE",
+                      "RECURRING"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
               "type": {
                 "description": "Selects the NF-e (model 55) instead of the NFS-e.",
                 "enum": [
@@ -16729,10 +16798,19 @@
               "cancelled"
             ],
             "type": "string"
+          },
+          "type": {
+            "description": "What each run issues: an NFS-e or an NF-e.",
+            "enum": [
+              "nfse",
+              "nfe"
+            ],
+            "type": "string"
           }
         },
         "required": [
           "id",
+          "type",
           "kind",
           "frequency",
           "status",

@@ -555,6 +555,8 @@ export type ScheduleFrequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY";
 /** A scheduled (once) or recurring invoice. Dates are plain YYYY-MM-DD. */
 export interface InvoiceSchedule {
   id: string;
+  /** What each run issues. */
+  type: "nfse" | "nfe";
   kind: "once" | "recurring";
   frequency: ScheduleFrequency | null;
   status: ScheduleStatus;

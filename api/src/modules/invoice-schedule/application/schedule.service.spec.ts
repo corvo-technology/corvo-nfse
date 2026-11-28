@@ -103,14 +103,23 @@ function build() {
     },
   };
   const audit = new FakeAccountAudit();
+  const nfeValidate = jest
+    .fn<
+      Promise<{ companyId: string }>,
+      [string, string, Record<string, unknown>]
+    >()
+    .mockImplementation((_t, _e, nfeBody) =>
+      Promise.resolve({ companyId: String(nfeBody.companyId) }),
+    );
   const service = new ScheduleService(
     repo,
     { prepareEmissionInEnvironment: prepare } as never,
     15,
     unitOfWork,
     audit,
+    { validate: nfeValidate, issue: jest.fn() },
   );
-  return { service, repo, prepare, audit };
+  return { service, repo, prepare, audit, nfeValidate };
 }
 
 const body = {
@@ -528,5 +537,153 @@ describe('ScheduleService audit', () => {
     await expect(
       service.pause(schedule.props.id, TENANT),
     ).resolves.toBeDefined();
+  });
+});
+
+describe('ScheduleService.createNfeFromEmission', () => {
+  const nfe = (over: Record<string, unknown> = {}) => ({
+    type: 'nfe',
+    companyId: COMPANY,
+    competenceDate: '2026-11-09',
+    recipient: { taxId: '12345678909', name: 'Ana' },
+    items: [{ code: '1', description: 'Peça', quantity: 2, unitPrice: 50 }],
+    payments: [{ tPag: '01', amount: 100 }],
+    options: { type: 'RECURRING', recurrence: { frequency: 'MONTHLY' } },
+    ...over,
+  });
+
+  it('creates an NF-e schedule; the stored body is the validated NF-e without type, options and date', async () => {
+    const { service, repo, nfeValidate, prepare } = build();
+    const created = await service.createNfeFromEmission(
+      nfe(),
+      TENANT,
+      auth('test'),
+      NOW,
+    );
+    expect(created.props).toMatchObject({
+      documentType: 'nfe',
+      kind: 'recurring',
+      frequency: 'MONTHLY',
+      nextRunOn: '2026-11-09',
+      companyId: COMPANY,
+      environment: 'test',
+    });
+    expect(created.props.invoiceInput).toEqual({
+      companyId: COMPANY,
+      recipient: { taxId: '12345678909', name: 'Ana' },
+      items: [{ code: '1', description: 'Peça', quantity: 2, unitPrice: 50 }],
+      payments: [{ tPag: '01', amount: 100 }],
+    });
+    expect(nfeValidate).toHaveBeenCalledTimes(1);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(repo.rows.size).toBe(1);
+  });
+
+  it('the whole NF-e is validated at creation: a refusal stops it and nothing is saved', async () => {
+    const { service, repo, nfeValidate } = build();
+    nfeValidate.mockRejectedValue(
+      new BadRequestException('recipient address is incomplete'),
+    );
+    await expect(
+      service.createNfeFromEmission(nfe(), TENANT, auth(), NOW),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repo.rows.size).toBe(0);
+  });
+
+  it('SCHEDULE is a single run; the first date follows the NFS-e rule (from tomorrow)', async () => {
+    const { service } = build();
+    const once = await service.createNfeFromEmission(
+      nfe({ options: { type: 'SCHEDULE' } }),
+      TENANT,
+      auth(),
+      NOW,
+    );
+    expect(once.props).toMatchObject({ kind: 'once', frequency: null });
+    await expect(
+      service.createNfeFromEmission(
+        nfe({ options: { type: 'SCHEDULE' }, competenceDate: '2026-11-06' }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleValidationError);
+  });
+
+  it('needs the first date and a frequency for RECURRING', async () => {
+    const { service } = build();
+    await expect(
+      service.createNfeFromEmission(
+        nfe({ competenceDate: undefined }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleValidationError);
+    await expect(
+      service.createNfeFromEmission(
+        nfe({ options: { type: 'RECURRING' } }),
+        TENANT,
+        auth(),
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleValidationError);
+  });
+
+  it('the same Idempotency-Key answers the schedule already created', async () => {
+    const { service, repo } = build();
+    const first = await service.createNfeFromEmission(
+      nfe(),
+      TENANT,
+      auth(),
+      NOW,
+      'key-1',
+    );
+    const again = await service.createNfeFromEmission(
+      nfe(),
+      TENANT,
+      auth(),
+      NOW,
+      'key-1',
+    );
+    expect(again.props.id).toBe(first.props.id);
+    expect(repo.rows.size).toBe(1);
+  });
+
+  it('updating an NF-e schedule merges the patch and validates the whole NF-e again; the company and the dates are not editable', async () => {
+    const { service, nfeValidate, prepare } = build();
+    const created = await service.createNfeFromEmission(
+      nfe(),
+      TENANT,
+      auth(),
+      NOW,
+    );
+    const items = [
+      { code: '1', description: 'Peça', quantity: 3, unitPrice: 60 },
+    ];
+    const updated = await service.update(
+      created.props.id,
+      TENANT,
+      { invoice: { items } },
+      NOW,
+    );
+    expect(updated.props.invoiceInput.items).toEqual(items);
+    expect(updated.props.invoiceInput.recipient).toEqual({
+      taxId: '12345678909',
+      name: 'Ana',
+    });
+    expect(nfeValidate).toHaveBeenLastCalledWith(
+      TENANT,
+      'live',
+      expect.objectContaining({ items }),
+    );
+    expect(prepare).not.toHaveBeenCalled();
+    await expect(
+      service.update(
+        created.props.id,
+        TENANT,
+        { invoice: { companyId: 'x' } },
+        NOW,
+      ),
+    ).rejects.toBeInstanceOf(ScheduleValidationError);
   });
 });

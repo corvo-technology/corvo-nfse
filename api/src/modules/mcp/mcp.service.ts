@@ -392,8 +392,8 @@ export class McpService {
       NFSE_ISSUE_TOOL,
       this.wrapWithScopeCheck(
         byType(createNfseIssueHandler(this.emissionRouter), {
-          nfe: createNfeIssueHandler(this.nfe),
-          nfce: createNfeIssueHandler(this.nfe, 'nfce'),
+          nfe: createNfeIssueHandler(this.nfe, 'nfe', this.emissionRouter),
+          nfce: createNfeIssueHandler(this.nfe, 'nfce', this.emissionRouter),
         }),
         'nfse:write',
       ),

@@ -18,7 +18,7 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: () => mocks.canIssue }) })
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: vi.fn(), success: vi.fn() }) }));
 
 const schedule: InvoiceSchedule = {
-  id: "s1", kind: "recurring", frequency: "MONTHLY", status: "active", pauseReason: null, companyId: "c1",
+  id: "s1", type: "nfse", kind: "recurring", frequency: "MONTHLY", status: "active", pauseReason: null, companyId: "c1",
   anchorOn: "2026-12-06", nextRunOn: "2026-12-06", endsOn: null, attempts: 0, lastRunOn: null, createdAt: "2026-11-06T15:00:00.000Z",
   invoice: { amount: 200, deduction: 12.22, customer: { name: "Padaria Estrela", taxId: "52998224725", email: "ana@example.com" }, service: { description: "Consultoria" }, options: { email: { send: true } } },
 };
@@ -45,6 +45,21 @@ describe("schedule details", () => {
     expect(screen.getAllByText("Acme Ltda").length).toBeGreaterThan(0);
     expect(screen.getAllByText("12/06/2026").length).toBeGreaterThan(0);
     expect(await screen.findByTestId("schedule-run")).toBeTruthy();
+  });
+
+  it("an NF-e schedule shows the recipient, the items, the total and the stock warning", async () => {
+    mocks.get.mockResolvedValue({
+      ...schedule, type: "nfe",
+      invoice: { recipient: { name: "Maria da Silva", taxId: "12345678909", email: "maria@example.com" }, items: [{ description: "Camiseta", quantity: 2, unitPrice: 10 }, { description: "Calça", quantity: 1, unitPrice: 30.5 }], payments: [{ tPag: "17", amount: 50.5 }] },
+    });
+    renderPage();
+    await screen.findByText("Maria da Silva");
+    expect(screen.getByText("2 × Camiseta")).toBeTruthy();
+    expect(screen.getByText("1 × Calça")).toBeTruthy();
+    expect(screen.getAllByText("R$ 50,50").length).toBeGreaterThan(0);
+    expect(screen.getByText("Items and price stay as they are today: Corvo does not control stock.")).toBeTruthy();
+    expect(screen.getAllByText(/NF-e/).length).toBeGreaterThan(0);
+    expect((await screen.findByText("View note")).closest("a")?.getAttribute("href")).toBe("/app/nfe/inv-1");
   });
 
   it("pausing from the details updates the status", async () => {

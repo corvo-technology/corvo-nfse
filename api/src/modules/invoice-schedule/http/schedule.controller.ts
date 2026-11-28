@@ -19,7 +19,9 @@ import {
   ExecutionEnvironmentGuard,
   executionEnvironment,
 } from '@/modules/auth/execution-environment.guard';
-import { RequirePermission } from '@/modules/auth/require-permission.decorator';
+import { RequireDocumentPermission } from '@/modules/auth/require-permission.decorator';
+import { RoutePermissionService } from '@/modules/auth/application/route-permission.service';
+import type { TenantPermission } from '@/modules/auth/domain/permission';
 import { data } from '@/shared/http/response';
 import {
   CursorPage,
@@ -53,6 +55,24 @@ function pageOf<T>(items: T[], total: number, limit: number, offset: number) {
   });
 }
 
+const VIEW = { nfse: 'nfse.invoices.view', nfe: 'nfe.documents.view' } as const;
+const ISSUE = {
+  nfse: 'nfse.invoices.issue',
+  nfe: 'nfe.documents.issue',
+} as const;
+
+const permissions = new RoutePermissionService();
+
+/** A key sees and changes the schedules of the kinds of document it has permission for. */
+function allowedTypes(
+  req: RequestWithAuthContext,
+  gate: { nfse: TenantPermission; nfe: TenantPermission },
+): Array<'nfse' | 'nfe'> {
+  return (['nfse', 'nfe'] as const).filter((type) =>
+    permissions.hasPermission(req.authContext!, gate[type]),
+  );
+}
+
 @ApiTags('schedules')
 @UseGuards(ExecutionEnvironmentGuard)
 @Controller('schedules')
@@ -61,7 +81,7 @@ export class ScheduleController {
 
   @Get()
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'List scheduled and recurring invoices' })
   async list(
     @Query() query: ListSchedulesQuery,
@@ -75,6 +95,9 @@ export class ScheduleController {
         status: query.status,
         companyId: query.companyId,
         environment: executionEnvironment(req.authContext!),
+        documentTypes: allowedTypes(req, VIEW).filter(
+          (type) => !query.type || type === query.type,
+        ),
       },
       { limit, offset },
     );
@@ -88,7 +111,7 @@ export class ScheduleController {
 
   @Get(':id')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({ summary: 'Get a schedule' })
   async get(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -99,7 +122,7 @@ export class ScheduleController {
 
   @Get(':id/runs')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.view')
+  @RequireDocumentPermission(VIEW)
   @ApiOperation({
     summary: 'Log of every attempt to run a schedule, newest first',
   })
@@ -132,7 +155,7 @@ export class ScheduleController {
 
   @Patch(':id')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(ISSUE)
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({ summary: 'Change a schedule; applies to the next runs only' })
   async update(
@@ -140,7 +163,7 @@ export class ScheduleController {
     @Body() dto: UpdateScheduleDto,
     @Req() req: RequestWithAuthContext,
   ) {
-    await this.owned(id, req);
+    await this.owned(id, req, ISSUE);
     const schedule = await this.schedules.update(
       id,
       req.authContext!.activeTenantId,
@@ -157,13 +180,13 @@ export class ScheduleController {
   @Post(':id/pause')
   @HttpCode(200)
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(ISSUE)
   @ApiOperation({ summary: 'Pause a schedule' })
   async pause(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
   ) {
-    await this.owned(id, req);
+    await this.owned(id, req, ISSUE);
     return data(
       toScheduleResponse(
         await this.schedules.pause(id, req.authContext!.activeTenantId),
@@ -174,13 +197,13 @@ export class ScheduleController {
   @Post(':id/resume')
   @HttpCode(200)
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(ISSUE)
   @ApiOperation({ summary: 'Resume a paused schedule at its next occurrence' })
   async resume(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
   ) {
-    await this.owned(id, req);
+    await this.owned(id, req, ISSUE);
     return data(
       toScheduleResponse(
         await this.schedules.resume(id, req.authContext!.activeTenantId),
@@ -191,13 +214,13 @@ export class ScheduleController {
   @Post(':id/cancel')
   @HttpCode(200)
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(ISSUE)
   @ApiOperation({ summary: 'Cancel a schedule (final)' })
   async cancel(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Req() req: RequestWithAuthContext,
   ) {
-    await this.owned(id, req);
+    await this.owned(id, req, ISSUE);
     return data(
       toScheduleResponse(
         await this.schedules.cancel(id, req.authContext!.activeTenantId),
@@ -209,12 +232,16 @@ export class ScheduleController {
   private async owned(
     id: string,
     req: RequestWithAuthContext,
+    gate: typeof VIEW | typeof ISSUE = VIEW,
   ): Promise<InvoiceSchedule> {
     const schedule = await this.schedules.get(
       id,
       req.authContext!.activeTenantId,
     );
     if (schedule.props.environment !== executionEnvironment(req.authContext!))
+      throw new ScheduleNotFoundError();
+    // Seeing the schedule needs the view permission of its kind; changing it, the issue one.
+    if (!allowedTypes(req, gate).includes(schedule.props.documentType))
       throw new ScheduleNotFoundError();
     return schedule;
   }

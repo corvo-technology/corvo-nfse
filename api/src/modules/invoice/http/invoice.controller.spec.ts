@@ -1,4 +1,8 @@
-import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { PATH_METADATA, HTTP_CODE_METADATA } from '@nestjs/common/constants';
 import { InvoiceController } from './invoice.controller';
 import { REQUIRED_TENANT_PERMISSION } from '@/modules/auth/require-permission.decorator';
@@ -287,5 +291,86 @@ describe('InvoiceController POST batches', () => {
     );
     expect(Reflect.getMetadata('THROTTLER:LIMITdefault', handler)).toBe(10);
     expect(Reflect.getMetadata('THROTTLER:TTLdefault', handler)).toBe(60_000);
+  });
+});
+
+describe('InvoiceController: POST /invoices of an NF-e or NFC-e with options.type', () => {
+  const tenant = 'tenant-1';
+  const authContext = { activeTenantId: tenant, apiKeyEnvironment: 'test' };
+  const schedule = {
+    props: {
+      id: 'sched-1',
+      documentType: 'nfe',
+      kind: 'once',
+      frequency: null,
+      status: 'active',
+      companyId: 'c1',
+      anchorOn: '2026-12-01',
+      nextRunOn: '2026-12-01',
+      endsOn: null,
+      attempts: 0,
+      lastRunOn: null,
+      invoiceInput: {},
+      pauseReason: null,
+      createdAt: new Date('2026-11-27T12:00:00Z'),
+    },
+  };
+
+  function build() {
+    const routes = { create: jest.fn().mockResolvedValue({ data: {} }) };
+    const types = { forType: jest.fn().mockReturnValue(routes) };
+    const emissionRouter = {
+      scheduleNfe: jest.fn().mockResolvedValue(schedule),
+    };
+    const controller = new InvoiceController(
+      {} as never,
+      {} as never,
+      {} as never,
+      emissionRouter as never,
+      {} as never,
+      types as never,
+    );
+    return { controller, routes, emissionRouter };
+  }
+  const emit = (controller: InvoiceController, body: Record<string, unknown>) =>
+    controller.emit(body as never, { authContext } as never, 'key-1', {
+      status: jest.fn(),
+    } as never);
+
+  it('an NF-e with SCHEDULE answers the schedule, and nothing is issued', async () => {
+    const { controller, routes, emissionRouter } = build();
+    const body = { type: 'nfe', options: { type: 'SCHEDULE' } };
+    const out = (await emit(controller, body)) as { data: { type: string } };
+    expect(out.data.type).toBe('nfe');
+    expect(emissionRouter.scheduleNfe).toHaveBeenCalledWith(
+      body,
+      tenant,
+      authContext,
+      'key-1',
+    );
+    expect(routes.create).not.toHaveBeenCalled();
+  });
+
+  it('a NFC-e cannot be scheduled: 422 INVOICE_OPERATION_NOT_SUPPORTED', async () => {
+    const { controller, routes, emissionRouter } = build();
+    for (const type of ['SCHEDULE', 'RECURRING']) {
+      const failure: unknown = await emit(controller, {
+        type: 'nfce',
+        options: { type },
+      }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(UnprocessableEntityException);
+      expect((failure as UnprocessableEntityException).getResponse()).toEqual(
+        expect.objectContaining({ code: 'INVOICE_OPERATION_NOT_SUPPORTED' }),
+      );
+    }
+    expect(emissionRouter.scheduleNfe).not.toHaveBeenCalled();
+    expect(routes.create).not.toHaveBeenCalled();
+  });
+
+  it('an NF-e without options is issued as always', async () => {
+    const { controller, routes, emissionRouter } = build();
+    await emit(controller, { type: 'nfe' });
+    expect(routes.create).toHaveBeenCalledTimes(1);
+    expect(emissionRouter.scheduleNfe).not.toHaveBeenCalled();
   });
 });

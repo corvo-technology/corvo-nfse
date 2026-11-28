@@ -11,6 +11,7 @@ import {
 } from './recurrence';
 import { DateTime } from 'luxon';
 
+export type ScheduleDocumentType = 'nfse' | 'nfe';
 export type ScheduleKind = 'once' | 'recurring';
 export type ScheduleStatus = 'active' | 'paused' | 'completed' | 'cancelled';
 export type PauseReason = 'customer' | 'failures';
@@ -43,6 +44,8 @@ export interface InvoiceScheduleProps {
   tenantId: string;
   environment: ScheduleEnvironment;
   companyId: string;
+  /** What each run issues. */
+  documentType: ScheduleDocumentType;
   kind: ScheduleKind;
   frequency: Frequency | null;
   anchorOn: string;
@@ -66,6 +69,8 @@ export interface CreateScheduleInput {
   tenantId: string;
   environment: ScheduleEnvironment;
   companyId: string;
+  /** NFS-e when left out. */
+  documentType?: ScheduleDocumentType;
   kind: ScheduleKind;
   frequency: Frequency | null;
   firstOn: string;
@@ -138,6 +143,7 @@ export class InvoiceSchedule {
       tenantId: input.tenantId,
       environment: input.environment,
       companyId: input.companyId,
+      documentType: input.documentType ?? 'nfse',
       kind: input.kind,
       frequency: input.frequency,
       anchorOn: input.firstOn,

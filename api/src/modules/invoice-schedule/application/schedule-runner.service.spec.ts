@@ -1,3 +1,4 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import { FiscalValidationError } from '@/shared/fiscal/fiscal-validation-error';
 import { IdempotencyConflictError } from '@/modules/invoice/domain/errors';
 import { InvoiceSchedule } from '../domain/invoice-schedule';
@@ -22,6 +23,7 @@ function schedule(
     firstOn: string;
     endsOn: string | null;
     companyId: string;
+    documentType: 'nfse' | 'nfe';
   }> = {},
 ): InvoiceSchedule {
   const kind = over.kind ?? 'recurring';
@@ -30,6 +32,7 @@ function schedule(
       tenantId: over.tenantId ?? '11111111-1111-4111-8111-111111111111',
       environment: over.environment ?? 'live',
       companyId: over.companyId ?? 'c1',
+      documentType: over.documentType,
       kind,
       frequency: kind === 'recurring' ? 'WEEKLY' : null,
       firstOn: over.firstOn ?? '2026-11-09',
@@ -135,6 +138,12 @@ function build(
     existingByKey?: unknown;
     notifierError?: boolean;
     pageSize?: number;
+    nfeIssue?: (
+      tenantId: string,
+      environment: string,
+      body: Record<string, unknown>,
+      key: string,
+    ) => Promise<{ id: string }>;
   } = {},
 ) {
   const repo = new MemoryRepo();
@@ -184,6 +193,10 @@ function build(
       }
     },
   };
+  const nfeIssue = jest.fn(
+    options.nfeIssue ??
+      ((_t, _e, _b, k) => Promise.resolve({ id: `nfe:${k}` })),
+  );
   const runner = new ScheduleRunner(
     repo,
     { prepareEmissionInEnvironment: prepare } as never,
@@ -191,9 +204,11 @@ function build(
     { findByIdempotencyKey } as never,
     unitOfWork,
     notifier,
+    { validate: jest.fn(), issue: nfeIssue },
     options.pageSize ?? 500,
   );
   return {
+    nfeIssue,
     runner,
     repo,
     prepare,
@@ -557,5 +572,102 @@ describe('ScheduleRunner.runDue: idempotency, state and isolation', () => {
       'api',
       'invoice_schedule_tenant_run',
     );
+  });
+});
+
+describe('ScheduleRunner.runDue: NF-e schedules', () => {
+  const run = '2026-11-09';
+
+  it('issues the NF-e through the NF-e intake with the key of the occurrence, never the NFS-e path', async () => {
+    const { runner, repo, nfeIssue, prepare, submitBatch } = build();
+    const s = schedule({ documentType: 'nfe' });
+    await repo.insert(s);
+    const result = await runner.runDue(run);
+    expect(result).toMatchObject({ issued: 1, failed: 0, paused: 0 });
+    expect(nfeIssue).toHaveBeenCalledWith(
+      s.props.tenantId,
+      'live',
+      s.props.invoiceInput,
+      key(s, run),
+    );
+    expect(prepare).not.toHaveBeenCalled();
+    expect(submitBatch).not.toHaveBeenCalled();
+    expect(repo.runs).toEqual([
+      expect.objectContaining({
+        scheduleId: s.props.id,
+        outcome: 'issued',
+        invoiceId: `nfe:${key(s, run)}`,
+      }),
+    ]);
+    expect(s.props.nextRunOn).toBe('2026-11-16');
+  });
+
+  it('an NFS-e and an NF-e due together each go to their own path', async () => {
+    const { runner, repo, nfeIssue, prepare } = build();
+    await repo.insert(schedule());
+    await repo.insert(schedule({ documentType: 'nfe' }));
+    const result = await runner.runDue(run);
+    expect(result.issued).toBe(2);
+    expect(prepare).toHaveBeenCalledTimes(1);
+    expect(nfeIssue).toHaveBeenCalledTimes(1);
+  });
+
+  it('after a restart (tenant rolled back) the same day uses the same key again, so the intake replays instead of duplicating', async () => {
+    const seen: string[] = [];
+    let first = true;
+    const { runner, repo } = build({
+      nfeIssue: (_t, _e, _b, k) => {
+        seen.push(k);
+        if (first) {
+          first = false;
+          return Promise.reject(new Error('connection lost'));
+        }
+        return Promise.resolve({ id: 'note' });
+      },
+    });
+    const s = schedule({ documentType: 'nfe', kind: 'once' });
+    await repo.insert(s);
+    await runner.runDue(run);
+    await runner.runDue(run);
+    expect(seen).toEqual([key(s, run), key(s, run)]);
+    expect(s.props.status).toBe('completed');
+  });
+
+  it('a refused NF-e (validation, company not ready, production closed) is a failed attempt; the third pauses the schedule', async () => {
+    const refusal = () =>
+      Promise.reject(
+        new UnprocessableEntityException({
+          code: 'NFE_PRODUCTION_DISABLED',
+          message: 'NF-e em produção ainda não liberada',
+          type: 'configuration',
+        }),
+      );
+    const { runner, repo, notifier } = build({ nfeIssue: refusal });
+    const s = schedule({ documentType: 'nfe' });
+    await repo.insert(s);
+    await runner.runDue('2026-11-09');
+    expect(repo.runs[0]).toMatchObject({
+      outcome: 'failed',
+      errorCode: expect.stringContaining('NFE_PRODUCTION_DISABLED') as string,
+    });
+    expect(s.props.attempts).toBe(1);
+    await runner.runDue('2026-11-10');
+    await runner.runDue('2026-11-11');
+    expect(s.props).toMatchObject({
+      status: 'paused',
+      pauseReason: 'failures',
+    });
+    expect(notifier.paused).toHaveBeenCalledTimes(1);
+  });
+
+  it('an unexpected error rolls the tenant back instead of hiding as a failed attempt', async () => {
+    const { runner, repo } = build({
+      nfeIssue: () => Promise.reject(new Error('db down')),
+    });
+    const s = schedule({ documentType: 'nfe' });
+    await repo.insert(s);
+    const result = await runner.runDue(run);
+    expect(result.errors).toBe(1);
+    expect(s.props.attempts).toBe(0);
   });
 });

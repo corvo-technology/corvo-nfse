@@ -14,7 +14,7 @@ vi.mock("@/lib/api", async (original) => ({
 }));
 
 const companies = [{ id: "c1", name: "Acme Ltda" }, { id: "c2", name: "Beta ME" }];
-const saved: InvoiceSchedule = { id: "s1", kind: "recurring", frequency: "MONTHLY", status: "active", pauseReason: null, companyId: "c1", anchorOn: "2026-11-09", nextRunOn: "2026-11-09", endsOn: null, attempts: 0, lastRunOn: null, invoice: { amount: 150 }, createdAt: "2026-11-06T15:00:00.000Z" };
+const saved: InvoiceSchedule = { id: "s1", type: "nfse", kind: "recurring", frequency: "MONTHLY", status: "active", pauseReason: null, companyId: "c1", anchorOn: "2026-11-09", nextRunOn: "2026-11-09", endsOn: null, attempts: 0, lastRunOn: null, invoice: { amount: 150 }, createdAt: "2026-11-06T15:00:00.000Z" };
 const existing = (over: Partial<InvoiceSchedule> = {}): InvoiceSchedule => ({ ...saved, endsOn: "2027-06-30", invoice: { amount: 150, service: { description: "Consultoria" }, customer: { name: "Ana", taxId: "52998224725", email: "ana@example.com" }, options: { email: { send: true } } }, ...over });
 
 const onClose = vi.fn();
