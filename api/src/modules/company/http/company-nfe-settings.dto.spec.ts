@@ -37,3 +37,16 @@ describe('UpdateCompanyNfeSettingsDto nfceAutoOffline', () => {
     ]);
   });
 });
+
+describe('UpdateCompanyNfeSettingsDto stateRegistration', () => {
+  it('may be left out (the SEFAZ cadastro fills it)', async () => {
+    const dto = plainToInstance(UpdateCompanyNfeSettingsDto, {});
+    expect((await validate(dto)).map((e) => e.property)).toEqual([]);
+  });
+
+  it('still refuses a too short IE', async () => {
+    expect(await errorsOf({ stateRegistration: '123' })).toEqual([
+      'stateRegistration',
+    ]);
+  });
+});

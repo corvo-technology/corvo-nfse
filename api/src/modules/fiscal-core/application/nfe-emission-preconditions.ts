@@ -4,10 +4,17 @@ import type { Company } from '@/modules/company/domain/company';
 import { nfeReadinessMissing } from '@/modules/company/domain/nfe-readiness';
 import { nfceSupported } from '@/infra/external/nfe/sefaz/supported-authorities';
 import type { NfeSettings } from '@/modules/company/domain/nfe-settings';
+import {
+  registrationBlocks,
+  registrationMessage,
+} from '@/modules/company/domain/nfe-registration';
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 
 export type NfePreconditionCode =
-  'NFE_PRODUCTION_DISABLED' | 'COMPANY_NFE_INCOMPLETE' | 'UF_NOT_ENABLED';
+  | 'NFE_PRODUCTION_DISABLED'
+  | 'COMPANY_NFE_INCOMPLETE'
+  | 'STATE_REGISTRATION_NOT_ENABLED'
+  | 'UF_NOT_ENABLED';
 
 /** Shape-compatible with the invoice module's `FiscalError`; fiscal-core must not import it. */
 export interface NfePreconditionError {
@@ -73,6 +80,22 @@ export class NfeEmissionPreconditions {
         'COMPANY_NFE_INCOMPLETE',
         `Complete o cadastro da empresa para emitir ${label}`,
         { missing },
+      );
+    // The last SEFAZ consulta (fresh and conclusive) says the IE will be refused: stop here, before a
+    // number is used. The consulta never blocks when it is old, unclear or about another IE.
+    const registration = registrationBlocks(
+      input.settings?.registrationCheck,
+      input.settings?.stateRegistration ?? null,
+      input.model,
+    );
+    if (registration)
+      return configurationError(
+        'STATE_REGISTRATION_NOT_ENABLED',
+        `${registrationMessage(registration, {
+          uf: input.company.addressState ?? '',
+          stateRegistration: input.settings?.stateRegistration ?? null,
+        })} Depois de resolver, confira de novo nas configurações de NF-e.`,
+        { status: registration },
       );
     if (input.model === 65) {
       const uf = input.company.addressState ?? '';

@@ -363,6 +363,48 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
         ],
       }),
     ),
+    registrationWarning: nullable(
+      str({
+        description:
+          'Set only by `PUT`: the SEFAZ cadastro says the IE just saved will be refused. A warning, never a block.',
+      }),
+    ),
+  }),
+  NfeReadiness: obj({
+    companyId: uuid(),
+    ready: bool({
+      description:
+        'True only when nothing is missing and the SEFAZ says the IE is enabled.',
+    }),
+    status: str({
+      enum: [
+        'ready',
+        'ie_suggested',
+        'ie_choose',
+        'no_registration',
+        'not_enabled',
+        'not_credentialed',
+        'ie_mismatch',
+        'unavailable',
+        'no_certificate',
+        'company_incomplete',
+      ],
+      description:
+        '`unavailable`: the UF has no consulta or the SEFAZ did not answer (nothing is known; check the IE at the CCC).',
+    }),
+    message: str({
+      description: 'The status in a plain pt-BR sentence, ready to show.',
+    }),
+    stateRegistration: nullable(str({ example: '110042490114' })),
+    suggestedStateRegistration: nullable(
+      str({
+        description:
+          'The one enabled IE the SEFAZ has for the CNPJ, when there is exactly one.',
+      }),
+    ),
+    registrations: array(obj({ stateRegistration: str(), enabled: bool() })),
+    missing: array(str()),
+    checkedAt: nullable(dateTime()),
   }),
   NfeValidation: obj(
     {

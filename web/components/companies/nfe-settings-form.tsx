@@ -3,11 +3,11 @@
 import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api";
 import { fieldIssues, errorCodeKey } from "@/lib/api-errors";
-import { getNfeSettings, updateNfeSettings, type NfeSettings } from "@/lib/nfe";
+import { getNfeReadiness, getNfeSettings, updateNfeSettings, type NfeReadiness, type NfeSettings } from "@/lib/nfe";
 import { ieExample } from "@/lib/nfe-form";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,26 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ieError, setIeError] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<NfeReadiness | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
+
+  /** Asks the SEFAZ cadastro. With `prefill`, an IE the SEFAZ found is put in the field (never saved by itself). */
+  async function check(signal?: AbortSignal, prefill = false) {
+    setChecking(true); setCheckFailed(false);
+    try {
+      const value = await getNfeReadiness(companyId, signal);
+      if (signal?.aborted) return;
+      setReadiness(value);
+      const found = value.suggestedStateRegistration;
+      if (found && (prefill || value.status === "ie_suggested")) setStateRegistration((current) => (prefill || current.trim() === "" ? found : current));
+    } catch {
+      if (!signal?.aborted) setCheckFailed(true);
+    } finally {
+      if (!signal?.aborted) setChecking(false);
+    }
+  }
 
   function fill(value: NfeSettings) {
     setSettings(value);
@@ -54,7 +74,7 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
   useEffect(() => {
     const abort = new AbortController();
     getNfeSettings(companyId, abort.signal)
-      .then((value) => { if (!abort.signal.aborted) { fill(value); setLoadError(null); } })
+      .then((value) => { if (!abort.signal.aborted) { fill(value); setLoadError(null); void check(abort.signal); } })
       .catch((cause) => { if (!abort.signal.aborted) setLoadError(apiError(cause, t("loadFailed"))); });
     return () => abort.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- apiError changes identity with the messages, not with the data
@@ -63,10 +83,13 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
   async function save(event: React.FormEvent) {
     event.preventDefault();
     if (saving) return;
-    setSaving(true); setSaved(false); setError(null); setIeError(null);
+    setSaving(true); setSaved(false); setError(null); setIeError(null); setWarning(null);
     try {
-      fill(await updateNfeSettings(companyId, { stateRegistration: stateRegistration.trim(), defaultSeries: Number(series), ...(nfce ? { nfceDefaultSeries: Number(nfceSeries), nfceAutoOffline: autoOffline } : {}), defaultNatOp: natOp.trim() || undefined, defaultCsosn: csosn }));
+      const result = await updateNfeSettings(companyId, { stateRegistration: stateRegistration.trim(), defaultSeries: Number(series), ...(nfce ? { nfceDefaultSeries: Number(nfceSeries), nfceAutoOffline: autoOffline } : {}), defaultNatOp: natOp.trim() || undefined, defaultCsosn: csosn });
+      fill(result);
+      setWarning(result.registrationWarning ?? null);
       setSaved(true);
+      void check();
     } catch (cause) {
       const text = apiError(cause, t("saveFailed"));
       const invalidIe = cause instanceof ApiError && (cause.code ? errorCodeKey(cause.code) === "state_registration_invalid" : false);
@@ -94,6 +117,7 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
           <ul className="list-disc pl-5">{missing.map((field) => <li key={field}>{t.has(`missing.${field}`) ? t(`missing.${field}`) : field}</li>)}</ul>
         </div>
       )}
+      <RegistrationStatus readiness={readiness} checking={checking} failed={checkFailed} uf={uf} canManage={canManage} onCheck={() => void check(undefined, true)} />
       <form noValidate onSubmit={save} className="grid items-start gap-4 sm:grid-cols-2">
         <Field label={t("stateRegistration")} hint={t("stateRegistrationHint")} error={ieError ?? undefined} required>
           {(control) => <Input {...control} value={stateRegistration} disabled={!canManage} inputMode="numeric" autoComplete="off" placeholder={t("stateRegistrationPlaceholder", { example: ieExample(uf) })} onChange={(event) => setStateRegistration(event.target.value)} />}
@@ -134,9 +158,26 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
         <div className="flex flex-col justify-end gap-2 sm:col-span-2">
           {error && <p role="alert" className="banner banner-danger">{error}</p>}
           {saved && <p role="status" className="banner banner-ok">{t("saved")}</p>}
+          {warning && <p role="alert" className="banner banner-warn">{warning}</p>}
           {canManage ? <div><Button type="submit" loading={saving} disabled={stateRegistration.trim() === ""}>{t("save")}</Button></div> : <p className="text-sm text-text-3">{t("readOnly")}</p>}
         </div>
       </form>
     </Card>
+  );
+}
+
+/** What the SEFAZ cadastro says about the IE, in plain words, with the button that asks again and fills the IE in. */
+function RegistrationStatus({ readiness, checking, failed, uf, canManage, onCheck }: { readiness: NfeReadiness | null; checking: boolean; failed: boolean; uf: string; canManage: boolean; onCheck: () => void }) {
+  const t = useTranslations("Nfe.settings.readiness");
+  const status = readiness?.status;
+  const good = status === "ready" || status === "ie_suggested";
+  const text = failed ? t("unavailable") : readiness && status && status !== "company_incomplete"
+    ? t(status, { uf: uf || "?", ie: readiness.stateRegistration ?? "", suggested: readiness.suggestedStateRegistration ?? "", list: readiness.registrations.filter((item) => item.enabled).map((item) => item.stateRegistration).join(", ") })
+    : null;
+  return (
+    <div data-testid="nfe-readiness" role="status" className="flex flex-col gap-2">
+      {checking && !text ? <p className="text-sm text-text-3">{t("checking")}</p> : text && <p className={good ? "banner banner-ok" : "banner banner-warn"}>{text}</p>}
+      {canManage && <div><Button type="button" variant="secondary" loading={checking} onClick={onCheck}><Search size={14} aria-hidden />{t("button")}</Button></div>}
+    </div>
   );
 }

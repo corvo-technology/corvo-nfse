@@ -4,6 +4,10 @@ import { DataSource, IsNull } from 'typeorm';
 import { runWithTenant } from '@/infra/persistence/typeorm/tenant-context.storage';
 import { TypeOrmTransactionContext } from '@/infra/persistence/typeorm/typeorm-transaction-context';
 import type { ICompanyNfeSettingsRepository } from '../domain/company-nfe-settings.repository';
+import type {
+  RegistrationCheck,
+  RegistrationStatus,
+} from '../domain/nfe-registration';
 import {
   crtForRegime,
   type Crt,
@@ -67,10 +71,37 @@ export class TypeOrmCompanyNfeSettingsRepository implements ICompanyNfeSettingsR
       return toDomain(await repo.findOneByOrFail({ companyId, tenantId }));
     });
   }
+
+  async saveRegistrationCheck(
+    companyId: string,
+    tenantId: string,
+    check: RegistrationCheck | null,
+  ): Promise<void> {
+    await runWithTenant(tenantId, async () => {
+      await this.settings().update(
+        { companyId, tenantId },
+        {
+          registrationCheckStatus: check?.status ?? null,
+          registrationCheckIe: check?.stateRegistration ?? null,
+          registrationCheckedAt: check?.checkedAt ?? null,
+        },
+      );
+    });
+  }
 }
 
 function toDomain(row: CompanyNfeSettingsOrmEntity): NfeSettings {
   return {
+    registrationCheck:
+      row.registrationCheckStatus &&
+      row.registrationCheckIe &&
+      row.registrationCheckedAt
+        ? {
+            status: row.registrationCheckStatus as RegistrationStatus,
+            stateRegistration: row.registrationCheckIe,
+            checkedAt: row.registrationCheckedAt,
+          }
+        : null,
     companyId: row.companyId,
     tenantId: row.tenantId,
     stateRegistration: row.stateRegistration,

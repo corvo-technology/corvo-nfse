@@ -7,6 +7,7 @@ import {
   NFE_CORRECT_TOOL,
   NFE_INUTILIZE_TOOL,
   NFE_NUMBER_GAPS_TOOL,
+  NFE_READINESS_TOOL,
   NFE_SETTINGS_GET_TOOL,
   NFE_SETTINGS_UPDATE_TOOL,
   NFE_VALIDATE_TOOL,
@@ -22,6 +23,7 @@ import {
   createNfeListHandler,
   createNfeNumberGapsHandler,
   createNfeReviewHandler,
+  createNfeReadinessHandler,
   createNfeSettingsGetHandler,
   createNfeSettingsUpdateHandler,
   createNfeValidateHandler,
@@ -135,6 +137,9 @@ function build(
   const settings = {
     get: jest.fn().mockResolvedValue({ companyId: COMPANY, missing: [] }),
     update: jest.fn().mockResolvedValue({ companyId: COMPANY, missing: [] }),
+    readiness: jest
+      .fn()
+      .mockResolvedValue({ companyId: COMPANY, status: 'ready' }),
   };
   const nfe = new McpNfe(
     router as never,
@@ -472,6 +477,27 @@ describe('ferramentas só de NF-e', () => {
     ).rejects.toThrow('crt');
   });
 
+  it('nfe_readiness consulta a empresa e exige só nfe.documents.view', async () => {
+    const { nfe, settings } = build({ role: 'billing' });
+    await createNfeReadinessHandler(nfe)({ company_id: COMPANY }, ctx);
+    expect(settings.readiness).toHaveBeenCalledWith(
+      COMPANY,
+      'tenant-1',
+      'test',
+    );
+  });
+
+  it('nfe_settings_update aceita a IE em branco (a SEFAZ preenche)', async () => {
+    const { nfe, settings } = build();
+    await createNfeSettingsUpdateHandler(nfe)({ company_id: COMPANY }, ctx);
+    expect(settings.update).toHaveBeenCalledWith(
+      COMPANY,
+      'tenant-1',
+      'test',
+      expect.objectContaining({ stateRegistration: undefined }),
+    );
+  });
+
   it('atualizar as configurações exige nfe.documents.manage; ler, só nfe.documents.view', async () => {
     const { nfe, settings } = build({ role: 'billing' });
     await expect(
@@ -487,7 +513,7 @@ describe('ferramentas só de NF-e', () => {
 });
 
 describe('tools/list', () => {
-  it('as seis ferramentas só de NF-e aparecem para todas as contas, sem liberação', async () => {
+  it('as sete ferramentas só de NF-e aparecem para todas as contas, sem liberação', async () => {
     const server = new McpServer();
     for (const tool of [
       NFE_VALIDATE_TOOL,
@@ -496,6 +522,7 @@ describe('tools/list', () => {
       NFE_NUMBER_GAPS_TOOL,
       NFE_SETTINGS_GET_TOOL,
       NFE_SETTINGS_UPDATE_TOOL,
+      NFE_READINESS_TOOL,
     ])
       server.registerTool(tool, async () => ({}));
     const names = (await server.getToolDefinitions(ctx)).map((t) => t.name);
@@ -504,6 +531,7 @@ describe('tools/list', () => {
         'nfe_correct',
         'nfe_inutilize',
         'nfe_number_gaps',
+        'nfe_readiness',
         'nfe_settings_get',
         'nfe_settings_update',
         'nfe_validate',
