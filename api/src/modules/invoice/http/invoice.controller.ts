@@ -484,9 +484,13 @@ export class InvoiceController {
 
   @Post(':id/email')
   @ApiKeyEndpoint()
-  @RequirePermission('nfse.invoices.issue')
+  @RequireDocumentPermission(ISSUE)
   @HttpCode(202)
-  @ApiOperation({ summary: 'Request invoice email to customer' })
+  @ApiOperation({
+    summary: 'Request invoice email to customer',
+    description:
+      'Sends an authorized NFS-e, NF-e or NFC-e again by e-mail (the PDF and the XML), to the customer on the note or to `email`. A note that is not authorized yet answers 409 DOCUMENTS_NOT_READY; a cancelled one, 409 INVOICE_CANCELLED_NO_EMAIL. The same `Idempotency-Key` is one send.',
+  })
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiHeader({ name: 'idempotency-key', required: false })
   async requestEmail(
@@ -495,18 +499,22 @@ export class InvoiceController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Body() dto?: RequestInvoiceEmailDto,
   ) {
-    const tenantId = req.authContext!.activeTenantId;
-    const result = await this.invoiceService.requestEmail(
+    return this.byId(
       id,
-      tenantId,
-      idempotencyKey,
-      executionEnvironment(req.authContext!),
-      dto?.email,
+      req,
+      ISSUE,
+      async () => {
+        const result = await this.invoiceService.requestEmail(
+          id,
+          req.authContext!.activeTenantId,
+          idempotencyKey,
+          executionEnvironment(req.authContext!),
+          dto?.email,
+        );
+        return data({ emailId: result.emailId, status: result.status });
+      },
+      (routes, call) => routes.email(id, dto?.email, idempotencyKey, call),
     );
-    return data({
-      emailId: result.emailId,
-      status: result.status,
-    });
   }
 
   @Post(':id/cancel')

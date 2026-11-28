@@ -39,6 +39,7 @@ describe('McpService tool registration', () => {
         'company_numbering_check',
         'cnpj_lookup',
         'nfe_validate',
+        'nfe_repeat',
         'nfe_correct',
         'nfe_inutilize',
         'nfe_number_gaps',

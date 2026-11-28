@@ -205,3 +205,35 @@ export function nfeDownloadFormatInvalid(): BadRequestException {
     message: 'format must be xml or pdf',
   });
 }
+
+/** 422: only a normal NF-e (finNfe 1) is copied; a return or complement refers to another note. */
+export function nfeRepeatNotNormal(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    code: 'NFE_REPEAT_NOT_NORMAL',
+    message: 'Only a normal NF-e (finNfe 1) can be copied',
+  });
+}
+
+/** 409: a cancelled note is not sent by e-mail. */
+export function nfeCancelledNoEmail(): ConflictException {
+  return new ConflictException({
+    code: 'INVOICE_CANCELLED_NO_EMAIL',
+    message: 'Invoice is cancelled; e-mail is not available',
+  });
+}
+
+/** 422: neither the note nor the request has an address to send to. */
+export function nfeRecipientEmailMissing(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    code: 'CUSTOMER_EMAIL_MISSING',
+    message: 'Customer has no email',
+  });
+}
+
+/** 422: the key of an e-mail request has up to 64 letters, digits, `_` or `-` (like the NFS-e one). */
+export function nfeEmailKeyInvalid(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    code: 'IDEMPOTENCY_KEY_INVALID',
+    message: 'Invalid idempotency key format',
+  });
+}

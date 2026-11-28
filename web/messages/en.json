@@ -2145,6 +2145,7 @@
     "nfe_validation_failed": "The NF-e has problems. Check the listed fields and send it again.",
     "invoice_operation_not_supported": "This operation does not exist for this type of document. For example, correction letters, discard and inutilization are NF-e only.",
     "nfe_invalid_state": "This action does not apply to the current state of the NF-e.",
+    "nfe_repeat_not_normal": "Only a normal NF-e can be copied. Returns and complements cannot.",
     "nfe_download_format_invalid": "Invalid file format. Use xml or pdf.",
     "justification_length": "The justification must have 15 to 255 characters.",
     "correction_length": "The correction must have 15 to 1000 characters.",
@@ -3793,7 +3794,8 @@
       "status": "Status",
       "created": "Created",
       "model": "Model",
-      "consumerAnonymous": "Consumer not identified"
+      "consumerAnonymous": "Consumer not identified",
+      "copy": "Copy"
     },
     "filters": {
       "company": "Company",
@@ -3823,6 +3825,8 @@
       "subtitle": "Fill in the data, check it with “Validate” and issue. Nothing is sent when you validate.",
       "resubmitTitle": "Fix and send again",
       "resubmitSubtitle": "Fix what the SEFAZ refused and send it again. The note keeps the same number.",
+      "copyTitle": "Copy note",
+      "copySubtitle": "The data comes from the copied note. Check prices and quantities before issuing: the new note gets another number and today's date.",
       "loading": "Loading…",
       "failed": "Could not load the data. Try again."
     },
@@ -3880,6 +3884,8 @@
       "sync": "Check with the SEFAZ",
       "syncDone": "We asked the SEFAZ to check. The status shows up here in a moment.",
       "resubmit": "Fix and send again",
+      "copy": "Copy",
+      "resendEmail": "Resend e-mail",
       "discard": "Discard",
       "discardTitle": "Discard this NF-e?",
       "discardWarning": "The rejected note stops existing and its number stays unused. Afterwards, use “Skipped numbers” to inutilize that number.",
@@ -4130,7 +4136,9 @@
       "title": "New consumer sale",
       "subtitle": "Items, payment method and, if the customer asks, the CPF. Nothing is sent when you validate.",
       "resubmitTitle": "Fix and send the NFC-e again",
-      "resubmitSubtitle": "Fix what the SEFAZ refused and send it again. The note keeps the same number."
+      "resubmitSubtitle": "Fix what the SEFAZ refused and send it again. The note keeps the same number.",
+      "copyTitle": "Copy sale",
+      "copySubtitle": "The data comes from the copied sale. Check prices and quantities before issuing: the new note gets another number and today's date."
     }
   },
   "Admin": {

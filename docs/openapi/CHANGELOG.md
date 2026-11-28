@@ -6,6 +6,9 @@ Built from `git log --since=2026-10-26` and the diff of the controllers and DTOs
 
 ## Unreleased
 
+- `POST /invoices/{id}/email` now also sends an authorized NF-e or NFC-e again (the XML and the DANFE or DANFCE), to the recipient or to the `email` in the body; same `202` answer `{ emailId, status }` and same codes (`DOCUMENTS_NOT_READY`, `INVOICE_CANCELLED_NO_EMAIL`, `CUSTOMER_EMAIL_MISSING`, `IDEMPOTENCY_KEY_INVALID`). Nothing changes for NFS-e.
+- The accountant monthly package now also carries the NFC-e (folder `nfce/`); `nfe-resumo.csv` gets a last column, `modelo` (55 or 65).
+- MCP: new tool `nfe_repeat` (issue a new NF-e or NFC-e copying a previous one; code `NFE_REPEAT_NOT_NORMAL` for a note that is not a normal sale); `nfse_email_resend` takes `type`.
 - `GET /fiscal-portal/status` answers a new field, `connection` (`state`, `since`, `ourSide`): what the connection tests see (`ok`, `portal_down`, `gov_unreachable_from_us`, `no_internet`, `emission_failures`). Additive; invoices wait in the queue in every state.
 
 ## Next: NFC-e in test mode (homologação)

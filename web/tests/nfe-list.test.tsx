@@ -57,6 +57,18 @@ describe("NF-e list", () => {
     expect(screen.getAllByText("NCM invalid").length).toBeGreaterThan(0);
   });
 
+  it("each row has a Copy link to the form filled from the note; without permission to issue there is none", async () => {
+    renderPage();
+    const links = await screen.findAllByRole("link", { name: "Copy Maria da Silva" });
+    expect(links[0].getAttribute("href")).toBe("/app/nfe/new?from=n1");
+    expect((await screen.findAllByRole("link", { name: "Copy João" }))[0].getAttribute("href")).toBe("/app/nfe/new?from=n2");
+    cleanup();
+    mocks.permissions = new Set(["nfe.documents.view"]);
+    renderPage();
+    await screen.findAllByRole("link", { name: "Maria da Silva" });
+    expect(screen.queryByRole("link", { name: /^Copy / })).toBeNull();
+  });
+
   it("filters by company and by state on the API, from the first page", async () => {
     renderPage();
     await screen.findAllByRole("link", { name: "Maria da Silva" });

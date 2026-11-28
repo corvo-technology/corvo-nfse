@@ -25,6 +25,8 @@ import {
   type NfeSubmitted,
 } from '@/modules/nfe/application/nfe-intake.service';
 import { NfeInutilizeService } from '@/modules/nfe/application/nfe-inutilize.service';
+import { NfeResendEmailService } from '@/modules/nfe/application/nfe-resend-email.service';
+import { repeatRequest } from '@/modules/nfe/application/nfe-repeat';
 import { NfeTimelineService } from '@/modules/nfe/application/nfe-timeline.service';
 import type { NfeValidationResult } from '@/modules/nfe/application/nfe-validate.service';
 import { INfeDocumentRepository } from '@/modules/nfe/domain/nfe-document.repository';
@@ -33,6 +35,7 @@ import {
   InutilizeNfeDto,
   ListInutilizationsQuery,
   NumberGapsQuery,
+  RepeatNfeDto,
   toNfeInutilizationResponse,
   toNfeNumberGapResponse,
 } from '@/modules/nfe/http/nfe-event.dto';
@@ -89,6 +92,7 @@ export class NfceInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
     private readonly timeline: NfeTimelineService,
     private readonly files: NfeFilesService,
     private readonly inutilization: NfeInutilizeService,
+    private readonly resending: NfeResendEmailService,
     private readonly inutilizations: TypeormNfeInutilizations,
     private readonly gaps: NfeNumberGapsQuery,
     @Inject(INfeDocumentRepository)
@@ -211,6 +215,44 @@ export class NfceInvoiceRoutes implements InvoiceRoutes, OnModuleInit {
       dto,
     );
     return data(accepted(result, res));
+  }
+
+  async repeat(
+    id: string,
+    body: unknown,
+    idempotencyKey: string | undefined,
+    call: InvoiceCall,
+    res: ResponseLike,
+  ) {
+    const dto = await validateDto(RepeatNfeDto, body ?? {});
+    const doc = await this.documents.findById(
+      id,
+      call.tenantId,
+      call.environment,
+      { model: 65 },
+    );
+    if (!doc) throw nfeNotFound();
+    // The copy goes through the same DTO and checks as a sale typed by hand.
+    return this.create(
+      repeatRequest(doc, dto.additionalInfo),
+      idempotencyKey,
+      call,
+      res,
+    );
+  }
+
+  async email(
+    id: string,
+    email: string | undefined,
+    idempotencyKey: string | undefined,
+    call: InvoiceCall,
+  ) {
+    return data(
+      await this.resending.request(id, call.tenantId, call.environment, 65, {
+        toEmail: email,
+        idempotencyKey,
+      }),
+    );
   }
 
   async discard(id: string, call: InvoiceCall) {

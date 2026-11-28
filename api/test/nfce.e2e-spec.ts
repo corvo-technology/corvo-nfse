@@ -278,5 +278,50 @@ describe('NFC-e emission routes (e2e)', () => {
       );
       expect(outbox.n).toBe(1);
     });
+
+    it('POST /invoices/{id}/email queues one resend of an authorized NFC-e; the same key is one send', async () => {
+      const created = await create(
+        nfceBody(companyId, { additionalInfo: 'email' }),
+        'nfce-email-1',
+      );
+      const id = created.body.data.id as string;
+      const early = await api('post', `/invoices/${id}/email`).send({
+        email: 'consumidor@example.com',
+      });
+      expect(early.status).toBe(409);
+      expect(early.body.code).toBe('ERROR_DOCUMENTS_NOT_READY');
+      await db.query(
+        `UPDATE "${schema}".nfe_documents SET status = 'authorized', documents_ready_at = now() WHERE id = $1`,
+        [id],
+      );
+      const noAddress = await api('post', `/invoices/${id}/email`).send({});
+      expect(noAddress.status).toBe(422);
+      expect(noAddress.body.code).toBe('ERROR_CUSTOMER_EMAIL_MISSING');
+      const send = () =>
+        api('post', `/invoices/${id}/email`)
+          .set('Idempotency-Key', 'resend-1')
+          .send({ email: 'consumidor@example.com' });
+      const first = await send();
+      expect(first.status).toBe(202);
+      expect(first.body.data).toEqual({
+        emailId: 'resend-1',
+        status: 'queued',
+      });
+      expect((await send()).status).toBe(202);
+      const [outbox] = await db.query(
+        `SELECT count(*)::int AS n FROM "${schema}".outbox_messages WHERE aggregate_id = $1 AND type = 'nfe.resend_email'`,
+        [id],
+      );
+      expect(outbox.n).toBe(1);
+      await db.query(
+        `UPDATE "${schema}".nfe_documents SET status = 'cancelled' WHERE id = $1`,
+        [id],
+      );
+      const cancelled = await api('post', `/invoices/${id}/email`).send({
+        email: 'consumidor@example.com',
+      });
+      expect(cancelled.status).toBe(409);
+      expect(cancelled.body.code).toBe('ERROR_INVOICE_CANCELLED_NO_EMAIL');
+    });
   });
 });

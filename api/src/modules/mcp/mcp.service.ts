@@ -219,6 +219,7 @@ import {
   NFE_CORRECT_TOOL,
   NFE_INUTILIZE_TOOL,
   NFE_NUMBER_GAPS_TOOL,
+  NFE_REPEAT_TOOL,
   NFE_SETTINGS_GET_TOOL,
   NFE_SETTINGS_UPDATE_TOOL,
   NFE_VALIDATE_TOOL,
@@ -227,12 +228,14 @@ import {
   createNfeCancelHandler,
   createNfeCorrectHandler,
   createNfeDownloadPdfHandler,
+  createNfeEmailResendHandler,
   createNfeGetDownloadUrlHandler,
   createNfeGetHandler,
   createNfeInutilizeHandler,
   createNfeIssueHandler,
   createNfeListHandler,
   createNfeNumberGapsHandler,
+  createNfeRepeatHandler,
   createNfeReviewHandler,
   createNfeSettingsGetHandler,
   createNfeSettingsUpdateHandler,
@@ -313,7 +316,10 @@ export class McpService {
     this.server.registerTool(
       NFSE_EMAIL_RESEND_TOOL,
       this.wrapWithScopeCheck(
-        createNfseEmailResendHandler(this.invoiceService),
+        byType(createNfseEmailResendHandler(this.invoiceService), {
+          nfe: createNfeEmailResendHandler(this.nfe),
+          nfce: createNfeEmailResendHandler(this.nfe, 'nfce'),
+        }),
         'nfse:write',
       ),
     );
@@ -643,6 +649,7 @@ export class McpService {
     );
     for (const [tool, handler, scope] of [
       [NFE_VALIDATE_TOOL, createNfeValidateHandler(this.nfe), 'nfse:write'],
+      [NFE_REPEAT_TOOL, createNfeRepeatHandler(this.nfe), 'nfse:write'],
       [NFE_INUTILIZE_TOOL, createNfeInutilizeHandler(this.nfe), 'nfse:write'],
       [
         NFE_SETTINGS_UPDATE_TOOL,

@@ -44,4 +44,34 @@ describe("New NF-e / NFC-e page", () => {
     await screen.findByRole("button", { name: "Send NFC-e again" });
     expect(screen.queryByRole("radiogroup")).toBeNull();
   });
+
+  const source = (type: "nfe" | "nfce") => ({
+    type, id: "n1", companyId: "c1", natOp: "Venda de mercadoria", status: "authorized", number: 7, accessKey: "K".repeat(44),
+    recipient: type === "nfe" ? { taxId: "12345678909", name: "Maria da Silva", indIeDest: 9, stateRegistration: null, email: null, address: { street: "Rua A", number: "10", complement: null, district: "Centro", zip: "01001000", cityCode: "3550308", city: "São Paulo", state: "SP" } } : null,
+    items: [{ nItem: 1, code: "SKU1", description: "Camiseta", ncm: "61091000", cfop: "5102", unit: "UN", quantity: "2.0000", unitPrice: "10.00", total: "20.00" }],
+    payment: { payments: [{ tPag: "17", amount: "20.00" }], change: "0.00" }, additionalInfo: "Pedido 10",
+  }) as unknown as NfeDocument;
+
+  it("?from=<id> opens the NF-e form filled from the note, as a new note (no resubmit, no chooser)", async () => {
+    state.params = new URLSearchParams("from=n1");
+    state.doc = source("nfe");
+    renderPage();
+    await screen.findByRole("button", { name: "Issue NF-e" });
+    expect(screen.getByRole("heading", { name: "Copy note" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Send NF-e again" })).toBeNull();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.getByDisplayValue("Camiseta")).toBeTruthy();
+    expect(screen.getByDisplayValue("Maria da Silva")).toBeTruthy();
+    expect(screen.getByDisplayValue("Pedido 10")).toBeTruthy();
+  });
+
+  it("?from=<id> of a NFC-e opens the sale form filled from it", async () => {
+    state.params = new URLSearchParams("from=n1");
+    state.doc = source("nfce");
+    renderPage();
+    await screen.findByRole("button", { name: "Issue NFC-e" });
+    expect(screen.getByRole("heading", { name: "Copy sale" })).toBeTruthy();
+    expect(screen.getByDisplayValue("Camiseta")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Send NFC-e again" })).toBeNull();
+  });
 });

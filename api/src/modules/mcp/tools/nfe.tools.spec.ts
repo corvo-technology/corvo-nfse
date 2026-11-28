@@ -15,6 +15,8 @@ import {
   createNfeCancelHandler,
   createNfeCorrectHandler,
   createNfeDownloadPdfHandler,
+  createNfeEmailResendHandler,
+  createNfeRepeatHandler,
   createNfeGetDownloadUrlHandler,
   createNfeGetHandler,
   createNfeInutilizeHandler,
@@ -29,6 +31,7 @@ import {
 import { toDetailedNfe, toPublicNfe } from './public-shapes';
 
 const ID = '11111111-1111-4111-8111-111111111111';
+const NEW_ID = '33333333-3333-4333-8333-333333333333';
 const COMPANY = '22222222-2222-4222-8222-222222222222';
 const ctx = {
   authUserId: 'user-1',
@@ -89,6 +92,12 @@ function build(
     discard: jest
       .fn()
       .mockResolvedValue({ data: { id: ID, status: 'discarded' } }),
+    repeat: jest.fn().mockResolvedValue({
+      data: { type: 'nfe', id: NEW_ID, status: 'queued' },
+    }),
+    email: jest
+      .fn()
+      .mockResolvedValue({ data: { emailId: 'eml_1', status: 'queued' } }),
     correct: jest
       .fn()
       .mockResolvedValue({ data: { id: 'e1', type: 'correction' } }),
@@ -735,5 +744,126 @@ describe('formas públicas da NF-e', () => {
     });
     expect(out.recipientTaxId).toBe('***0181');
     expect(out.errorCode).toBe('X');
+  });
+});
+
+describe('nfe_repeat e reenvio de e-mail', () => {
+  it('nfe_repeat copia pela rota do tipo, com a chave e o texto novo, e devolve o id da cópia', async () => {
+    const { nfe, routes, router } = build();
+    const out = await createNfeRepeatHandler(nfe)(
+      {
+        invoice_id: ID,
+        idempotency_key: 'k-1',
+        additional_info: 'Pedido 77',
+      },
+      ctx,
+    );
+    expect(out).toEqual({
+      type: 'nfe',
+      invoice_id: NEW_ID,
+      status: 'queued',
+      copied_from_invoice_id: ID,
+    });
+    expect(router.forType).toHaveBeenCalledWith(
+      'nfe',
+      expect.anything(),
+      'nfe.documents.issue',
+    );
+    expect(routes.repeat).toHaveBeenCalledWith(
+      ID,
+      { additionalInfo: 'Pedido 77' },
+      'k-1',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('nfe_repeat com type nfce usa as rotas da NFC-e; sem chave é recusado', async () => {
+    const { nfe, router, routes } = build();
+    await createNfeRepeatHandler(nfe)(
+      { invoice_id: ID, type: 'nfce', idempotency_key: 'k-2' },
+      ctx,
+    );
+    expect(router.forType).toHaveBeenCalledWith(
+      'nfce',
+      expect.anything(),
+      'nfe.documents.issue',
+    );
+    expect(routes.repeat).toHaveBeenCalledWith(
+      ID,
+      {},
+      'k-2',
+      expect.anything(),
+      expect.anything(),
+    );
+    await expect(
+      createNfeRepeatHandler(nfe)({ invoice_id: ID }, ctx),
+    ).rejects.toThrow(/idempotency_key/);
+  });
+
+  it('nfe_repeat repassa a recusa de uma nota que não é venda normal', async () => {
+    const { nfe } = build({
+      routes: {
+        repeat: jest.fn().mockRejectedValue(
+          new UnprocessableEntityException({
+            code: 'NFE_REPEAT_NOT_NORMAL',
+            message: 'Only a normal NF-e (finNfe 1) can be copied',
+          }),
+        ),
+      },
+    });
+    await expect(
+      createNfeRepeatHandler(nfe)(
+        { invoice_id: ID, idempotency_key: 'k-3' },
+        ctx,
+      ),
+    ).rejects.toThrow(/NFE_REPEAT_NOT_NORMAL/);
+  });
+
+  it('papel sem nfe.documents.issue não copia nem reenvia', async () => {
+    const { nfe, routes } = build({ role: 'billing' });
+    await expect(
+      createNfeRepeatHandler(nfe)(
+        { invoice_id: ID, idempotency_key: 'k-4' },
+        ctx,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      createNfeEmailResendHandler(nfe)({ invoice_id: ID }, ctx),
+    ).rejects.toThrow();
+    expect(routes.repeat).not.toHaveBeenCalled();
+    expect(routes.email).not.toHaveBeenCalled();
+  });
+
+  it('nfse_email_resend com nfe e nfce: usa as rotas do tipo e o endereço opcional', async () => {
+    const { nfe, routes, router } = build();
+    const nfeOut = await createNfeEmailResendHandler(nfe)(
+      { type: 'nfe', invoice_id: ID, email: ' a@b.com ' },
+      ctx,
+    );
+    expect(nfeOut).toEqual({
+      type: 'nfe',
+      invoice_id: ID,
+      email_id: 'eml_1',
+      status: 'queued',
+    });
+    expect(routes.email).toHaveBeenCalledWith(
+      ID,
+      'a@b.com',
+      undefined,
+      expect.anything(),
+    );
+    await createNfeEmailResendHandler(nfe, 'nfce')({ invoice_id: ID }, ctx);
+    expect(router.forType).toHaveBeenLastCalledWith(
+      'nfce',
+      expect.anything(),
+      'nfe.documents.issue',
+    );
+    await expect(
+      createNfeEmailResendHandler(nfe)(
+        { invoice_id: ID, email: 'não é e-mail' },
+        ctx,
+      ),
+    ).rejects.toThrow();
   });
 });

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- supertest bodies and raw SQL rows are untyped */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument -- supertest bodies and raw SQL rows are untyped */
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
@@ -16,6 +16,7 @@ jest.setTimeout(180_000);
 const COMPANY_TAX_ID = '11222333000181';
 const NFE_ONLY = [
   'nfe_validate',
+  'nfe_repeat',
   'nfe_correct',
   'nfe_inutilize',
   'nfe_number_gaps',
@@ -139,7 +140,7 @@ describe('MCP tools for NF-e (e2e)', () => {
       expect(nfse.json).toHaveProperty('invoices');
     });
 
-    it('lists the six NF-e-only tools', async () => {
+    it('lists the NF-e-only tools', async () => {
       const names = await listedNames();
       for (const name of NFE_ONLY) expect(names).toContain(name);
     });
@@ -322,6 +323,188 @@ describe('MCP tools for NF-e (e2e)', () => {
       });
       expect(saved.isError).toBe(false);
       expect(saved.json).toMatchObject({ nfceDefaultSeries: 2 });
+    });
+  });
+
+  describe('copy a note and send its e-mail again', () => {
+    const rowOf = async (id: string) =>
+      (
+        await db.query(
+          `SELECT model, status, number, access_key, protocol, idempotency_key, additional_info, payment, fin_nfe
+           FROM "${schema}".nfe_documents WHERE id = $1`,
+          [id],
+        )
+      )[0];
+
+    it('nfe_repeat issues a new NF-e with the same content, a new key and no number', async () => {
+      const first = await call('nfse_issue', {
+        type: 'nfe',
+        company_id: companyId,
+        nfe: { ...nfeBody('SKU9'), additionalInfo: 'Pedido 10' },
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      const sourceId = first.json.invoice_id as string;
+      await db.query(
+        `UPDATE "${schema}".nfe_documents SET status = 'authorized', number = 41, series = 1,
+           access_key = '35261111222333000181550010000000411123456780', protocol = '135260000000041'
+         WHERE id = $1`,
+        [sourceId],
+      );
+      const key = `mcp-${randomUUID()}`;
+      const copy = await call('nfe_repeat', {
+        invoice_id: sourceId,
+        idempotency_key: key,
+      });
+      expect(copy.isError).toBe(false);
+      expect(copy.json).toMatchObject({
+        type: 'nfe',
+        status: 'queued',
+        copied_from_invoice_id: sourceId,
+      });
+      const newId = copy.json.invoice_id as string;
+      expect(newId).not.toBe(sourceId);
+
+      const source = await rowOf(sourceId);
+      const row = await rowOf(newId);
+      expect(row).toMatchObject({
+        model: 55,
+        status: 'queued',
+        number: null,
+        access_key: null,
+        protocol: null,
+        additional_info: 'Pedido 10',
+        fin_nfe: 1,
+      });
+      expect(row.idempotency_key).not.toBe(source.idempotency_key);
+      const itemsOf = (id: string) =>
+        db.query(
+          `SELECT code, description, ncm, cfop, quantity, unit_price FROM "${schema}".nfe_document_items WHERE document_id = $1 ORDER BY n_item`,
+          [id],
+        );
+      expect(await itemsOf(newId)).toEqual(await itemsOf(sourceId));
+      expect(row.payment).toEqual(source.payment);
+
+      const again = await call('nfe_repeat', {
+        invoice_id: sourceId,
+        idempotency_key: key,
+      });
+      expect(again.json).toMatchObject({ invoice_id: newId, replayed: true });
+
+      const other = await call('nfe_repeat', {
+        invoice_id: sourceId,
+        idempotency_key: `mcp-${randomUUID()}`,
+        additional_info: 'Pedido 11',
+      });
+      expect((await rowOf(other.json.invoice_id)).additional_info).toBe(
+        'Pedido 11',
+      );
+    });
+
+    it('nfe_repeat refuses a note that is not a normal sale, and one it does not know', async () => {
+      const first = await call('nfse_issue', {
+        type: 'nfe',
+        company_id: companyId,
+        nfe: nfeBody('SKU10'),
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      await db.query(
+        `UPDATE "${schema}".nfe_documents SET fin_nfe = 4 WHERE id = $1`,
+        [first.json.invoice_id],
+      );
+      const refused = await call('nfe_repeat', {
+        invoice_id: first.json.invoice_id,
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      expect(refused.isError).toBe(true);
+      expect(refused.text).toContain('NFE_REPEAT_NOT_NORMAL');
+
+      const unknown = await call('nfe_repeat', {
+        invoice_id: randomUUID(),
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      expect(unknown.isError).toBe(true);
+    });
+
+    it('nfe_repeat copies a NFC-e as a NFC-e', async () => {
+      const first = await call('nfse_issue', {
+        type: 'nfce',
+        company_id: companyId,
+        nfe: nfceBody('CAFE9'),
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      const copy = await call('nfe_repeat', {
+        type: 'nfce',
+        invoice_id: first.json.invoice_id,
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      expect(copy.isError).toBe(false);
+      expect(copy.json).toMatchObject({ type: 'nfce', status: 'queued' });
+      expect(await rowOf(copy.json.invoice_id)).toMatchObject({ model: 65 });
+      // The NF-e side does not see a NFC-e id.
+      const wrong = await call('nfe_repeat', {
+        invoice_id: first.json.invoice_id,
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      expect(wrong.isError).toBe(true);
+    });
+
+    it('nfse_email_resend for an NF-e and a NFC-e queues one send, only when the note is ready', async () => {
+      for (const type of ['nfe', 'nfce'] as const) {
+        const issued = await call('nfse_issue', {
+          type,
+          company_id: companyId,
+          nfe: type === 'nfe' ? nfeBody('SKU11') : nfceBody('CAFE11'),
+          idempotency_key: `mcp-${randomUUID()}`,
+        });
+        const id = issued.json.invoice_id as string;
+        const early = await call('nfse_email_resend', {
+          type,
+          invoice_id: id,
+          email: 'contador@example.com',
+        });
+        expect(early.isError).toBe(true);
+        expect(early.text).toContain('DOCUMENTS_NOT_READY');
+
+        await db.query(
+          `UPDATE "${schema}".nfe_documents SET status = 'authorized', documents_ready_at = now() WHERE id = $1`,
+          [id],
+        );
+        const sent = await call('nfse_email_resend', {
+          type,
+          invoice_id: id,
+          email: 'contador@example.com',
+        });
+        expect(sent.isError).toBe(false);
+        expect(sent.json).toMatchObject({
+          type,
+          invoice_id: id,
+          status: 'queued',
+        });
+        const [outbox] = await db.query(
+          `SELECT count(*)::int AS n FROM "${schema}".outbox_messages WHERE aggregate_id = $1 AND type = 'nfe.resend_email'`,
+          [id],
+        );
+        expect(outbox.n).toBe(1);
+      }
+    });
+
+    it('a NFC-e without an address needs one to be e-mailed', async () => {
+      const issued = await call('nfse_issue', {
+        type: 'nfce',
+        company_id: companyId,
+        nfe: nfceBody('CAFE12'),
+        idempotency_key: `mcp-${randomUUID()}`,
+      });
+      await db.query(
+        `UPDATE "${schema}".nfe_documents SET status = 'authorized', documents_ready_at = now() WHERE id = $1`,
+        [issued.json.invoice_id],
+      );
+      const res = await call('nfse_email_resend', {
+        type: 'nfce',
+        invoice_id: issued.json.invoice_id,
+      });
+      expect(res.isError).toBe(true);
+      expect(res.text).toContain('CUSTOMER_EMAIL_MISSING');
     });
   });
 });

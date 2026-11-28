@@ -127,6 +127,10 @@ export const nfeActions = (doc: Pick<NfeDocument, "status" | "documentsReady"> &
     // The NFC-e has no correction letter.
     correct: manage && doc.status === "authorized" && doc.type !== "nfce",
     resubmit: issue && doc.status === "rejected",
+    // "Copy": a new note with the same content, to review and issue (any note that was typed once).
+    copy: issue,
+    // Only an authorized note whose files are ready can be e-mailed again.
+    resendEmail: issue && doc.status === "authorized" && doc.documentsReady,
     discard: manage && doc.status === "rejected",
     // An off-line NFC-e is already with the consumer: its XML and DANFCE exist before the SEFAZ answers.
     download: doc.documentsReady || doc.status === "contingency_pending",
