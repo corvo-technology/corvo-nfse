@@ -7,18 +7,33 @@ import { Contact } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, DataTableSkeleton, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field } from "@/components/ui/input";
+import { Field, Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { customers as customersApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/i18n-helpers";
-import { maskTaxId } from "@/lib/masks";
-import type { SavedCustomer } from "@/lib/types";
+import { maskState, maskTaxId, maskZip } from "@/lib/masks";
+import type { CustomerAddress, SavedCustomer } from "@/lib/types";
 import { useApiErrorText } from "@/lib/use-api-error";
 
 const PAGE_SIZE = 50;
 const TYPING_PAUSE_MS = 300;
+
+/** What the person edits of a customer; the address is text until it is sent. */
+const emptyForm = { name: "", email: "", zip: "", street: "", number: "", complement: "", district: "", city: "", state: "", cityCode: "", indIeDest: "" as "" | "1" | "2" | "9", stateRegistration: "" };
+const formOf = (c: SavedCustomer): typeof emptyForm => ({
+  name: c.name, email: c.email ?? "", zip: maskZip(c.address?.zip ?? ""), street: c.address?.street ?? "", number: c.address?.number ?? "", complement: c.address?.complement ?? "",
+  district: c.address?.district ?? "", city: c.address?.city ?? "", state: c.address?.state ?? "", cityCode: c.address?.cityCode ?? "",
+  indIeDest: c.indIeDest ? (String(c.indIeDest) as "1" | "2" | "9") : "", stateRegistration: c.stateRegistration ?? "",
+});
+/** The address of the form: null when all of it is empty, undefined while it is half filled. */
+function addressOf(f: typeof emptyForm): CustomerAddress | null | undefined {
+  const a = { street: f.street.trim(), number: f.number.trim(), complement: f.complement.trim() || null, district: f.district.trim(), zip: f.zip.replace(/\D/g, ""), cityCode: f.cityCode.trim(), city: f.city.trim(), state: f.state.trim().toUpperCase() };
+  if (!a.street && !a.number && !a.district && !a.zip && !a.cityCode && !a.city && !a.state && !a.complement) return null;
+  return a.street && a.number && a.district && a.city && /^\d{8}$/.test(a.zip) && /^\d{7}$/.test(a.cityCode) && /^[A-Z]{2}$/.test(a.state) ? a : undefined;
+}
 
 /** Customers saved from accepted invoices. Here the person corrects a name or forgets a customer. */
 export default function CustomersPage() {
@@ -37,7 +52,7 @@ export default function CustomersPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SavedCustomer | null>(null);
-  const [form, setForm] = useState({ name: "", email: "" });
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<SavedCustomer | null>(null);
@@ -72,7 +87,7 @@ export default function CustomersPage() {
   }, [nextCursor, term, apiError, t]);
 
   function openEdit(customer: SavedCustomer) {
-    setForm({ name: customer.name, email: customer.email ?? "" });
+    setForm(formOf(customer));
     setFormError(null);
     setEditing(customer);
   }
@@ -84,7 +99,17 @@ export default function CustomersPage() {
     if (!name) { setFormError(t("edit.nameRequired")); return; }
     setSaving(true);
     try {
-      const updated = await customersApi.update(editing.taxId, { name, email: form.email.trim() || null });
+      const address = addressOf(form);
+      const indIeDest = form.indIeDest ? (Number(form.indIeDest) as 1 | 2 | 9) : null;
+      const stateRegistration = form.stateRegistration.trim() || null;
+      if (address === undefined) { setFormError(t("edit.addressIncomplete")); setSaving(false); return; }
+      const updated = await customersApi.update(editing.taxId, {
+        name, email: form.email.trim() || null,
+        // Only what changed from what is saved: an address left empty is not sent for a customer that has none.
+        ...(address || editing.address ? { address } : {}),
+        ...(indIeDest !== (editing.indIeDest ?? null) ? { indIeDest } : {}),
+        ...(stateRegistration !== (editing.stateRegistration ?? null) ? { stateRegistration } : {}),
+      });
       setRows((current) => current.map((row) => (row.taxId === updated.taxId ? updated : row)));
       setEditing(null);
     } catch (cause) { setFormError(apiError(cause, t("edit.failed"))); }
@@ -155,6 +180,28 @@ export default function CustomersPage() {
           <Field label={t("columns.email")} optionalLabel={t("edit.optional")} hint={t("edit.emailHint")}>
             {(c) => <input {...c} type="email" inputMode="email" className="field" maxLength={255} value={form.email} onChange={(event) => setForm((f) => ({ ...f, email: event.target.value }))} autoComplete="off" spellCheck={false} />}
           </Field>
+          <fieldset className="grid items-start gap-3 sm:grid-cols-6">
+            <legend className="mb-1 text-[13px] text-text-3">{t("edit.addressTitle")}</legend>
+            <Field className="sm:col-span-2" label={t("edit.zip")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} inputMode="numeric" autoComplete="off" placeholder="01001-000" value={form.zip} onChange={(event) => setForm((f) => ({ ...f, zip: maskZip(event.target.value) }))} />}</Field>
+            <Field className="sm:col-span-3" label={t("edit.street")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={60} value={form.street} onChange={(event) => setForm((f) => ({ ...f, street: event.target.value }))} />}</Field>
+            <Field className="sm:col-span-1" label={t("edit.number")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={60} value={form.number} onChange={(event) => setForm((f) => ({ ...f, number: event.target.value }))} />}</Field>
+            <Field className="sm:col-span-3" label={t("edit.complement")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={60} value={form.complement} onChange={(event) => setForm((f) => ({ ...f, complement: event.target.value }))} />}</Field>
+            <Field className="sm:col-span-3" label={t("edit.district")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={60} value={form.district} onChange={(event) => setForm((f) => ({ ...f, district: event.target.value }))} />}</Field>
+            <Field className="sm:col-span-3" label={t("edit.city")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={60} value={form.city} onChange={(event) => setForm((f) => ({ ...f, city: event.target.value }))} />}</Field>
+            <Field className="sm:col-span-1" label={t("edit.state")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={2} placeholder="SP" value={form.state} onChange={(event) => setForm((f) => ({ ...f, state: maskState(event.target.value) }))} />}</Field>
+            <Field className="sm:col-span-2" label={t("edit.cityCode")} optionalLabel={t("edit.optional")} hint={t("edit.cityCodeHint")}>{(c) => <Input {...c} inputMode="numeric" maxLength={7} placeholder="3550308" value={form.cityCode} onChange={(event) => setForm((f) => ({ ...f, cityCode: event.target.value.replace(/\D/g, "") }))} />}</Field>
+            <Field className="sm:col-span-3" label={t("edit.indIeDest")} optionalLabel={t("edit.optional")}>
+              {(c) => (
+                <Select {...c} value={form.indIeDest} onChange={(event) => setForm((f) => ({ ...f, indIeDest: event.target.value as typeof emptyForm.indIeDest }))}>
+                  <option value="">—</option>
+                  <option value="9">{t("edit.ie9")}</option>
+                  <option value="1">{t("edit.ie1")}</option>
+                  <option value="2">{t("edit.ie2")}</option>
+                </Select>
+              )}
+            </Field>
+            <Field className="sm:col-span-3" label={t("edit.stateRegistration")} optionalLabel={t("edit.optional")}>{(c) => <Input {...c} maxLength={20} autoComplete="off" value={form.stateRegistration} onChange={(event) => setForm((f) => ({ ...f, stateRegistration: event.target.value }))} />}</Field>
+          </fieldset>
           <p className="text-[13px] text-text-3">{t("edit.note")}</p>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={() => setEditing(null)}>{tc("cancel")}</Button>

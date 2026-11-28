@@ -185,7 +185,8 @@ export const TAGS: Record<string, string> = {
     'The companies (CNPJs) that issue invoices: registration, fiscal profile, service tax profiles, DPS numbering and the accountant package.',
   Certificates: 'The A1 digital certificate (PKCS#12) of each company.',
   Customers: 'Customers saved from accepted invoices, and CNPJ lookup.',
-  'Service favorites': 'Services a company issues often, saved to reuse.',
+  'Service favorites':
+    'Services (to fill the NFS-e) and products (to fill the NF-e and NFC-e items) a company uses often, saved to reuse.',
   Schedules: 'Scheduled and recurring invoices.',
   Imports: 'Bulk issuing from a CSV or Excel spreadsheet.',
   Webhooks:
@@ -791,7 +792,7 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
     id: 'customers_update',
     tag: 'Customers',
     description:
-      'Corrects the name or e-mail of a saved customer. Send `email: null` to clear it. Issued invoices are not changed.',
+      'Corrects the name, e-mail, NF-e address (`address`), `indIeDest` or state registration of a saved customer. Send a field as `null` to clear it. An NF-e that is accepted saves its recipient here, and the NF-e form fills the recipient from it. Issued invoices are not changed.',
     ok: { 200: data(ref('SavedCustomer')) },
   },
   'DELETE /customers/{taxId}': {
@@ -805,20 +806,22 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'GET /companies/{companyId}/service-favorites': {
     id: 'serviceFavorites_list',
     tag: 'Service favorites',
-    description: 'The services the company saved to reuse when issuing.',
+    description:
+      'The services the company saved to reuse when issuing. `?kind=product` lists the saved products instead (`service` is the default). Permission: `nfse.invoices.view` or `nfe.documents.view`.',
     ok: { 200: list(ref('ServiceFavorite')) },
   },
   'POST /companies/{companyId}/service-favorites': {
     id: 'serviceFavorites_create',
     tag: 'Service favorites',
     description:
-      'Saves a service (label, description, service code and, optionally, a default amount and municipality) for the company.',
+      'Saves a service (label, description, service code and, optionally, a default amount and municipality) for the company. With `kind: "product"` it saves a product for the NF-e and NFC-e items: `description`, `ncm` and `unitPrice` and, optionally, `code`, `gtin`, `cest`, `cfop`, `unit`, `csosn` and `origin`. The same product description (any case) updates the saved product. Up to 50 services and 500 products per company.',
     ok: { 201: data(ref('ServiceFavorite')) },
   },
   'DELETE /companies/{companyId}/service-favorites/{favoriteId}': {
     id: 'serviceFavorites_delete',
     tag: 'Service favorites',
-    description: 'Removes a favorite service. Issued invoices are not changed.',
+    description:
+      'Removes a favorite service or product. Issued invoices are not changed.',
     ok: { 200: data(ref('Deleted')) },
   },
 

@@ -18,9 +18,19 @@ const favorite = {
   companyId,
   label: 'Mensalidade',
   description: 'Consultoria mensal',
+  kind: 'service',
   serviceCode: '010101',
   amountCents: 15000,
   municipalityCode: null,
+  code: null,
+  gtin: null,
+  ncm: null,
+  cest: null,
+  cfop: null,
+  unit: null,
+  unitPrice: null,
+  csosn: null,
+  origin: null,
   createdAt: new Date(),
 };
 
@@ -48,7 +58,79 @@ describe('service favorite tools', () => {
       amount_cents: 15000,
     });
     expect(findById).toHaveBeenCalledWith(companyId, 'tenant-1', 'test');
-    expect(list).toHaveBeenCalledWith(companyId, 'tenant-1');
+    expect(list).toHaveBeenCalledWith(companyId, 'tenant-1', 'service');
+  });
+
+  it('lists the products with kind product', async () => {
+    list.mockResolvedValue([
+      {
+        ...favorite,
+        kind: 'product',
+        serviceCode: null,
+        ncm: '61091000',
+        unitPrice: 49.9,
+        unit: 'UN',
+        code: 'CAM-1',
+      },
+    ]);
+    const result = await createServiceFavoriteListHandler(
+      { list },
+      { findById },
+    )({ company_id: companyId, kind: 'product' }, ctx);
+    expect(list).toHaveBeenCalledWith(companyId, 'tenant-1', 'product');
+    expect(result.favorites[0]).toMatchObject({
+      kind: 'product',
+      ncm: '61091000',
+      unit_price: 49.9,
+      code: 'CAM-1',
+    });
+    await expect(
+      createServiceFavoriteListHandler({ list }, { findById })(
+        { company_id: companyId, kind: 'other' },
+        ctx,
+      ),
+    ).rejects.toThrow(/kind/);
+  });
+
+  it('creates a product with defaults and refuses a bad NCM', async () => {
+    await createServiceFavoriteCreateHandler({ create }, { findById })(
+      {
+        company_id: companyId,
+        kind: 'product',
+        description: ' Camiseta ',
+        ncm: '61091000',
+        unit_price: 49.9,
+      },
+      ctx,
+    );
+    expect(create).toHaveBeenCalledWith(companyId, 'tenant-1', {
+      kind: 'product',
+      label: 'Camiseta',
+      description: 'Camiseta',
+      code: '',
+      gtin: null,
+      ncm: '61091000',
+      cest: null,
+      cfop: null,
+      unit: 'UN',
+      unitPrice: 49.9,
+      csosn: null,
+      origin: null,
+    });
+    create.mockClear();
+    await expect(
+      createServiceFavoriteCreateHandler({ create }, { findById })(
+        {
+          company_id: companyId,
+          kind: 'product',
+          description: 'x',
+          ncm: '123',
+          unit_price: 1,
+        },
+        ctx,
+      ),
+    ).rejects.toThrow(/ncm/);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('creates a favorite', async () => {
@@ -63,6 +145,7 @@ describe('service favorite tools', () => {
       ctx,
     );
     expect(create).toHaveBeenCalledWith(companyId, 'tenant-1', {
+      kind: 'service',
       label: 'Mensalidade',
       description: 'Consultoria mensal',
       serviceCode: '010101',

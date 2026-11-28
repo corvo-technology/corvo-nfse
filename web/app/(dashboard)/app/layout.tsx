@@ -37,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     "/app/nfe/new": t("Nfe.new.title"),
     "/app/nfe/number-gaps": t("Nfe.gaps.title"),
     "/app/customers": t("Customers.title"),
+    "/app/products": t("Products.title"),
     "/app/integrations": t("Integrations.title"),
     "/app/schedules": t("Schedules.title"),
     "/app/webhooks": t("Webhooks.title"),

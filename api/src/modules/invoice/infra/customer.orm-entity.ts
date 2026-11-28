@@ -7,6 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import type { CustomerAddress } from '../domain/customer-directory';
+
 @Entity('customers')
 @ForeignKey('TenantOrmEntity', ['tenantId'], ['id'], {
   name: 'customers_tenant_id_fkey',
@@ -26,6 +28,17 @@ export class CustomerOrmEntity {
   @Column({ type: 'varchar', length: 300 }) declare name: string;
   @Column({ type: 'varchar', length: 255, nullable: true })
   declare email: string | null;
+  @Column({ type: 'jsonb', nullable: true })
+  declare address: CustomerAddress | null;
+  @Column({ name: 'ind_ie_dest', type: 'smallint', nullable: true })
+  declare indIeDest: number | null;
+  @Column({
+    name: 'state_registration',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
+  declare stateRegistration: string | null;
   @Column({ name: 'last_used_at', type: 'timestamptz', default: () => 'now()' })
   declare lastUsedAt: Date;
   @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })

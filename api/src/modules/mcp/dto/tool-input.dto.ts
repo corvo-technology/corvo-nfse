@@ -334,12 +334,37 @@ export class CustomerDeleteInput {
   @IsString() @IsNotEmpty() tax_id!: string;
 }
 
+export class CustomerAddressInput {
+  @IsString() @IsNotEmpty() @MaxLength(60) street!: string;
+  @IsString() @IsNotEmpty() @MaxLength(60) number!: string;
+  @IsOptional() @IsString() @MaxLength(60) complement?: string | null;
+  @IsString() @IsNotEmpty() @MaxLength(60) district!: string;
+  @Matches(/^\d{8}$/) zip!: string;
+  @Matches(/^\d{7}$/) city_code!: string;
+  @IsString() @IsNotEmpty() @MaxLength(60) city!: string;
+  @Matches(/^[A-Z]{2}$/) state!: string;
+}
+
 export class CustomerUpdateInput extends CustomerDeleteInput {
   @IsOptional() @IsString() @IsNotEmpty() @MaxLength(300) name?: string;
   /** null removes the saved email. */
   @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsEmail()
   email?: string | null;
+  /** NF-e recipient address; null removes it. */
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @ValidateNested()
+  @Type(() => CustomerAddressInput)
+  address?: CustomerAddressInput | null;
+  /** 1 contributor, 2 exempt, 9 non-contributor; null removes it. */
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsIn([1, 2, 9])
+  ind_ie_dest?: 1 | 2 | 9 | null;
+  /** State registration (IE); null removes it. */
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(20)
+  state_registration?: string | null;
 }
 
 export class NfseSubstituteInput {

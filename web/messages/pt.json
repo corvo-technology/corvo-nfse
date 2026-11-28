@@ -2267,8 +2267,9 @@
     "profile_validity_conflict": "Já existe um perfil nesse período.",
     "immutable_approved_profile": "Um perfil aprovado não pode ser alterado. Crie um novo.",
     "service_profile_not_found": "Perfil de serviço não encontrado.",
-    "service_favorite_not_found": "Serviço favorito não encontrado.",
+    "service_favorite_not_found": "Favorito não encontrado.",
     "service_favorites_limit": "Você chegou ao limite de 50 serviços favoritos. Remova algum para salvar outro.",
+    "product_favorites_limit": "Você chegou ao limite de 500 produtos salvos. Remova algum para salvar outro.",
     "service_profile_not_effective": "O perfil do serviço não está vigente na data da nota.",
     "service_profile_still_effective": "Este perfil de serviço ainda está vigente e não pode ser removido.",
     "no_effective_service_profile": "A empresa não tem perfil de serviço vigente para esta data.",
@@ -3742,6 +3743,36 @@
     "ourSideTitle": "Estamos com dificuldade para falar com o governo.",
     "ourSideBody": "Suas notas ficam na fila e saem sozinhas assim que a conexão voltar."
   },
+  "Products": {
+    "title": "Produtos",
+    "subtitle": "Os produtos salvos para as notas de produto (NF-e) e de consumidor (NFC-e). Na nota, busque pelo nome ou código e o item vem preenchido.",
+    "loadFailed": "Não foi possível carregar os produtos.",
+    "company": "Empresa",
+    "search": {
+      "label": "Buscar produto",
+      "placeholder": "Nome ou código"
+    },
+    "columns": {
+      "description": "Produto",
+      "code": "Código",
+      "ncm": "NCM",
+      "unitPrice": "Preço",
+      "actions": "Ações"
+    },
+    "empty": {
+      "title": "Nenhum produto salvo ainda",
+      "body": "Na nota, use o botão \"Salvar como produto\" em um item. Os produtos que você usava antes neste navegador passam para cá sozinhos.",
+      "action": "Emitir uma nota",
+      "noMatch": "Nenhum produto com esse nome ou código."
+    },
+    "remove": {
+      "open": "Excluir {name}",
+      "title": "Excluir este produto?",
+      "body": "{name} deixa de aparecer na busca das notas. As notas já emitidas não mudam.",
+      "confirm": "Excluir produto",
+      "failed": "Não foi possível excluir o produto."
+    }
+  },
   "Customers": {
     "title": "Clientes",
     "subtitle": "Quem você já faturou. Na próxima nota, basta o CPF ou CNPJ: o nome vem preenchido.",
@@ -3770,6 +3801,22 @@
       "title": "Corrigir cliente",
       "optional": "opcional",
       "emailHint": "Fica salvo para preencher o formulário. Deixe vazio para apagar.",
+      "addressTitle": "Endereço para a nota de produto (NF-e)",
+      "zip": "CEP",
+      "street": "Rua",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro",
+      "city": "Cidade",
+      "state": "UF",
+      "cityCode": "Código IBGE da cidade",
+      "cityCodeHint": "7 dígitos.",
+      "indIeDest": "Tipo de contribuinte",
+      "ie9": "Não contribuinte",
+      "ie1": "Contribuinte do ICMS",
+      "ie2": "Isento",
+      "stateRegistration": "Número da inscrição estadual",
+      "addressIncomplete": "Para salvar o endereço, preencha todos os campos, com CEP de 8 dígitos, UF e código IBGE de 7 dígitos. Ou deixe o endereço todo vazio.",
       "note": "A correção vale para as próximas notas e não é mais trocada por dados de outras notas. As notas já emitidas não mudam.",
       "save": "Salvar",
       "nameRequired": "Informe o nome.",
@@ -4065,7 +4112,13 @@
         "ncmLookup": "Não sabe o NCM? Pesquise no portal do governo",
         "csosnDefaultWith": "Padrão da empresa ({csosn})",
         "lineTotal": "Total do item",
-        "useSaved": "Usar um produto de notas anteriores"
+        "useSaved": "Buscar produto salvo (nome ou código)",
+        "noSavedMatch": "Nenhum produto salvo com esse nome ou código.",
+        "saveAsProduct": "Salvar como produto",
+        "savedAsProduct": "Produto salvo. Ele aparece na busca das próximas notas.",
+        "saveNeedsFields": "Para salvar, preencha a descrição e o NCM de 8 dígitos.",
+        "saveFailed": "Não foi possível salvar o produto.",
+        "manageProducts": "Ver produtos salvos"
       },
       "payments": {
         "title": "Pagamento",
@@ -4102,6 +4155,7 @@
       "cityPlaceholder": "São Paulo",
       "cityCodeKnown": "Município (código IBGE {code}) preenchido pelo CEP.",
       "cityCodeChange": "alterar",
+      "pickCustomer": "Buscar cliente salvo",
       "autofilled": {
         "customer": "Preenchido com o cliente salvo. Confira os dados.",
         "cnpj": "Preenchido com os dados públicos do CNPJ. Confira os dados.",

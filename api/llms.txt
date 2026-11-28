@@ -49,7 +49,10 @@ is remembered; on the next invoice with only customer.taxId the name is filled
 by InvoiceIntakeService (the request is not changed, so the idempotency hash
 is). Without a saved customer the name stays "Consumidor". GET /v1/customers
 (search), GET/PATCH/DELETE /v1/customers/:taxId; MCP customer_list,
-customer_update, customer_delete.
+customer_update, customer_delete. A saved customer also keeps the NF-e recipient
+address (IBGE city code), indIeDest and state registration, saved when an NF-e
+is accepted and editable with PATCH /v1/customers/:taxId (address, indIeDest,
+stateRegistration) and customer_update.
 
 Customer abroad: customer.foreign replaces customer.taxId and customer.address
 (taxId = NIF or noTaxIdReason exempt|not_required, country ISO2 other than BR,

@@ -77,7 +77,9 @@ tags:
     name: Certificates
   - description: Customers saved from accepted invoices, and CNPJ lookup.
     name: Customers
-  - description: Services a company issues often, saved to reuse.
+  - description: >-
+      Services (to fill the NFS-e) and products (to fill the NF-e and NFC-e items) a company uses
+      often, saved to reuse.
     name: Service favorites
   - description: Scheduled and recurring invoices.
     name: Schedules
@@ -948,10 +950,13 @@ paths:
         - nfse.invoices.view
   /companies/{companyId}/service-favorites:
     get:
-      description: |-
-        The services the company saved to reuse when issuing.
+      description: >-
+        The services the company saved to reuse when issuing. `?kind=product` lists the saved
+        products instead (`service` is the default). Permission: `nfse.invoices.view` or
+        `nfe.documents.view`.
 
-        Permission: `nfse.invoices.view`.
+
+        Permission: `nfse.invoices.view` or `nfe.documents.view`.
       operationId: serviceFavorites_list
       parameters:
         - description: Identifier (UUID) of the company.
@@ -960,6 +965,14 @@ paths:
           required: true
           schema:
             format: uuid
+            type: string
+        - in: query
+          name: kind
+          required: false
+          schema:
+            enum:
+              - service
+              - product
             type: string
       responses:
         '200':
@@ -984,6 +997,8 @@ paths:
               $ref: '#/components/headers/X-RateLimit-Reset'
             X-Request-Id:
               $ref: '#/components/headers/X-Request-Id'
+        '400':
+          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
         '403':
@@ -996,18 +1011,22 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: List the favorite services of a company
+      summary: List the favorite services of a company (`?kind=product` lists the products)
       tags:
         - Service favorites
       x-required-permissions:
         - nfse.invoices.view
+        - nfe.documents.view
     post:
       description: >-
         Saves a service (label, description, service code and, optionally, a default amount and
-        municipality) for the company.
+        municipality) for the company. With `kind: "product"` it saves a product for the NF-e and
+        NFC-e items: `description`, `ncm` and `unitPrice` and, optionally, `code`, `gtin`, `cest`,
+        `cfop`, `unit`, `csosn` and `origin`. The same product description (any case) updates the
+        saved product. Up to 50 services and 500 products per company.
 
 
-        Permission: `nfse.invoices.issue`.
+        Permission: `nfse.invoices.issue` or `nfe.documents.issue`.
       operationId: serviceFavorites_create
       parameters:
         - description: Identifier (UUID) of the company.
@@ -1058,17 +1077,18 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Save a favorite service for the company
+      summary: 'Save a favorite service for the company, or a product with `kind: "product"`'
       tags:
         - Service favorites
       x-required-permissions:
         - nfse.invoices.issue
+        - nfe.documents.issue
   /companies/{companyId}/service-favorites/{favoriteId}:
     delete:
       description: |-
-        Removes a favorite service. Issued invoices are not changed.
+        Removes a favorite service or product. Issued invoices are not changed.
 
-        Permission: `nfse.invoices.issue`.
+        Permission: `nfse.invoices.issue` or `nfe.documents.issue`.
       operationId: serviceFavorites_delete
       parameters:
         - description: Identifier (UUID) of the company.
@@ -1118,11 +1138,12 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Remove a favorite service
+      summary: Remove a favorite (service or product)
       tags:
         - Service favorites
       x-required-permissions:
         - nfse.invoices.issue
+        - nfe.documents.issue
   /companies/{id}:
     delete:
       description: |-
@@ -2649,8 +2670,10 @@ paths:
         - nfe.documents.issue
     patch:
       description: >-
-        Corrects the name or e-mail of a saved customer. Send `email: null` to clear it. Issued
-        invoices are not changed.
+        Corrects the name, e-mail, NF-e address (`address`), `indIeDest` or state registration of a
+        saved customer. Send a field as `null` to clear it. An NF-e that is accepted saves its
+        recipient here, and the NF-e form fills the recipient from it. Issued invoices are not
+        changed.
 
 
         Permission: `nfse.invoices.issue`.
@@ -2704,7 +2727,7 @@ paths:
           $ref: '#/components/responses/Error500'
       security:
         - ApiKeyAuth: []
-      summary: Correct the name or the email of a saved customer
+      summary: Correct the name, email, address or state registration of a saved customer
       tags:
         - Customers
       x-required-permissions:
@@ -8488,35 +8511,91 @@ components:
     CreateServiceFavorite:
       properties:
         amountCents:
-          description: Default amount in cents.
+          description: 'Service: default amount in cents.'
           format: int64
           minimum: 1
           nullable: true
           type: integer
+        cest:
+          description: 'Product: CEST, 7 digits.'
+          nullable: true
+          pattern: ^\d{7}$
+          type: string
+        cfop:
+          example: '5102'
+          nullable: true
+          pattern: ^\d{4}$
+          type: string
+        code:
+          description: 'Product: your own product code.'
+          maxLength: 60
+          type: string
+        csosn:
+          description: 'Product: CSOSN. Leave out to follow the company.'
+          enum:
+            - '102'
+            - '400'
+            - null
+          nullable: true
+          type: string
         description:
+          description: Service description, or the product name (up to 120 characters).
           maxLength: 2000
           minLength: 1
           type: string
+        gtin:
+          description: 'Product: barcode, 8 to 14 digits.'
+          nullable: true
+          pattern: ^\d{8}$|^\d{12,14}$
+          type: string
+        kind:
+          default: service
+          description: A `service` (fills the NFS-e) or a `product` (fills the NF-e and NFC-e items).
+          enum:
+            - service
+            - product
+          type: string
         label:
+          description: Short name. Required for a service; a product uses its description.
           example: Mensalidade
           maxLength: 80
           minLength: 1
           type: string
         municipalityCode:
-          description: Place of service (7 digits).
+          description: 'Service: place of service (7 digits).'
           example: '3550308'
           nullable: true
           pattern: ^\d{7}$
           type: string
+        ncm:
+          description: 'Product: NCM, 8 digits. Required for a product.'
+          example: '61091000'
+          pattern: ^\d{8}$
+          type: string
+        origin:
+          maximum: 8
+          minimum: 0
+          nullable: true
+          type: number
         serviceCode:
-          description: cTribNac, 6 digits.
+          description: cTribNac, 6 digits. Required for a service.
           example: '010101'
           pattern: ^\d{6}$
           type: string
+        unit:
+          example: UN
+          maxLength: 6
+          minLength: 1
+          nullable: true
+          type: string
+        unitPrice:
+          description: 'Product: price of one unit, in reais. Required for a product.'
+          example: 49.9
+          maximum: 99999999999
+          minimum: 0
+          type: number
       required:
-        - label
         - description
-        - serviceCode
       type: object
     CreateServiceTaxProfile:
       properties:
@@ -8771,20 +8850,44 @@ components:
     CustomerAddress:
       properties:
         city:
+          maxLength: 60
           type: string
-        country:
-          type: string
-        municipalityCode:
-          description: Incidence municipality (7 digits, IBGE code), when known.
+        cityCode:
+          description: IBGE city code, 7 digits.
           example: '3550308'
           pattern: ^\d{7}$
           type: string
+        complement:
+          maxLength: 60
+          nullable: true
+          type: string
+        district:
+          maxLength: 60
+          type: string
+        number:
+          example: '100'
+          maxLength: 60
+          type: string
         state:
+          example: SP
+          pattern: ^[A-Z]{2}$
           type: string
         street:
+          maxLength: 60
           type: string
         zip:
+          description: CEP, 8 digits.
+          example: '01310100'
+          pattern: ^\d{8}$
           type: string
+      required:
+        - street
+        - number
+        - district
+        - zip
+        - cityCode
+        - city
+        - state
       type: object
     CustomerSnapshot:
       properties:
@@ -12327,6 +12430,13 @@ components:
       type: object
     SavedCustomer:
       properties:
+        address:
+          anyOf:
+            - $ref: '#/components/schemas/CustomerAddress'
+            - enum:
+                - null
+              nullable: true
+              type: object
         createdAt:
           format: date-time
           type: string
@@ -12334,10 +12444,22 @@ components:
           format: email
           nullable: true
           type: string
+        indIeDest:
+          description: 1 contributor, 2 exempt, 9 non-contributor.
+          enum:
+            - 1
+            - 2
+            - 9
+            - null
+          nullable: true
+          type: integer
         lastUsedAt:
           format: date-time
           type: string
         name:
+          type: string
+        stateRegistration:
+          nullable: true
           type: string
         taxId:
           description: CPF or CNPJ, digits only.
@@ -12349,6 +12471,9 @@ components:
         - taxId
         - name
         - email
+        - address
+        - indIeDest
+        - stateRegistration
         - lastUsedAt
         - createdAt
         - updatedAt
@@ -12486,36 +12611,88 @@ components:
           description: Default amount, in cents.
           nullable: true
           type: integer
+        cest:
+          nullable: true
+          type: string
+        cfop:
+          nullable: true
+          type: string
+        code:
+          description: 'Product: your own code.'
+          nullable: true
+          type: string
         companyId:
           format: uuid
           type: string
         createdAt:
           format: date-time
           type: string
+        csosn:
+          enum:
+            - '102'
+            - '400'
+            - null
+          nullable: true
+          type: string
         description:
+          type: string
+        gtin:
+          nullable: true
           type: string
         id:
           format: uuid
+          type: string
+        kind:
+          description: A service fills the NFS-e; a product fills the NF-e and NFC-e items.
+          enum:
+            - service
+            - product
           type: string
         label:
           type: string
         municipalityCode:
           nullable: true
           type: string
+        ncm:
+          description: 'Product: 8 digits.'
+          nullable: true
+          type: string
+        origin:
+          nullable: true
+          type: integer
         serviceCode:
+          description: Service only.
+          nullable: true
           type: string
         tenantId:
           format: uuid
           type: string
+        unit:
+          nullable: true
+          type: string
+        unitPrice:
+          description: 'Product: price of one unit, in reais.'
+          nullable: true
+          type: number
       required:
         - id
         - tenantId
         - companyId
+        - kind
         - label
         - description
         - serviceCode
         - amountCents
         - municipalityCode
+        - code
+        - gtin
+        - ncm
+        - cest
+        - cfop
+        - unit
+        - unitPrice
+        - csosn
+        - origin
         - createdAt
       type: object
     ServiceFiscal:
@@ -12906,14 +13083,36 @@ components:
       type: object
     UpdateCustomer:
       properties:
+        address:
+          anyOf:
+            - $ref: '#/components/schemas/CustomerAddress'
+            - enum:
+                - null
+              nullable: true
+              type: object
+          description: Address used to fill the NF-e recipient. Send null to remove.
         email:
           description: Send null to remove the saved email.
           format: email
           maxLength: 255
           nullable: true
           type: string
+        indIeDest:
+          description: 1 contributor, 2 exempt, 9 non-contributor. Send null to remove.
+          enum:
+            - 1
+            - 2
+            - 9
+            - null
+          nullable: true
+          type: number
         name:
           maxLength: 300
+          type: string
+        stateRegistration:
+          description: State registration (IE). Send null to remove.
+          maxLength: 20
+          nullable: true
           type: string
       type: object
     UpdateImportRow:

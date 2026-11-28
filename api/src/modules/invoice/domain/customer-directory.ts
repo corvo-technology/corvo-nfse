@@ -1,11 +1,34 @@
 import type { ExecutionEnvironment } from '@/shared/domain/execution-environment';
 
+/** Address of a customer, as the NF-e recipient needs it. `cityCode` is the IBGE code (7 digits). */
+export interface CustomerAddress {
+  street: string;
+  number: string;
+  complement: string | null;
+  district: string;
+  zip: string;
+  cityCode: string;
+  city: string;
+  state: string;
+}
+
+/** The NF-e recipient data a saved customer keeps (all optional: an NFS-e customer has none). */
+export interface CustomerNfeData {
+  address?: CustomerAddress | null;
+  /** 1 contributor, 2 exempt, 9 non-contributor. */
+  indIeDest?: 1 | 2 | 9 | null;
+  stateRegistration?: string | null;
+}
+
 /** A customer (tomador) remembered from an accepted invoice, so the next one needs only the CPF/CNPJ. */
 export interface SavedCustomer {
   /** CPF (11) or CNPJ (14), without punctuation. */
   taxId: string;
   name: string;
   email: string | null;
+  address: CustomerAddress | null;
+  indIeDest: 1 | 2 | 9 | null;
+  stateRegistration: string | null;
   lastUsedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -41,12 +64,16 @@ export abstract class CustomerDirectory {
 
   /**
    * Saves the customer of an accepted invoice. Automatic sources (invoices, imports,
-   * schedules, integrations) only create the customer or fill an empty field: a saved name
-   * or email is never replaced. Only `update` (an explicit edit) changes existing values.
+   * schedules, integrations) only create the customer or fill an empty field: a saved name,
+   * email, address or state registration is never replaced. Only `update` (an explicit edit) changes existing values.
    */
   abstract remember(
     scope: CustomerScope,
-    customer: { taxId: string; name: string; email?: string | null },
+    customer: {
+      taxId: string;
+      name: string;
+      email?: string | null;
+    } & CustomerNfeData,
   ): Promise<void>;
 
   abstract list(
@@ -59,7 +86,7 @@ export abstract class CustomerDirectory {
   abstract update(
     scope: CustomerScope,
     taxId: string,
-    change: { name?: string; email?: string | null },
+    change: { name?: string; email?: string | null } & CustomerNfeData,
   ): Promise<SavedCustomer | null>;
 
   /** Removes the saved customer; issued invoices are not touched. */

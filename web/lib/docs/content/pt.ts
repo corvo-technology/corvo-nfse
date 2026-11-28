@@ -1250,7 +1250,7 @@ console.log(res.status, data.status, data.substitutesInvoiceId); // 202 "queued"
         },
         { kind: "callout", tone: "warn", body: "O prazo para substituir e algumas regras (por exemplo, nota sem tomador identificado) são definidos por cada município. A Corvo não conhece esse prazo de antemão: se a Receita recusar, o código do erro vem na nota substituta. Envie `Idempotency-Key` para repetir a chamada sem emitir duas substitutas. No MCP, a ferramenta é `nfse_substitute`." },
         { kind: "heading", level: 2, body: "Clientes salvos" },
-        { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente. Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },
+        { kind: "text", body: "Depois que uma nota com tomador é aceita, a Corvo guarda o CPF ou CNPJ, o nome e o e-mail desse cliente (uma NF-e aceita guarda também o endereço, o `indIeDest` e a inscrição estadual, para preencher a próxima NF-e). Na nota seguinte para o mesmo documento, basta enviar `customer.taxId`: o `name` vem do cadastro. O que você envia na requisição sempre vale, e a nota já emitida nunca muda." },
         { kind: "table", head: ["Regra", "Detalhe"], rows: [
           ["Escopo", "Um cadastro por documento em cada workspace e ambiente. `test` e `live` não se misturam."],
           ["Preenchimento", "Só o `name`, e só quando a requisição não traz nome. O e-mail salvo não é usado para enviar a nota."],
@@ -1335,11 +1335,14 @@ console.log(res.status, data?.name); // 200 "Acme Ltda"`,
           path: "/v1/customers/:taxId",
           scopes: ["full_access", "invoices_issue", "invoices_read_write"],
           success: "200 OK",
-          summary: "Corrige o `name` ou o `email` de um cliente salvo. Envie só o que muda; `email: null` apaga o e-mail. A correção vale para as próximas notas.",
+          summary: "Corrige o `name`, o `email`, o endereço da NF-e, o `indIeDest` ou a inscrição estadual de um cliente salvo. Envie só o que muda; `null` apaga o campo. A correção vale para as próximas notas.",
           params: {
             rows: [
               { name: "name", type: "string", required: false, description: "Novo nome, até 300 caracteres." },
               { name: "email", type: "string | null", required: false, description: "Novo e-mail, ou `null` para apagar." },
+              { name: "address", type: "object | null", required: false, description: "Endereço do destinatário da NF-e: `street`, `number`, `complement?`, `district`, `zip` (8 dígitos), `cityCode` (IBGE, 7 dígitos), `city`, `state`. `null` apaga." },
+              { name: "indIeDest", type: "1 | 2 | 9 | null", required: false, description: "1 contribuinte, 2 isento, 9 não contribuinte." },
+              { name: "stateRegistration", type: "string | null", required: false, description: "Inscrição estadual (IE) do cliente." },
             ],
           },
           examples: {
@@ -3276,8 +3279,8 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`customer_update`",
               "`nfse:write`",
-              "`tax_id` e o que muda: `name?`, `email?` (`null` apaga)",
-              "`{ tax_id, name, email, last_used_at }`"
+              "`tax_id` e o que muda: `name?`, `email?`, `address?` (`street`, `number`, `complement?`, `district`, `zip`, `city_code`, `city`, `state`), `ind_ie_dest?`, `state_registration?` (`null` apaga cada um)",
+              "`{ tax_id, name, email, address, ind_ie_dest, state_registration, last_used_at }`"
             ],
             [
               "`customer_delete`",
@@ -3330,14 +3333,14 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`service_favorite_list`",
               "`nfse:read`",
-              "`company_id`",
+              "`company_id`, `kind?` (`service` ou `product`)",
               "`{ favorites }`"
             ],
             [
               "`service_favorite_create`",
               "`nfse:write`",
-              "`company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?`",
-              "O favorito salvo (até 50 por empresa)"
+              "`company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?`; com `kind: \"product\"`: `description`, `ncm`, `unit_price`, `code?`, `gtin?`, `cest?`, `cfop?`, `unit?`, `csosn?`, `origin?`",
+              "O favorito salvo (até 50 serviços e 500 produtos por empresa; a mesma descrição de produto atualiza)"
             ],
             [
               "`service_favorite_delete`",

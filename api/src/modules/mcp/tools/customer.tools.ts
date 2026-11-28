@@ -43,13 +43,41 @@ export const CUSTOMER_LIST_TOOL = {
 export const CUSTOMER_UPDATE_TOOL = {
   name: 'customer_update',
   description:
-    'Correct the name or the email of a saved customer. Applies to the next invoices only; invoices already issued do not change. Send email as null to remove it.',
+    'Correct the name, email, NF-e address or state registration (IE) of a saved customer. Applies to the next invoices only; invoices already issued do not change. Send a field as null to remove it. An NF-e for a saved customer is filled from this address and IE.',
   inputSchema: {
     type: 'object',
     properties: {
       ...TAX_ID,
       name: { type: 'string', maxLength: 300 },
       email: { type: ['string', 'null'] },
+      address: {
+        type: ['object', 'null'],
+        description: 'Recipient address for NF-e; null removes it',
+        properties: {
+          street: { type: 'string' },
+          number: { type: 'string' },
+          complement: { type: ['string', 'null'] },
+          district: { type: 'string' },
+          zip: { type: 'string', description: 'CEP, 8 digits' },
+          city_code: { type: 'string', description: 'IBGE code, 7 digits' },
+          city: { type: 'string' },
+          state: { type: 'string', description: 'UF, e.g. SP' },
+        },
+        required: [
+          'street',
+          'number',
+          'district',
+          'zip',
+          'city_code',
+          'city',
+          'state',
+        ],
+      },
+      ind_ie_dest: {
+        type: ['integer', 'null'],
+        description: '1 contributor, 2 exempt, 9 non-contributor',
+      },
+      state_registration: { type: ['string', 'null'] },
     },
     required: ['tax_id'],
   },
@@ -77,6 +105,18 @@ const toWire = (customer: SavedCustomer) => ({
   tax_id: customer.taxId,
   name: customer.name,
   email: customer.email,
+  address: customer.address && {
+    street: customer.address.street,
+    number: customer.address.number,
+    complement: customer.address.complement,
+    district: customer.address.district,
+    zip: customer.address.zip,
+    city_code: customer.address.cityCode,
+    city: customer.address.city,
+    state: customer.address.state,
+  },
+  ind_ie_dest: customer.indIeDest,
+  state_registration: customer.stateRegistration,
   last_used_at: customer.lastUsedAt.toISOString(),
 });
 
@@ -119,12 +159,41 @@ export function createCustomerListHandler(directory: Directory) {
 export function createCustomerUpdateHandler(directory: Directory) {
   return async (rawParams: unknown, ctx: AuthContext) => {
     const params = await parse(CustomerUpdateInput, rawParams);
-    if (params.name === undefined && params.email === undefined)
-      throw new Error('Invalid input: send name or email to change');
+    if (
+      params.name === undefined &&
+      params.email === undefined &&
+      params.address === undefined &&
+      params.ind_ie_dest === undefined &&
+      params.state_registration === undefined
+    )
+      throw new Error(
+        'Invalid input: send name, email, address, ind_ie_dest or state_registration to change',
+      );
     const customer = await directory.update(
       scopeOf(ctx),
       taxIdOf(params.tax_id),
-      { name: params.name?.trim(), email: params.email },
+      {
+        name: params.name?.trim(),
+        email: params.email,
+        address:
+          params.address === undefined || params.address === null
+            ? params.address
+            : {
+                street: params.address.street.trim(),
+                number: params.address.number.trim(),
+                complement: params.address.complement?.trim() || null,
+                district: params.address.district.trim(),
+                zip: params.address.zip,
+                cityCode: params.address.city_code,
+                city: params.address.city.trim(),
+                state: params.address.state,
+              },
+        indIeDest: params.ind_ie_dest,
+        stateRegistration:
+          typeof params.state_registration === 'string'
+            ? params.state_registration.trim() || null
+            : params.state_registration,
+      },
     );
     if (!customer) throw new Error('Customer not found');
     return toWire(customer);

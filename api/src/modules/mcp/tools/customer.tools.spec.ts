@@ -16,6 +16,9 @@ const saved = {
   taxId: '11222333000181',
   name: 'Acme Ltda',
   email: null,
+  address: null,
+  indIeDest: null,
+  stateRegistration: null,
   lastUsedAt: new Date('2026-11-10T12:00:00Z'),
   createdAt: new Date('2026-11-01T12:00:00Z'),
   updatedAt: new Date('2026-11-10T12:00:00Z'),
@@ -35,6 +38,9 @@ describe('customer tools', () => {
           tax_id: '11222333000181',
           name: 'Acme Ltda',
           email: null,
+          address: null,
+          ind_ie_dest: null,
+          state_registration: null,
           last_used_at: '2026-11-10T12:00:00.000Z',
         },
       ],
@@ -55,6 +61,51 @@ describe('customer tools', () => {
     expect(directory.list).toHaveBeenCalledTimes(1);
     await expect(
       createCustomerListHandler(directory)({ limit: 500 }, ctx),
+    ).rejects.toThrow(/Invalid input/);
+  });
+
+  it('customer_update sends the NF-e address and state registration', async () => {
+    directory.update.mockResolvedValue(saved);
+    await createCustomerUpdateHandler(directory)(
+      {
+        tax_id: '11222333000181',
+        address: {
+          street: ' Av. Paulista ',
+          number: '1000',
+          district: 'Bela Vista',
+          zip: '01310100',
+          city_code: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+        ind_ie_dest: 1,
+        state_registration: ' 111222333444 ',
+      },
+      ctx,
+    );
+    expect(directory.update).toHaveBeenCalledWith(
+      scope,
+      '11222333000181',
+      expect.objectContaining({
+        address: {
+          street: 'Av. Paulista',
+          number: '1000',
+          complement: null,
+          district: 'Bela Vista',
+          zip: '01310100',
+          cityCode: '3550308',
+          city: 'São Paulo',
+          state: 'SP',
+        },
+        indIeDest: 1,
+        stateRegistration: '111222333444',
+      }),
+    );
+    await expect(
+      createCustomerUpdateHandler(directory)(
+        { tax_id: '11222333000181', address: { street: 'x' } },
+        ctx,
+      ),
     ).rejects.toThrow(/Invalid input/);
   });
 
@@ -84,7 +135,7 @@ describe('customer tools', () => {
     });
     await expect(
       createCustomerUpdateHandler(directory)({ tax_id: '11222333000181' }, ctx),
-    ).rejects.toThrow(/name or email/);
+    ).rejects.toThrow(/send name, email/);
   });
 
   it('reports an unknown customer and an invalid document', async () => {

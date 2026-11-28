@@ -52,14 +52,22 @@ export class NfeOutcomeService {
   private async rememberRecipient(doc: NfeDocument): Promise<void> {
     const recipient = doc.toSnapshot().recipient;
     if (!recipient) return;
-    const { taxId, name, email } = recipient;
+    const { taxId, name, email, address, indIeDest, stateRegistration } =
+      recipient;
     const clean = name?.trim();
     if (!this.customers || !taxId || !clean || clean.length > CUSTOMER_NAME_MAX)
       return;
     try {
       await this.customers.remember(
         { tenantId: doc.tenantId, environment: doc.environment },
-        { taxId, name: clean, email: email ?? null },
+        {
+          taxId,
+          name: clean,
+          email: email ?? null,
+          address,
+          indIeDest,
+          stateRegistration,
+        },
       );
     } catch (error) {
       this.logger.warn(

@@ -6,11 +6,16 @@ import { Plus, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { emptyItem, lineTotal, maskNcm, type NfeItemForm } from "@/lib/nfe-form";
 import { maskCurrency } from "@/lib/masks";
-import { loadProducts, type SavedProduct } from "@/lib/nfe-products";
+import Link from "next/link";
+import { toItemFields, useProducts, type SavedProduct } from "@/lib/nfe-products";
+import { useApiErrorText } from "@/lib/use-api-error";
+import { ProductPicker } from "@/components/nfe/product-picker";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 
 interface NfeItemsEditorProps {
+  /** The company whose saved products are offered. */
+  companyId: string;
   items: NfeItemForm[];
   onChange: (items: NfeItemForm[]) => void;
   /** Problems by field path, as the API names them (`items[1].ncm`). */
@@ -24,14 +29,23 @@ interface NfeItemsEditorProps {
 const NCM_LOOKUP = "https://portalunico.siscomex.gov.br/classif/#/sumario?perfil=publico";
 
 /** The products of the note: add, remove and edit. The totals shown are only a preview. */
-export function NfeItemsEditor({ items, onChange, errors, defaultCsosn, suggestedCfop }: NfeItemsEditorProps) {
+export function NfeItemsEditor({ companyId, items, onChange, errors, defaultCsosn, suggestedCfop }: NfeItemsEditorProps) {
   const t = useTranslations("Nfe.form.items");
   const locale = useLocale();
   const money = (value: number) => new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", { style: "currency", currency: "BRL" }).format(value);
-  const [saved] = useState<SavedProduct[]>(loadProducts);
+  const apiError = useApiErrorText();
+  const { products, save } = useProducts(companyId);
+  // The item that was just saved as a product (or the one whose saving failed), shown under its button.
+  const [note, setNote] = useState<{ index: number; text: string; ok: boolean } | null>(null);
   const set = (index: number, patch: Partial<NfeItemForm>) => onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   const add = (product?: SavedProduct) => onChange([...items, { ...emptyItem(), ...(suggestedCfop ? { cfop: suggestedCfop } : {}), ...product, cfopManual: false }]);
   // The last item is the one that is still empty: a saved product fills it instead of adding a row.
+  const saveAsProduct = async (index: number) => {
+    try {
+      const saved = await save(items[index]);
+      setNote({ index, ok: saved !== null, text: saved ? t("savedAsProduct") : t("saveNeedsFields") });
+    } catch (cause) { setNote({ index, ok: false, text: apiError(cause, t("saveFailed")) }); }
+  };
   const use = (index: number, product: SavedProduct) => set(index, { ...product, quantity: items[index].quantity || "1", cfopManual: false, cfop: suggestedCfop || product.cfop });
   return (
     <div className="flex flex-col gap-4">
@@ -40,13 +54,8 @@ export function NfeItemsEditor({ items, onChange, errors, defaultCsosn, suggeste
         return (
           <fieldset key={index} className="grid items-start gap-3 rounded-[12px] border border-border p-4 sm:grid-cols-6">
             <legend className="px-1 text-sm text-text-3">{t("item", { number: index + 1 })}</legend>
-            {saved.length > 0 && item.description === "" && (
-              <div className="sm:col-span-6">
-                <Select aria-label={t("useSaved")} value="" onChange={(e) => { const found = saved[Number(e.target.value)]; if (found) use(index, found); }}>
-                  <option value="">{t("useSaved")}</option>
-                  {saved.map((product, i) => <option key={`${product.description}-${i}`} value={i}>{product.description}</option>)}
-                </Select>
-              </div>
+            {products.length > 0 && item.description === "" && (
+              <div className="sm:col-span-6"><ProductPicker products={products} onPick={(product) => use(index, toItemFields(product))} /></div>
             )}
             <Field className="sm:col-span-4" label={t("description")} error={error("description")} required>{(c) => <Input {...c} maxLength={120} placeholder={t("descriptionPlaceholder")} value={item.description} onChange={(e) => set(index, { description: e.target.value })} />}</Field>
             <Field className="sm:col-span-2" label={t("code")} hint={t("codeHint")} error={error("code")} optionalLabel={t("optional")}>{(c) => <Input {...c} maxLength={60} placeholder={t("codePlaceholder", { number: index + 1 })} value={item.code} onChange={(e) => set(index, { code: e.target.value })} />}</Field>
@@ -68,6 +77,10 @@ export function NfeItemsEditor({ items, onChange, errors, defaultCsosn, suggeste
             <Field className="sm:col-span-2" label={t("quantity")} error={error("quantity")} required>{(c) => <Input {...c} inputMode="decimal" placeholder="1" value={item.quantity} onChange={(e) => set(index, { quantity: e.target.value.replace(/[^\d.,]/g, "") })} />}</Field>
             <Field className="sm:col-span-2" label={t("unitPrice")} error={error("unitPrice")} required>{(c) => <Input {...c} inputMode="decimal" placeholder="0,00" value={item.unitPrice} onChange={(e) => set(index, { unitPrice: maskCurrency(e.target.value) })} />}</Field>
             <p className="text-right text-sm text-text-2 sm:col-span-6">{t("lineTotal")}: <strong className="font-mono">{money(lineTotal(item))}</strong></p>
+            <div className="flex flex-wrap items-center gap-3 sm:col-span-6">
+              <Button variant="ghost" onClick={() => void saveAsProduct(index)} disabled={!companyId}>{t("saveAsProduct")}</Button>
+              {note?.index === index && <p role={note.ok ? "status" : "alert"} className={`text-[12.5px] ${note.ok ? "text-text-3" : "text-danger"}`}>{note.text}</p>}
+            </div>
             {error("") && <p role="alert" className="text-[12.5px] text-danger sm:col-span-6">{error("")}</p>}
             {items.length > 1 && (
               <div className="sm:col-span-6">
@@ -77,7 +90,10 @@ export function NfeItemsEditor({ items, onChange, errors, defaultCsosn, suggeste
           </fieldset>
         );
       })}
-      <div><Button variant="secondary" onClick={() => add()}><Plus size={14} aria-hidden />{t("add")}</Button></div>
+      <div className="flex flex-wrap items-center gap-4">
+        <Button variant="secondary" onClick={() => add()}><Plus size={14} aria-hidden />{t("add")}</Button>
+        <Link href="/app/products" className="text-[13px] text-text-3 underline">{t("manageProducts")}</Link>
+      </div>
     </div>
   );
 }
