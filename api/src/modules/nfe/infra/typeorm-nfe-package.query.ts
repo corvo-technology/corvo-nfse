@@ -7,6 +7,8 @@ import type { ExecutionEnvironment } from '@/shared/domain/execution-environment
 import { Decimal } from '@/shared/types/money';
 import { NfeDocumentOrmEntity } from './nfe-document.orm-entity';
 
+const modelOf = (model: number): 55 | 65 => (model === 65 ? 65 : 55);
+
 /** An NF-e or NFC-e of the month package. */
 export interface PackageNfe {
   id: string;
@@ -89,7 +91,7 @@ export class TypeormNfePackageQuery {
         id: row.id,
         tenantId: row.tenantId,
         environment: row.environment as ExecutionEnvironment,
-        model: row.model === 65 ? 65 : 55,
+        model: modelOf(row.model),
         series: row.series,
         number: row.number,
         accessKey: row.accessKey,
