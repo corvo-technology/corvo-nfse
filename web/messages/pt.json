@@ -1679,6 +1679,16 @@
     "backToOverview": "Voltar ao início"
   },
   "CompanyForm": {
+    "nfe": {
+      "section": "Nota de produto",
+      "question": "Vai emitir nota de produto (NF-e / NFC-e)?",
+      "hint": "Opcional. Dá para configurar depois, na página da empresa.",
+      "ieHint": "Só os números. A conferência na SEFAZ acontece depois que o certificado for enviado.",
+      "saved": "Dados da NF-e salvos.",
+      "failed": "A empresa foi criada, mas não conseguimos salvar os dados da NF-e. Termine na página da empresa.",
+      "needs_ie": "Falta a inscrição estadual para a NF-e. Preencha na página da empresa, depois de enviar o certificado.",
+      "openCompany": "Abrir a empresa"
+    },
     "legalName": "Razão social",
     "tradeName": "Nome fantasia",
     "taxId": "CNPJ",
@@ -1817,6 +1827,7 @@
     }
   },
   "CompanyDetail": {
+    "stateRegistration": "Inscrição estadual (IE)",
     "dps": {
       "title": "Número da nota (DPS)",
       "hint": "Se você já emitia notas pelo portal do governo, informe o número da próxima nota para não repetir.",
@@ -3943,9 +3954,7 @@
       "crtUnsupported": "NF-e por enquanto só para Simples Nacional e MEI. Confira o regime no cadastro fiscal da empresa.",
       "natOpPlaceholder": "Venda de mercadoria",
       "nfceSeries": "Série da NFC-e",
-      "nfceSeriesHint": "A série usada nas vendas ao consumidor. Na dúvida, deixe 1.",
-      "nfceAutoOffline": "Emitir em contingência off-line automaticamente",
-      "nfceAutoOfflineHint": "Quando a SEFAZ não responde, a NFC-e sai na hora com o aviso de contingência e é enviada depois. Ela pode ser rejeitada mais tarde, depois de já ter sido entregue ao cliente. Desligado por padrão."
+      "nfceSeriesHint": "A série usada nas vendas ao consumidor. Na dúvida, deixe 1."
     },
     "detail": {
       "title": "NF-e",

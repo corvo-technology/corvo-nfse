@@ -22,7 +22,7 @@ export interface NfeSettings {
   defaultSeries: number;
   /** Series of the NFC-e (model 65), apart from the NF-e one. */
   nfceDefaultSeries: number;
-  /** Issue the NFC-e off-line by itself when the SEFAZ cannot be reached (off by default). */
+  /** @deprecated Ignored: the NFC-e always goes off-line by itself when the SEFAZ cannot be reached. */
   nfceAutoOffline: boolean;
   defaultNatOp: string;
   defaultCsosn: NfeCsosn;

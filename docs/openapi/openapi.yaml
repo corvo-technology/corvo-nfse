@@ -11695,9 +11695,10 @@ components:
             type: string
           type: array
         nfceAutoOffline:
+          deprecated: true
           description: >-
-            Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off
-            by default.
+            Deprecated and ignored: the NFC-e is always issued off-line (contingency) by itself when
+            the SEFAZ cannot be reached.
           type: boolean
         nfceDefaultSeries:
           description: Series of the NFC-e (model 65).
@@ -13022,9 +13023,11 @@ components:
           type: number
         nfceAutoOffline:
           default: false
+          deprecated: true
           description: >-
-            Issue the NFC-e off-line (contingency, tpEmis 9) by itself when the SEFAZ cannot be
-            reached. Off by default: a note issued off-line can still be rejected afterwards.
+            Deprecated and ignored. The NFC-e is always issued off-line (contingency, tpEmis 9) by
+            itself when the SEFAZ cannot be reached. Still accepted so older integrations keep
+            working.
           type: boolean
         nfceDefaultSeries:
           default: 1

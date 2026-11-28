@@ -54,6 +54,13 @@ const navAccount: NavItem[] = [
   { key: "Sidebar.nav.settings", href: "/app/settings", icon: Settings },
 ];
 
+/** "Notas de serviço (NFS-e)": the acronym in parentheses never breaks in the middle ("NFS-" / "e)"). */
+export function NavLabel({ text }: { text: string }) {
+  const match = /^(.*\S)\s+(\([^)]*\))$/.exec(text);
+  if (!match) return <>{text}</>;
+  return <span className="min-w-0">{match[1]} <span className="whitespace-nowrap">{match[2]}</span></span>;
+}
+
 const navAdmin: NavItem = { key: "Sidebar.nav.admin", href: "/app/admin", icon: ShieldCheck };
 
 interface SidebarProps {
@@ -104,7 +111,7 @@ export function Sidebar({ activePath, open, onClose, closeButtonRef }: SidebarPr
         >
           {active && <span aria-hidden className="absolute -left-[14px] top-2 bottom-2 w-[2px] rounded-full bg-accent" />}
           <Icon size={16} aria-hidden className={cn("flex-none transition-colors", active ? "text-accent" : "text-text-4 group-hover:text-text-2")} />
-          {t(key)}
+          <NavLabel text={t(key)} />
         </Link>
       </li>
     );

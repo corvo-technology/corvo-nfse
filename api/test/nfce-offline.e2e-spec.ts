@@ -68,12 +68,11 @@ describe('off-line NFC-e (e2e)', () => {
     api('post', '/invoices')
       .set('Idempotency-Key', idempotencyKey)
       .send(body as object);
-  const setAutoOffline = (on: boolean) =>
+  const saveSettings = () =>
     api('put', `/companies/${companyId}/nfe-settings`)
       .send({
         stateRegistration: '110042490114',
         crt: 1,
-        nfceAutoOffline: on,
       })
       .expect(200);
 
@@ -106,7 +105,7 @@ describe('off-line NFC-e (e2e)', () => {
           'Avenida Paulista', '1000', 'Bela Vista', '01310100', 'São Paulo', 'SP', NOW(), NOW())`,
       [companyId, tenantId, COMPANY_TAX_ID],
     );
-    await setAutoOffline(false);
+    await saveSettings();
   });
 
   afterAll(async () => {
@@ -236,28 +235,13 @@ describe('off-line NFC-e (e2e)', () => {
     expect(after).toBe(before);
   });
 
-  it('without the company option the NFC-e goes the normal way even with the authority down', async () => {
-    situation = {
-      breakerOpen: true,
-      authorityReachable: false,
-      network: 'ok',
-    };
-    const res = await create(nfceBody(companyId), 'off-normal-1');
-    expect(res.status).toBe(202);
-    expect(res.body.data).toMatchObject({ type: 'nfce', status: 'queued' });
-  });
-
-  describe('company option "issue off-line automatically"', () => {
-    beforeAll(async () => {
-      await setAutoOffline(true);
-    });
-    afterAll(async () => {
+  describe('automatic off-line contingency (always on)', () => {
+    afterAll(() => {
       situation = {
         breakerOpen: false,
         authorityReachable: null,
         network: 'ok',
       };
-      await setAutoOffline(false);
     });
 
     it('authority down: 201 off-line, reason "SEFAZ indisponivel"', async () => {

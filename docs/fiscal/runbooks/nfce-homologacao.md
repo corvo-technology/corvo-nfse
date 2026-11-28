@@ -97,8 +97,8 @@ Registre o resultado de cada um (e corrija o código se a SEFAZ discordar):
 
 ## Contingência off-line (tpEmis 9)
 
-A NFC-e off-line sai com `contingency: "offline"` (ou pela opção da empresa `nfceAutoOffline`, desligada por
-padrão) e é transmitida depois, em até 24 horas. O QR Code v3 off-line é assinado com o A1 (RSA SHA-1, base64);
+A NFC-e off-line sai com `contingency: "offline"` (ou sozinha, sempre que a SEFAZ não responde: a antiga opção `nfceAutoOffline` foi
+aposentada) e é transmitida depois, em até 24 horas. O QR Code v3 off-line é assinado com o A1 (RSA SHA-1, base64);
 o algoritmo, a fonte e o que **não** está confirmado estão em [`docs/fiscal/nfce-qrcode.md`](../nfce-qrcode.md).
 
 Antes de liberar em produção, na homologação de SP:

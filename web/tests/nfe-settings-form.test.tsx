@@ -20,7 +20,7 @@ const settings = (overrides = {}) => ({
 const renderForm = (canManage = true, nfce = false) => render(<NextIntlClientProvider locale="en" messages={messages}><NfeSettingsForm companyId="c1" canManage={canManage} nfce={nfce} /></NextIntlClientProvider>);
 
 const readiness = (overrides = {}) => ({
-  companyId: "c1", ready: false, status: "unavailable", message: "x", stateRegistration: null, suggestedStateRegistration: null, registrations: [], missing: [], checkedAt: null, ...overrides,
+  companyId: "c1", ready: true, status: "ready", message: "x", stateRegistration: null, suggestedStateRegistration: null, registrations: [], missing: [], checkedAt: null, ...overrides,
 });
 
 beforeEach(() => { vi.clearAllMocks(); mocks.get.mockResolvedValue(settings()); mocks.readiness.mockResolvedValue(readiness()); });
@@ -109,28 +109,50 @@ describe("NfeSettingsForm", () => {
     expect(screen.queryByLabelText(/NFC-e series/)).toBeNull();
   });
 
-  it("NFC-e released: the off-line option is off by default, can be turned on and is saved", async () => {
-    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
-    mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [], nfceAutoOffline: true }));
+  it("does not offer the off-line contingency option (it is always on) and never sends it", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [], nfceAutoOffline: false }));
+    mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
     renderForm(true, true);
     await screen.findByText("All set: the company can issue NF-e.");
-    const box = screen.getByLabelText(/Issue in offline contingency automatically/) as HTMLInputElement;
-    expect(box.checked).toBe(false);
-    fireEvent.click(box);
-    fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
-    await waitFor(() => expect(mocks.update).toHaveBeenCalledWith("c1", expect.objectContaining({ nfceAutoOffline: true })));
-    await waitFor(() => expect((screen.getByLabelText(/Issue in offline contingency automatically/) as HTMLInputElement).checked).toBe(true));
-  });
-
-  it("without NFC-e the off-line option is not offered nor sent", async () => {
-    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
-    mocks.update.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
-    renderForm(true, false);
-    await screen.findByText("All set: the company can issue NF-e.");
-    expect(screen.queryByLabelText(/Issue in offline contingency automatically/)).toBeNull();
+    expect(screen.queryByText(/offline contingency/i)).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save NF-e data" }));
     await waitFor(() => expect(mocks.update).toHaveBeenCalled());
     expect(mocks.update.mock.calls[0][1]).not.toHaveProperty("nfceAutoOffline");
+  });
+
+  it("the series are digits-only text fields, with no spinner arrows of a number input", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    renderForm(true, true);
+    await screen.findByText("All set: the company can issue NF-e.");
+    for (const label of [/^Series/, /NFC-e series/]) {
+      const field = screen.getByLabelText(label) as HTMLInputElement;
+      expect(field.type).toBe("text");
+      expect(field.inputMode).toBe("numeric");
+      fireEvent.change(field, { target: { value: "1a2b" } });
+      expect(field.value).toBe("12");
+    }
+  });
+
+  it("shows only the SEFAZ warning, never together with the green 'all set'", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    mocks.readiness.mockResolvedValue(readiness({ status: "unavailable" }));
+    renderForm();
+    await screen.findByText(/Look up the state registration at the CCC/);
+    expect(screen.queryByText("All set: the company can issue NF-e.")).toBeNull();
+    mocks.readiness.mockResolvedValue(readiness({ status: "sefaz_rejected", sefazCStat: "243", sefazReason: "XML Mal Formado" }));
+    fireEvent.click(screen.getByRole("button", { name: /Check at the SEFAZ/ }));
+    await screen.findByText("The SEFAZ answered: 243 – XML Mal Formado");
+    expect(screen.queryByText("All set: the company can issue NF-e.")).toBeNull();
+    expect(screen.queryByText(/Look up the state registration at the CCC/)).toBeNull();
+  });
+
+  it("does not show 'all set' while the SEFAZ check is still running", async () => {
+    mocks.get.mockResolvedValue(settings({ stateRegistration: "110042490114", crt: 1, missing: [] }));
+    mocks.readiness.mockReturnValue(new Promise(() => {}));
+    renderForm();
+    await screen.findByText("Checking at the SEFAZ…");
+    expect(screen.queryByText("All set: the company can issue NF-e.")).toBeNull();
   });
 
   it("fills the IE the SEFAZ found when the company has none, without saving it", async () => {

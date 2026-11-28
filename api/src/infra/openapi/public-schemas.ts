@@ -340,8 +340,9 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
       description: 'Series of the NFC-e (model 65).',
     }),
     nfceAutoOffline: bool({
+      deprecated: true,
       description:
-        'Issue the NFC-e off-line (contingency) by itself when the SEFAZ cannot be reached. Off by default.',
+        'Deprecated and ignored: the NFC-e is always issued off-line (contingency) by itself when the SEFAZ cannot be reached.',
     }),
     defaultNatOp: str({ example: 'Venda de mercadoria' }),
     defaultCsosn: str({ enum: ['102', '400'] }),
