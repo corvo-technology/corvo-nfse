@@ -7,7 +7,7 @@ import { Check, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ApiError } from "@/lib/api";
 import { fieldIssues, errorCodeKey } from "@/lib/api-errors";
-import { getNfeReadiness, getNfeSettings, updateNfeSettings, type NfeReadiness, type NfeSettings } from "@/lib/nfe";
+import { getNfeSettings, updateNfeSettings, type NfeReadiness, type NfeSettings } from "@/lib/nfe";
 import { ieExample } from "@/lib/nfe-form";
 import { useApiErrorText } from "@/lib/use-api-error";
 import { Button } from "@/components/ui/button";
@@ -49,8 +49,9 @@ export function NfeSettingsForm({ companyId, state: uf = "", canManage, nfce = f
   async function check(signal?: AbortSignal, prefill = false) {
     setChecking(true); setCheckFailed(false);
     try {
-      const value = await getNfeReadiness(companyId, signal);
+      const value = (await getNfeSettings(companyId, signal, true)).readiness;
       if (signal?.aborted) return;
+      if (!value) { setCheckFailed(true); return; }
       setReadiness(value);
       const found = value.suggestedStateRegistration;
       if (found && (prefill || value.status === "ie_suggested")) setStateRegistration((current) => (prefill || current.trim() === "" ? found : current));

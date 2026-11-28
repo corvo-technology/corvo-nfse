@@ -1723,73 +1723,21 @@ paths:
         - Companies
       x-required-permissions:
         - nfse.companies.manage
-  /companies/{id}/nfe-readiness:
-    get:
-      description: >-
-        Can the company issue NF-e and NFC-e? Asks the SEFAZ "Consulta Cadastro" (with the company
-        certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and
-        answers a `status` with a plain `message`. A company with no IE (service-only) cannot issue
-        NF-e/NFC-e. `suggestedStateRegistration` is the IE to save when the company has none yet.
-        The consulta runs at the production SEFAZ cadastro even for test companies. UFs without the
-        service answer `unavailable`.
-
-
-        Permission: `nfe.documents.view`.
-
-
-        Permission: `nfe.documents.view`.
-      operationId: companies_getNfeReadiness
-      parameters:
-        - description: Identifier (UUID) of the company.
-          in: path
-          name: id
-          required: true
-          schema:
-            format: uuid
-            type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    $ref: '#/components/schemas/NfeReadiness'
-                required:
-                  - data
-                type: object
-          description: OK
-          headers:
-            X-RateLimit-Limit:
-              $ref: '#/components/headers/X-RateLimit-Limit'
-            X-RateLimit-Remaining:
-              $ref: '#/components/headers/X-RateLimit-Remaining'
-            X-RateLimit-Reset:
-              $ref: '#/components/headers/X-RateLimit-Reset'
-            X-Request-Id:
-              $ref: '#/components/headers/X-Request-Id'
-        '401':
-          $ref: '#/components/responses/Error401'
-        '403':
-          $ref: '#/components/responses/Error403'
-        '404':
-          $ref: '#/components/responses/Error404'
-        '429':
-          $ref: '#/components/responses/Error429'
-        '500':
-          $ref: '#/components/responses/Error500'
-      security:
-        - ApiKeyAuth: []
-      summary: Can the company issue NF-e and NFC-e? Checked at the SEFAZ
-      tags:
-        - NF-e
-      x-required-permissions:
-        - nfe.documents.view
   /companies/{id}/nfe-settings:
     get:
       description: >-
         The NF-e settings of the company (state registration, CRT, default series and Simples tax
         defaults) and `missing`, the list of what the company still lacks to issue an NF-e.
+
+
+        `readiness` says whether the company can issue NF-e and NFC-e. By default it is the last
+        conclusive answer kept (`null` when the company was never checked) and no call is made to
+        the SEFAZ. With `?check=sefaz` it asks the SEFAZ "Consulta Cadastro" now (with the company
+        certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and
+        answers a `status` with a plain `message`. A company with no IE (service-only) cannot issue
+        NF-e/NFC-e. `suggestedStateRegistration` is the IE to save when the company has none yet.
+        The consulta runs at the production SEFAZ cadastro even for test companies. UFs without the
+        service answer `unavailable`.
 
 
         Permission: `nfe.documents.view`.
@@ -11641,6 +11589,16 @@ components:
           maximum: 999
           minimum: 0
           type: integer
+        readiness:
+          anyOf:
+            - $ref: '#/components/schemas/NfeReadiness'
+            - enum:
+                - null
+              nullable: true
+              type: object
+          description: >-
+            Can the company issue NF-e/NFC-e? Live with `?check=sefaz`; otherwise the last
+            conclusive answer kept, or `null` when never checked.
         registrationWarning:
           description: >-
             Set only by `PUT`: the SEFAZ cadastro says the IE just saved will be refused. A warning,
@@ -11666,6 +11624,7 @@ components:
         - enabledAt
         - missing
         - registrationWarning
+        - readiness
       type: object
     NfeTimelineEntry:
       properties:
