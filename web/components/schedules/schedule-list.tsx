@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatBRL } from "@/components/pricing/plan-picker";
 import { maskTaxId } from "@/lib/masks";
+import { scheduleRecipient, scheduleTotal } from "@/lib/schedule-summary";
 import type { InvoiceSchedule, ScheduleStatus } from "@/lib/types";
 
 const STATUS_VARIANT: Record<ScheduleStatus, BadgeVariant> = { active: "accent", paused: "warn", completed: "gray", cancelled: "gray" };
@@ -28,7 +29,8 @@ export type ScheduleAction = "pause" | "resume" | "cancel";
 interface Props {
   schedules: InvoiceSchedule[];
   companyNames: Record<string, string>;
-  canManage: boolean;
+  /** Who may change this schedule: the permission depends on what it issues. */
+  canManage: (schedule: InvoiceSchedule) => boolean;
   /** Id and action in flight, to disable that row. */
   busy: { id: string; action: ScheduleAction } | null;
   onAction: (schedule: InvoiceSchedule, action: ScheduleAction) => void;
@@ -44,7 +46,9 @@ export function ScheduleList({ schedules, companyNames, canManage, busy, onActio
   return (
     <ul className="flex flex-col gap-3">
       {schedules.map((s) => {
-        const amount = typeof s.invoice.amount === "number" ? formatBRL(Math.round(s.invoice.amount * 100)) : null;
+        const total = scheduleTotal(s);
+        const amount = total === null ? null : formatBRL(Math.round(total * 100));
+        const manage = canManage(s);
         const rowBusy = busy?.id === s.id;
         const open = s.status === "active" || s.status === "paused";
         return (
@@ -53,8 +57,9 @@ export function ScheduleList({ schedules, companyNames, canManage, busy, onActio
               <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                 <div className="min-w-0">
                   <Link href={`/app/schedules/${s.id}`} className="block truncate text-[15px] font-medium text-text hover:underline">{companyNames[s.companyId] ?? t("unknownCompany")}</Link>
-                  <p className="mt-0.5 truncate text-[13px] text-text-3">{t("to", { name: customerLabel(s.invoice) ?? t("noCustomer") })}</p>
+                  <p className="mt-0.5 truncate text-[13px] text-text-3">{t("to", { name: scheduleRecipient(s) ?? t(s.type === "nfe" ? "detail.noRecipient" : "noCustomer") })}</p>
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-text-3">
+                    <span className="font-medium text-text-2">{t(`type.${s.type}`)}</span>
                     <span>{s.frequency ? t(`frequency.${s.frequency}`) : t("kind.once")}</span>
                     {amount && <span className="tabular-nums text-text-2">{amount}</span>}
                     {s.nextRunOn && <span>{t("nextRun", { date: formatDay(s.nextRunOn, locale) })}</span>}
@@ -65,7 +70,7 @@ export function ScheduleList({ schedules, companyNames, canManage, busy, onActio
               </div>
               {s.status === "paused" && <p className="text-[13px] text-warn">{s.pauseReason === "failures" ? t("pausedByFailures") : t("pausedByYou")}</p>}
               {s.status === "active" && s.attempts > 0 && <p className="text-[13px] text-warn">{t("failures", { count: s.attempts })}</p>}
-              {canManage && open && (
+              {manage && open && (
                 <div className="flex flex-wrap items-center gap-2">
                   {s.status === "active" && <Button variant="secondary" disabled={rowBusy} loading={rowBusy && busy?.action === "pause"} onClick={() => onAction(s, "pause")}>{t("actions.pause")}</Button>}
                   {s.status === "paused" && <Button variant="secondary" disabled={rowBusy} loading={rowBusy && busy?.action === "resume"} onClick={() => onAction(s, "resume")}>{t("actions.resume")}</Button>}
@@ -73,7 +78,7 @@ export function ScheduleList({ schedules, companyNames, canManage, busy, onActio
                   {renderExtra?.(s)}
                 </div>
               )}
-              {(!canManage || !open) && renderExtra?.(s)}
+              {(!manage || !open) && renderExtra?.(s)}
             </Card>
             {renderBelow?.(s)}
           </li>

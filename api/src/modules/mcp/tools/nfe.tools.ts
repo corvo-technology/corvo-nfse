@@ -1,6 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 import {
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsNumber,
@@ -17,6 +18,8 @@ import {
 import type { AuthContext } from '@/modules/auth/auth-context';
 import { executionEnvironment } from '@/modules/auth/execution-environment.guard';
 import type { NfeSettingsView } from '@/modules/company/application/company-nfe-settings.service';
+import type { EmissionRouterService } from '@/modules/invoice-schedule/application/emission-router.service';
+import type { InvoiceSchedule } from '@/modules/invoice-schedule/domain/invoice-schedule';
 import { McpNfe, type McpGoodsType } from './nfe-access';
 import { toDetailedNfe, toPublicNfe } from './public-shapes';
 import { invalidInput } from './tool-input-errors';
@@ -98,6 +101,12 @@ class CompanyInput {
 
 class NfeIssueInput extends CompanyInput {
   @IsObject() nfe!: Record<string, unknown>;
+  @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE', 'RECURRING']) emission_type?:
+    'IMMEDIATE' | 'SCHEDULE' | 'RECURRING';
+  @IsOptional() @IsDateString() competence_date?: string;
+  @IsOptional() @IsIn(['WEEKLY', 'BIWEEKLY', 'MONTHLY']) recurrence_frequency?:
+    'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+  @IsOptional() @IsDateString() recurrence_ends_on?: string;
   @IsString() @MinLength(1) @MaxLength(255) idempotency_key!: string;
   @IsOptional() @IsString() @MaxLength(255) external_id?: string;
   @IsOptional() @IsBoolean() send_email?: boolean;
@@ -154,7 +163,11 @@ const typeOfModel = (model?: 55 | 65): McpGoodsType =>
   model === 65 ? 'nfce' : 'nfe';
 
 class NfeSettingsUpdateInput extends CompanyInput {
-  @IsString() @MinLength(8) @MaxLength(18) state_registration!: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(18)
+  state_registration?: string;
   @IsOptional() @IsIn([1, 4]) crt?: 1 | 4;
   @IsOptional() @IsInt() @Min(0) @Max(999) default_series?: number;
   @IsOptional() @IsInt() @Min(0) @Max(999) nfce_default_series?: number;
@@ -171,12 +184,87 @@ class NfeSettingsUpdateInput extends CompanyInput {
 
 type Accepted = { id: string; status: string; replayed?: true };
 
+async function scheduleNfe(
+  nfe: McpNfe,
+  scheduler: Pick<EmissionRouterService, 'scheduleNfe'>,
+  params: NfeIssueInput,
+  ctx: AuthContext,
+): Promise<unknown> {
+  if (!params.competence_date)
+    throw new Error(
+      'Invalid input: competence_date: required with SCHEDULE or RECURRING (the date of the first run, from tomorrow on)',
+    );
+  if (params.emission_type === 'RECURRING' && !params.recurrence_frequency)
+    throw new Error(
+      'Invalid input: recurrence_frequency: required when emission_type is RECURRING',
+    );
+  if (
+    params.emission_type !== 'RECURRING' &&
+    (params.recurrence_frequency || params.recurrence_ends_on)
+  )
+    throw new Error(
+      'Invalid input: recurrence_frequency and recurrence_ends_on are only allowed when emission_type is RECURRING',
+    );
+  const body = {
+    ...params.nfe,
+    companyId: params.company_id,
+    competenceDate: params.competence_date,
+    options: {
+      type: params.emission_type,
+      ...(params.recurrence_frequency
+        ? {
+            recurrence: {
+              frequency: params.recurrence_frequency,
+              endsOn: params.recurrence_ends_on,
+            },
+          }
+        : {}),
+    },
+    ...(params.external_id ? { externalId: params.external_id } : {}),
+    ...(params.send_email !== undefined
+      ? { sendEmail: params.send_email }
+      : {}),
+  };
+  const schedule = await nfe.run<InvoiceSchedule>(
+    ctx,
+    'nfe.documents.issue',
+    () =>
+      scheduler.scheduleNfe(body, ctx.tenantId, ctx, params.idempotency_key),
+  );
+  const p = schedule.props;
+  return {
+    type: 'nfe',
+    schedule_id: p.id,
+    kind: p.kind,
+    frequency: p.frequency,
+    status: p.status,
+    next_run_on: p.nextRunOn,
+    ends_on: p.endsOn,
+  };
+}
+
 export function createNfeIssueHandler(
   nfe: McpNfe,
   kind: McpGoodsType = 'nfe',
+  scheduler?: Pick<EmissionRouterService, 'scheduleNfe'>,
 ): Handler {
   return async (raw, ctx) => {
     const params = await parse(NfeIssueInput, raw);
+    if (
+      params.emission_type === 'SCHEDULE' ||
+      params.emission_type === 'RECURRING'
+    ) {
+      if (kind === 'nfce')
+        throw new Error(
+          'INVOICE_OPERATION_NOT_SUPPORTED: A NFC-e é venda presencial e não pode ser agendada nem recorrente: emita no momento da venda',
+        );
+      if (!scheduler) throw new Error('Scheduling is not available');
+      return scheduleNfe(nfe, scheduler, params, ctx);
+    }
+    if (params.recurrence_frequency || params.recurrence_ends_on)
+      throw new Error(
+        'Invalid input: recurrence_frequency and recurrence_ends_on are only allowed when emission_type is RECURRING',
+      );
     const body = {
       ...params.nfe,
       companyId: params.company_id,
@@ -501,12 +589,16 @@ export const NFE_SETTINGS_GET_TOOL = {
 export const NFE_SETTINGS_UPDATE_TOOL = {
   name: 'nfe_settings_update',
   description:
-    'Set the NF-e and NFC-e settings of a company: state registration (IE, validated for the state of the company) plus optional defaults (default_series for the NF-e, nfce_default_series for the NFC-e). The CRT follows the tax regime of the company (Simples Nacional 1, MEI 4); send `crt` only to override it. Returns the settings and what is still missing.',
+    'Set the NF-e and NFC-e settings of a company: state registration (IE, validated for the state of the company; leave it out to use the IE the SEFAZ has for the CNPJ when there is exactly one enabled) plus optional defaults (default_series for the NF-e, nfce_default_series for the NFC-e). The CRT follows the tax regime of the company (Simples Nacional 1, MEI 4); send `crt` only to override it. Returns the settings, what is still missing and `registrationWarning` when the SEFAZ cadastro says the IE will be refused.',
   inputSchema: {
     type: 'object',
     properties: {
       company_id: { type: 'string', description: 'UUID of the company' },
-      state_registration: { type: 'string', description: 'IE, digits' },
+      state_registration: {
+        type: 'string',
+        description:
+          'IE, digits. Optional: left out, the IE found at the SEFAZ is used (when there is exactly one enabled)',
+      },
       crt: { type: 'number', enum: [1, 4] },
       default_series: { type: 'number', minimum: 0, maximum: 999 },
       nfce_default_series: { type: 'number', minimum: 0, maximum: 999 },
@@ -514,7 +606,20 @@ export const NFE_SETTINGS_UPDATE_TOOL = {
       default_csosn: { type: 'string', enum: ['102', '400'] },
       default_origin: { type: 'number', minimum: 0, maximum: 8 },
     },
-    required: ['company_id', 'state_registration'],
+    required: ['company_id'],
+  },
+} as const;
+
+export const NFE_READINESS_TOOL = {
+  name: 'nfe_readiness',
+  description:
+    'Can the company issue NF-e and NFC-e? Run it BEFORE the first note: it asks the SEFAZ (Consulta Cadastro, with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers `status`, a plain pt-BR `message` and `suggestedStateRegistration` (the IE to save with nfe_settings_update). A company with no IE (service-only) cannot issue NF-e or NFC-e. `unavailable` means the state has no consulta or the SEFAZ did not answer: nothing is known.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      company_id: { type: 'string', description: 'UUID of the company' },
+    },
+    required: ['company_id'],
   },
 } as const;
 
@@ -526,6 +631,7 @@ export const NFE_ONLY_TOOL_NAMES = [
   NFE_NUMBER_GAPS_TOOL.name,
   NFE_SETTINGS_GET_TOOL.name,
   NFE_SETTINGS_UPDATE_TOOL.name,
+  NFE_READINESS_TOOL.name,
 ] as const;
 
 export function createNfeValidateHandler(nfe: McpNfe): Handler {
@@ -607,6 +713,19 @@ export function createNfeSettingsGetHandler(nfe: McpNfe): Handler {
           ctx.activeTenantId,
           executionEnvironment(ctx),
         ),
+    );
+  };
+}
+
+export function createNfeReadinessHandler(nfe: McpNfe): Handler {
+  return async (raw, ctx) => {
+    const params = await parse(CompanyInput, raw);
+    return nfe.withSettings(ctx, 'nfe.documents.view', (settings) =>
+      settings.readiness(
+        params.company_id,
+        ctx.activeTenantId,
+        executionEnvironment(ctx),
+      ),
     );
   };
 }

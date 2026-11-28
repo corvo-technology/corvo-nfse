@@ -264,6 +264,8 @@ export class ScheduleRunsInput extends ScheduleIdInput {
 }
 
 export class ScheduleUpdateInput extends ScheduleIdInput {
+  /** NF-e schedules only: NF-e fields to change (each one replaces the stored field as a whole). */
+  @IsOptional() @IsObject() nfe?: Record<string, unknown>;
   @IsOptional() @IsNumber() @Min(0.01) amount?: number;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsNumber() @Min(0) discount?: number;

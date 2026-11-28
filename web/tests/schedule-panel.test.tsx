@@ -26,11 +26,11 @@ vi.mock("@/lib/api", async (original) => ({
   schedules: { list: mocks.list, pause: mocks.pause, resume: mocks.resume, cancel: mocks.cancel, runs: mocks.runs, create: mocks.create, update: mocks.update },
   companies: { list: mocks.companies },
 }));
-vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => permission === "nfse.invoices.view" || (permission === "nfse.invoices.issue" && mocks.canIssue), fiscalEnvironment: "live" }) }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ can: (permission: string) => permission === "nfse.invoices.view" || ((permission === "nfse.invoices.issue" || permission === "nfe.documents.issue") && mocks.canIssue), fiscalEnvironment: "live" }) }));
 vi.mock("@/components/ui/toast", () => ({ useToast: () => ({ error: mocks.toastError, success: mocks.toastSuccess }) }));
 
 const schedule = (over: Partial<InvoiceSchedule> = {}): InvoiceSchedule => ({
-  id: "s1", kind: "recurring", frequency: "MONTHLY", status: "active", pauseReason: null, companyId: "c1",
+  id: "s1", type: "nfse", kind: "recurring", frequency: "MONTHLY", status: "active", pauseReason: null, companyId: "c1",
   anchorOn: "2026-11-09", nextRunOn: "2026-11-09", endsOn: null, attempts: 0, lastRunOn: null,
   invoice: { amount: 150 }, createdAt: "2026-11-06T15:00:00.000Z", ...over,
 });
@@ -47,6 +47,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Schedules page: list", () => {
+  it("tells an NF-e schedule from an NFS-e one, with the recipient and the total of the items", async () => {
+    mocks.list.mockResolvedValue(page([
+      schedule({ id: "n1", type: "nfe", frequency: null, kind: "once", invoice: { recipient: { name: "Maria da Silva", taxId: "12345678909" }, items: [{ description: "Camiseta", quantity: 2, unitPrice: 10 }, { description: "Calça", quantity: 1, unitPrice: 30.5 }] } }),
+      schedule({ id: "s2" }),
+    ]));
+    renderPage();
+    const nfe = await waitFor(() => row("n1"));
+    expect(within(nfe).getByText("NF-e")).toBeTruthy();
+    expect(within(nfe).getByText("R$ 50,50")).toBeTruthy();
+    expect(within(nfe).getByText("For: Maria da Silva")).toBeTruthy();
+    expect(within(row("s2")).getByText("NFS-e")).toBeTruthy();
+  });
+
   it("shows what each schedule issues, how often, when next and its status", async () => {
     renderPage();
     const r = await waitFor(() => row());

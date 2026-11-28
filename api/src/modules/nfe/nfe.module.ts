@@ -1,4 +1,9 @@
-import { Module, Optional, type OnModuleInit } from '@nestjs/common';
+import {
+  Module,
+  Optional,
+  forwardRef,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TableAuthorityEndpointResolver } from '@/infra/external/nfe/sefaz/endpoints';
@@ -90,7 +95,8 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
   imports: [
     CompanyModule,
     CertificateModule,
-    InvoiceModule,
+    // The schedules (InvoiceModule -> InvoiceScheduleModule) import this module too.
+    forwardRef(() => InvoiceModule),
     WebhooksConfigModule,
     BillingUsageModule,
     CreditsModule,
@@ -165,6 +171,7 @@ import { DanfeRenderer } from './infra/danfe/danfe-renderer';
     NFE_SCHEMA_VALIDATOR,
     // What the NFC-e routes (`NfceModule`) reuse: the NFC-e runs on the same machinery.
     NfeIntakeService,
+    NfeValidateService,
     NfeResubmitService,
     NfeConsultService,
     NfeCancelService,

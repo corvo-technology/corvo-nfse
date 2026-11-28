@@ -18,6 +18,7 @@ import {
   'ck_invoice_schedules_frequency',
   `frequency IS NULL OR frequency IN ('WEEKLY','BIWEEKLY','MONTHLY')`,
 )
+@Check('ck_invoice_schedules_document_type', `document_type IN ('nfse','nfe')`)
 @Check(
   'ck_invoice_schedules_status',
   `status IN ('active','paused','completed','cancelled')`,
@@ -40,6 +41,13 @@ export class InvoiceScheduleOrmEntity {
   @Column({ name: 'tenant_id', type: 'uuid' }) declare tenantId: string;
   @Column({ type: 'varchar', length: 10 }) declare environment: string;
   @Column({ name: 'company_id', type: 'uuid' }) declare companyId: string;
+  @Column({
+    name: 'document_type',
+    type: 'varchar',
+    length: 10,
+    default: 'nfse',
+  })
+  declare documentType: string;
   @Column({ type: 'varchar', length: 10 }) declare kind: string;
   @Column({ type: 'varchar', length: 10, nullable: true })
   declare frequency: string | null;

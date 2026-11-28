@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import type { OutboxConfig } from '@/infra/config/configuration.types';
 import { InvoiceModule } from '@/modules/invoice/invoice.module';
 import { CompanyModule } from '@/modules/company/company.module';
+import { NfeModule } from '@/modules/nfe/nfe.module';
 import { EmailModule } from '@/modules/email/email.module';
 import { CreditsAlertsModule } from '@/modules/credits-alerts/credits-alerts.module';
 import { InvoiceService } from '@/modules/invoice/application/invoice.service';
@@ -13,6 +14,10 @@ import { InvoiceScheduleRunOrmEntity } from './infra/invoice-schedule-run.orm-en
 import { TypeOrmInvoiceScheduleRepository } from './infra/typeorm-invoice-schedule.repository';
 import { ScheduleFailureNotifier } from './domain/schedule-failure.notifier';
 import { ScheduleEmailNotifier } from './application/schedule-email.notifier';
+import {
+  SCHEDULE_NFE_PORT,
+  ScheduleNfeAdapter,
+} from './application/schedule-nfe.adapter';
 import { EmissionRouterService } from './application/emission-router.service';
 import { ScheduleController } from './http/schedule.controller';
 import { ScheduleRunner } from './application/schedule-runner.service';
@@ -27,6 +32,7 @@ import {
   imports: [
     forwardRef(() => InvoiceModule),
     CompanyModule,
+    forwardRef(() => NfeModule),
     EmailModule,
     CreditsAlertsModule,
     TypeOrmModule.forFeature([
@@ -53,6 +59,8 @@ import {
       provide: ScheduleFailureNotifier,
       useClass: ScheduleEmailNotifier,
     },
+    ScheduleNfeAdapter,
+    { provide: SCHEDULE_NFE_PORT, useExisting: ScheduleNfeAdapter },
     ScheduleService,
     EmissionRouterService,
     ScheduleRunner,

@@ -34,7 +34,7 @@ const RUN_RULE =
 
 export const SCHEDULE_LIST_TOOL = {
   name: 'schedule_list',
-  description: `List scheduled (SCHEDULE) and recurring (RECURRING) invoices in the connected environment. ${RUN_RULE}`,
+  description: `List scheduled (SCHEDULE) and recurring (RECURRING) invoices (NFS-e or NF-e, see type) in the connected environment. ${RUN_RULE}`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -79,6 +79,11 @@ export const SCHEDULE_UPDATE_TOOL = {
     type: 'object',
     properties: {
       ...SCHEDULE_ID,
+      nfe: {
+        type: 'object',
+        description:
+          'Only for an NF-e schedule (type "nfe"): the NF-e fields to change, such as items, payments, recipient or additionalInfo. Each field sent replaces the stored one as a whole (send the full items list, not one item). The company cannot change. The other note fields below are for NFS-e schedules.',
+      },
       amount: { type: 'number', description: 'New total in BRL' },
       description: { type: 'string' },
       discount: { type: 'number' },
@@ -282,8 +287,15 @@ export function createScheduleUpdateHandler(service: Service) {
   ): Promise<ScheduleResponseDto> => {
     const p = await parse(ScheduleUpdateInput, raw);
     const current = await owned(service, p.schedule_id, ctx);
+    const isNfe = current.props.documentType === 'nfe';
+    if (p.nfe && !isNfe)
+      throw new Error('Invalid input: nfe: only for an NF-e schedule');
+    if (isNfe && invoicePatch(p, {}))
+      throw new Error(
+        'Invalid input: this is an NF-e schedule: send the fields to change inside nfe (items, payments, recipient...)',
+      );
     const updated = await service.update(p.schedule_id, ctx.tenantId, {
-      invoice: invoicePatch(p, current.props.invoiceInput),
+      invoice: isNfe ? p.nfe : invoicePatch(p, current.props.invoiceInput),
       endsOn: p.ends_on,
       frequency: p.frequency,
       anchorOn: p.first_date,

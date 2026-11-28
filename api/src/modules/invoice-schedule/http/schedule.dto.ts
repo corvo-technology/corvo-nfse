@@ -12,6 +12,11 @@ import type { InvoiceSchedule } from '../domain/invoice-schedule';
 
 export class ScheduleResponseDto {
   @ApiProperty() id!: string;
+  @ApiProperty({
+    enum: ['nfse', 'nfe'],
+    description: 'What each run issues: an NFS-e or an NF-e.',
+  })
+  type!: string;
   @ApiProperty({ enum: ['once', 'recurring'] }) kind!: string;
   @ApiProperty({ enum: ['WEEKLY', 'BIWEEKLY', 'MONTHLY'], nullable: true })
   frequency!: string | null;
@@ -40,6 +45,7 @@ export function toScheduleResponse(
   const p = schedule.props;
   return {
     id: p.id,
+    type: p.documentType,
     kind: p.kind,
     frequency: p.frequency,
     status: p.status,
@@ -85,6 +91,11 @@ export class ListSchedulesQuery extends CursorQuery {
   @IsOptional()
   @IsUUID()
   companyId?: string;
+
+  @ApiPropertyOptional({ enum: ['nfse', 'nfe'] })
+  @IsOptional()
+  @IsIn(['nfse', 'nfe'])
+  type?: 'nfse' | 'nfe';
 }
 
 export class UpdateScheduleDto {

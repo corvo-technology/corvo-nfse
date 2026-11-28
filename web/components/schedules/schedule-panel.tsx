@@ -21,7 +21,7 @@ export function SchedulePanel() {
   const t = useTranslations("Schedules");
   const tc = useTranslations("Common");
   const { can } = useAuth();
-  const canManage = can("nfse.invoices.issue");
+  const canManageType = (type: InvoiceSchedule["type"]) => can(type === "nfe" ? "nfe.documents.issue" : "nfse.invoices.issue");
   const [items, setItems] = useState<InvoiceSchedule[] | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [failed, setFailed] = useState(false);
@@ -71,12 +71,12 @@ export function SchedulePanel() {
         <ScheduleList
           schedules={items}
           companyNames={names}
-          canManage={canManage}
+          canManage={(s) => canManageType(s.type)}
           busy={busy}
           onAction={(s, action) => (action === "cancel" ? setCancelling(s) : void run(s, action))}
           renderExtra={(s) => (
             <>
-              {canManage && (s.status === "active" || s.status === "paused") && <Button variant="ghost" onClick={() => setForm({ schedule: s })}>{t("actions.edit")}</Button>}
+              {canManageType(s.type) && (s.status === "active" || s.status === "paused") && <Button variant="ghost" onClick={() => setForm({ schedule: s })}>{t("actions.edit")}</Button>}
               <Link href={`/app/schedules/${s.id}`} className="btn btn-ghost">{t("actions.details")}</Link>
             </>
           )}

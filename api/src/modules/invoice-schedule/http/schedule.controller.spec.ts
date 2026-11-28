@@ -7,14 +7,29 @@ import { ScheduleController } from './schedule.controller';
 const TENANT = '11111111-1111-4111-8111-111111111111';
 const ID = '22222222-2222-4222-8222-222222222222';
 const NOW = new Date('2026-11-06T15:00:00Z');
-const req = (apiKeyEnvironment: 'test' | 'live' = 'live') =>
-  ({ authContext: { activeTenantId: TENANT, apiKeyEnvironment } }) as never;
+const ALL = [
+  'nfse.invoices.view',
+  'nfse.invoices.issue',
+  'nfe.documents.view',
+  'nfe.documents.issue',
+];
+const req = (
+  apiKeyEnvironment: 'test' | 'live' = 'live',
+  permissions: string[] = ALL,
+) =>
+  ({
+    authContext: { activeTenantId: TENANT, apiKeyEnvironment, permissions },
+  }) as never;
 
-const schedule = (environment: 'test' | 'live' = 'live') =>
+const schedule = (
+  environment: 'test' | 'live' = 'live',
+  documentType: 'nfse' | 'nfe' = 'nfse',
+) =>
   InvoiceSchedule.create(
     {
       tenantId: TENANT,
       environment,
+      documentType,
       companyId: 'c1',
       kind: 'recurring',
       frequency: 'WEEKLY',
@@ -110,8 +125,53 @@ describe('ScheduleController', () => {
         ScheduleController.prototype[name],
       ) as string;
     for (const name of ['list', 'get', 'runs'] as const)
-      expect(permission(name)).toBe('nfse.invoices.view');
+      expect(permission(name)).toEqual([
+        'nfse.invoices.view',
+        'nfe.documents.view',
+      ]);
     for (const name of ['update', 'pause', 'resume', 'cancel'] as const)
-      expect(permission(name)).toBe('nfse.invoices.issue');
+      expect(permission(name)).toEqual([
+        'nfse.invoices.issue',
+        'nfe.documents.issue',
+      ]);
+  });
+
+  it('answers the type of document each schedule issues', async () => {
+    const { controller } = build(schedule('live', 'nfe'));
+    expect((await controller.get(ID, req())).data).toMatchObject({
+      type: 'nfe',
+    });
+  });
+
+  it('a key without the NF-e permission does not see an NF-e schedule, and a view-only key cannot change it', async () => {
+    const { controller } = build(schedule('live', 'nfe'));
+    const nfseOnly = req('live', ['nfse.invoices.view', 'nfse.invoices.issue']);
+    await expect(controller.get(ID, nfseOnly)).rejects.toBeInstanceOf(
+      ScheduleNotFoundError,
+    );
+    await expect(controller.pause(ID, nfseOnly)).rejects.toBeInstanceOf(
+      ScheduleNotFoundError,
+    );
+    const nfeViewOnly = req('live', ['nfe.documents.view']);
+    await expect(controller.get(ID, nfeViewOnly)).resolves.toBeDefined();
+    await expect(controller.pause(ID, nfeViewOnly)).rejects.toBeInstanceOf(
+      ScheduleNotFoundError,
+    );
+  });
+
+  it('the list only holds the kinds of document the key can view, narrowed by ?type=', async () => {
+    const { controller, service } = build();
+    await controller.list({}, req('live', ['nfse.invoices.view']));
+    expect(service.list).toHaveBeenLastCalledWith(
+      TENANT,
+      expect.objectContaining({ documentTypes: ['nfse'] }),
+      expect.anything(),
+    );
+    await controller.list({ type: 'nfe' }, req());
+    expect(service.list).toHaveBeenLastCalledWith(
+      TENANT,
+      expect.objectContaining({ documentTypes: ['nfe'] }),
+      expect.anything(),
+    );
   });
 });
