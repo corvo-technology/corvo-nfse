@@ -9,6 +9,7 @@ import type {
   OutboxMessage,
   OutboxStatus,
 } from '../domain/outbox-message';
+import { InvoiceOrmEntity } from './invoice.orm-entity';
 import { OutboxMessageOrmEntity } from './outbox-message.orm-entity';
 
 interface OutboxRow {
@@ -155,6 +156,41 @@ export class TypeOrmOutboxRepository implements IOutboxRepository {
       [id, tenantId, error, nextAvailableAt, at, attempt],
     );
     return this.rowsOf(raw).length > 0;
+  }
+
+  async reviveStalledInvoices(
+    tenantId: string,
+    createdBefore: Date,
+    limit: number,
+  ): Promise<number> {
+    const invoices = this.dataSource.driver.escape(
+      this.dataSource.getMetadata(InvoiceOrmEntity).tableName,
+    );
+    const schema = this.dataSource.getMetadata(InvoiceOrmEntity).schema;
+    const invoiceTable = schema
+      ? `${this.dataSource.driver.escape(schema)}.${invoices}`
+      : invoices;
+    const raw: unknown = await this.manager().query(
+      `WITH stalled AS (
+         SELECT i.id FROM ${invoiceTable} i
+         WHERE i.tenant_id = $1 AND i.status = 'queued' AND i.created_at < $2
+           AND NOT EXISTS (
+             SELECT 1 FROM ${this.table()} p
+             WHERE p.tenant_id = $1 AND p.aggregate_id = i.id AND p.status IN ('pending','claimed'))
+         ORDER BY i.created_at
+         LIMIT $3
+       )
+       UPDATE ${this.table()} m
+       SET status = 'pending', attempts = 0, available_at = now(), lease_until = NULL,
+           completed_at = NULL, updated_at = now()
+       FROM stalled
+       WHERE m.tenant_id = $1 AND m.aggregate_id = stalled.id
+         AND m.type IN ('invoice.calculate-taxes', 'invoice.emit')
+         AND m.status IN ('completed', 'dead') AND m.updated_at < $2
+       RETURNING m.aggregate_id`,
+      [tenantId, createdBefore, limit],
+    );
+    return new Set(this.rowsOf(raw).map((row) => row.aggregate_id)).size;
   }
 
   async markDead(

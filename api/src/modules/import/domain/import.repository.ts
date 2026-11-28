@@ -93,6 +93,12 @@ export abstract class ImportRepository {
   ): Promise<void>;
   /** Closes an emitting import as done, only if no row is still queued. False when it did not apply. */
   abstract markDone(tenantId: string, importId: string): Promise<boolean>;
+  /** Imports of this workspace still emitting that started before `startedBefore`, oldest first. */
+  abstract listEmittingStartedBefore(
+    tenantId: string,
+    startedBefore: Date,
+    limit: number,
+  ): Promise<ImportRecord[]>;
   /** Updates a row only while the import is ready and the row is valid or invalid. False when it did not apply. */
   abstract updateEditableRow(
     tenantId: string,

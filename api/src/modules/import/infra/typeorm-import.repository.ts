@@ -547,6 +547,25 @@ export class TypeOrmImportRepository extends ImportRepository {
     });
   }
 
+  listEmittingStartedBefore(
+    tenantId: string,
+    startedBefore: Date,
+    limit: number,
+  ): Promise<ImportRecord[]> {
+    return runWithTenant(tenantId, async () => {
+      const rows = await this.imports()
+        .createQueryBuilder('m')
+        .where(
+          "m.tenant_id = :tenantId AND m.status = 'emitting' AND m.emit_started_at < :startedBefore",
+          { tenantId, startedBefore },
+        )
+        .orderBy('m.emit_started_at', 'ASC')
+        .limit(limit)
+        .getMany();
+      return rows.map(toRecord);
+    });
+  }
+
   async failStuck(hours: number): Promise<number> {
     return runAsSystem('import-housekeeping', async () => {
       const out = await this.imports()
