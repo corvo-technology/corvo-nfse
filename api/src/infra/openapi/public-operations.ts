@@ -116,7 +116,6 @@ const DELIVERY_PARAMS: Schema[] = [
  * operation already existed in 0.2.0. Used by the route table of docs/openapi/README.md.
  */
 export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
-  'DELETE /companies/{companyId}/product-favorites/{productId}',
   'DELETE /companies/{companyId}/service-favorites/{favoriteId}',
   'DELETE /customers/{taxId}',
   'DELETE /imports/{id}',
@@ -125,7 +124,6 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'GET /companies/{companyId}/accountant-package/sends',
   'GET /companies/{companyId}/invoice-package',
   'GET /companies/{companyId}/invoice-package/summary',
-  'GET /companies/{companyId}/product-favorites',
   'GET /companies/{companyId}/service-favorites',
   'GET /companies/{id}/dps-sequence',
   'POST /companies/{id}/dps-sequence/check',
@@ -158,7 +156,6 @@ export const ADDED_IN_0_3_0: ReadonlySet<string> = new Set([
   'PATCH /integrations/operations/{id}/customer',
   'PATCH /schedules/{id}',
   'POST /companies/{companyId}/accountant-package/send',
-  'POST /companies/{companyId}/product-favorites',
   'POST /companies/{companyId}/service-favorites',
   'POST /imports',
   'POST /imports/{id}/emit',
@@ -188,9 +185,8 @@ export const TAGS: Record<string, string> = {
     'The companies (CNPJs) that issue invoices: registration, fiscal profile, service tax profiles, DPS numbering and the accountant package.',
   Certificates: 'The A1 digital certificate (PKCS#12) of each company.',
   Customers: 'Customers saved from accepted invoices, and CNPJ lookup.',
-  'Service favorites': 'Services a company issues often, saved to reuse.',
-  'Product favorites':
-    'Products a company sells often, saved to fill NF-e and NFC-e items.',
+  'Service favorites':
+    'Services (to fill the NFS-e) and products (to fill the NF-e and NFC-e items) a company uses often, saved to reuse.',
   Schedules: 'Scheduled and recurring invoices.',
   Imports: 'Bulk issuing from a CSV or Excel spreadsheet.',
   Webhooks:
@@ -810,43 +806,22 @@ export const PUBLIC_OPERATIONS: Record<string, PublicOperation> = {
   'GET /companies/{companyId}/service-favorites': {
     id: 'serviceFavorites_list',
     tag: 'Service favorites',
-    description: 'The services the company saved to reuse when issuing.',
+    description:
+      'The services the company saved to reuse when issuing. `?kind=product` lists the saved products instead (`service` is the default). Permission: `nfse.invoices.view` or `nfe.documents.view`.',
     ok: { 200: list(ref('ServiceFavorite')) },
   },
   'POST /companies/{companyId}/service-favorites': {
     id: 'serviceFavorites_create',
     tag: 'Service favorites',
     description:
-      'Saves a service (label, description, service code and, optionally, a default amount and municipality) for the company.',
+      'Saves a service (label, description, service code and, optionally, a default amount and municipality) for the company. With `kind: "product"` it saves a product for the NF-e and NFC-e items: `description`, `ncm` and `unitPrice` and, optionally, `code`, `gtin`, `cest`, `cfop`, `unit`, `csosn` and `origin`. The same product description (any case) updates the saved product. Up to 50 services and 500 products per company.',
     ok: { 201: data(ref('ServiceFavorite')) },
   },
   'DELETE /companies/{companyId}/service-favorites/{favoriteId}': {
     id: 'serviceFavorites_delete',
     tag: 'Service favorites',
-    description: 'Removes a favorite service. Issued invoices are not changed.',
-    ok: { 200: data(ref('Deleted')) },
-  },
-
-  // --- Product favorites ---------------------------------------------------
-  'GET /companies/{companyId}/product-favorites': {
-    id: 'productFavorites_list',
-    tag: 'Product favorites',
     description:
-      'The products the company saved to fill NF-e and NFC-e items. Permission: `nfe.documents.view`.',
-    ok: { 200: list(ref('ProductFavorite')) },
-  },
-  'POST /companies/{companyId}/product-favorites': {
-    id: 'productFavorites_save',
-    tag: 'Product favorites',
-    description:
-      'Saves a product (description, NCM, unit price and, optionally, code, barcode, CEST, CFOP, unit, CSOSN and origin). The same description (any case) updates the saved product. Up to 500 per company. Permission: `nfe.documents.issue`.',
-    ok: { 201: data(ref('ProductFavorite')) },
-  },
-  'DELETE /companies/{companyId}/product-favorites/{productId}': {
-    id: 'productFavorites_delete',
-    tag: 'Product favorites',
-    description:
-      'Removes a saved product. Issued notes are not changed. Permission: `nfe.documents.issue`.',
+      'Removes a favorite service or product. Issued invoices are not changed.',
     ok: { 200: data(ref('Deleted')) },
   },
 

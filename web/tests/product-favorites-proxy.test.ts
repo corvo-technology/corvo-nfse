@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-describe("web client and proxy agree on the product favorites routes", () => {
+describe("web client and proxy agree on the favorites routes for products", () => {
   it("every productFavorites.* call is let through by the proxy", async () => {
     await Promise.allSettled([
       productFavorites.list("company-1"),
@@ -24,7 +24,7 @@ describe("web client and proxy agree on the product favorites routes", () => {
       productFavorites.remove("company-1", "prod-1"),
     ]);
     expect(calls.map((c) => `${c.method} ${c.path.replace("/api/proxy/v1/", "")}`)).toEqual([
-      "GET companies/company-1/product-favorites", "POST companies/company-1/product-favorites", "DELETE companies/company-1/product-favorites/prod-1",
+      "GET companies/company-1/service-favorites?kind=product", "POST companies/company-1/service-favorites", "DELETE companies/company-1/service-favorites/prod-1",
     ]);
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("{}", { status: 200 }))));
     vi.stubEnv("APP_ORIGIN", "http://localhost:4000"); vi.stubEnv("API_BASE_URL", "http://localhost:3000");

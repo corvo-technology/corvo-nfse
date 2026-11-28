@@ -26,7 +26,6 @@ const UUID_PARAMS = new Set([
   'companyId',
   'certId',
   'favoriteId',
-  'productId',
   'serviceId',
   'profileId',
 ]);
@@ -338,7 +337,6 @@ function paramSubject(name: string, path: string): string {
   if (name === 'companyId') return 'company';
   if (name === 'certId') return 'certificate';
   if (name === 'favoriteId') return 'favorite service';
-  if (name === 'productId') return 'saved product';
   if (name === 'serviceId') return 'service tax profile';
   if (name === 'profileId') return 'fiscal profile';
   const first = path.split('/')[1];

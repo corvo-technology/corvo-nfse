@@ -363,10 +363,11 @@ export const serviceFavorites = {
   create: async (companyId: string, input: ServiceFavoriteInput) => unwrap(await request<Envelope<ServiceFavorite>>(`/companies/${idPath(companyId)}/service-favorites`, json(input))),
   remove: async (companyId: string, id: string): Promise<void> => { await request<Envelope<{ deleted: true }>>(`/companies/${idPath(companyId)}/service-favorites/${idPath(id)}`, { method: "DELETE" }); },
 };
+/** Saved products: the same favorites as the services, with `kind: "product"`. */
 export const productFavorites = {
-  list: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<ProductFavorite[]>>(`/companies/${idPath(companyId)}/product-favorites`, { signal })),
-  save: async (companyId: string, input: ProductFavoriteInput) => unwrap(await request<Envelope<ProductFavorite>>(`/companies/${idPath(companyId)}/product-favorites`, json(input))),
-  remove: async (companyId: string, id: string): Promise<void> => { await request<Envelope<{ deleted: true }>>(`/companies/${idPath(companyId)}/product-favorites/${idPath(id)}`, { method: "DELETE" }); },
+  list: async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<ProductFavorite[]>>(`/companies/${idPath(companyId)}/service-favorites${query({ kind: "product" })}`, { signal })),
+  save: async (companyId: string, input: ProductFavoriteInput) => unwrap(await request<Envelope<ProductFavorite>>(`/companies/${idPath(companyId)}/service-favorites`, json({ kind: "product", ...input }))),
+  remove: async (companyId: string, id: string): Promise<void> => { await request<Envelope<{ deleted: true }>>(`/companies/${idPath(companyId)}/service-favorites/${idPath(id)}`, { method: "DELETE" }); },
 };
 
 export const customers = {

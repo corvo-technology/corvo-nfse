@@ -482,7 +482,7 @@ describePostgres('strict tenant RLS with a restricted PostgreSQL role', () => {
       'SELECT relrowsecurity,relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relrowsecurity',
       [schema],
     );
-    expect(rows).toHaveLength(44);
+    expect(rows).toHaveLength(43);
     expect(rows.every((row) => row.relforcerowsecurity)).toBe(true);
     const [flags]: Array<{ rolsuper: boolean; rolbypassrls: boolean }> =
       await runtime.query(

@@ -21,7 +21,8 @@ const role = `${schema}_runtime`;
 const tenantA = randomUUID(),
   tenantB = randomUUID();
 const companyA = randomUUID(),
-  companyB = randomUUID();
+  companyB = randomUUID(),
+  companyC = randomUUID();
 
 const input = {
   label: 'Mensalidade',
@@ -97,6 +98,9 @@ describePostgres('TypeOrmServiceFavoriteRepository (RLS integration)', () => {
 
   afterEach(async () => {
     await admin.query(`DELETE FROM ${table('service_favorites')}`);
+    await admin.query(`DELETE FROM ${table('nfse_companies')} WHERE id = $1`, [
+      companyC,
+    ]);
   });
 
   afterAll(async () => {
@@ -135,6 +139,68 @@ describePostgres('TypeOrmServiceFavoriteRepository (RLS integration)', () => {
       false,
     );
     await expect(repository.list(companyA, tenantA)).resolves.toEqual([mine]);
+  });
+
+  const product = {
+    kind: 'product' as const,
+    label: 'Camiseta algodão',
+    description: 'Camiseta algodão',
+    code: 'CAM-1',
+    ncm: '61091000',
+    cfop: '5102',
+    unit: 'UN',
+    unitPrice: 49.9,
+  };
+
+  it('keeps services and products apart, and the same product description updates it', async () => {
+    const service = await repository.create(companyA, tenantA, input);
+    const first = await repository.create(companyA, tenantA, product);
+    expect(first).toMatchObject({
+      kind: 'product',
+      serviceCode: null,
+      ncm: '61091000',
+      unitPrice: 49.9,
+      code: 'CAM-1',
+      unit: 'UN',
+    });
+    const again = await repository.create(companyA, tenantA, {
+      ...product,
+      description: 'CAMISETA ALGODÃO',
+      unitPrice: 59.9,
+      csosn: '102',
+    });
+    expect(again.id).toBe(first.id);
+    expect(again).toMatchObject({ unitPrice: 59.9, csosn: '102' });
+    await expect(
+      repository.list(companyA, tenantA, 'product'),
+    ).resolves.toEqual([again]);
+    await expect(repository.list(companyA, tenantA)).resolves.toEqual([
+      service,
+    ]);
+    // The same description in another company is another product.
+    await admin.query(
+      `INSERT INTO ${table('nfse_companies')} (id,tenant_id,legal_name,tax_id,environment) VALUES ($1,$2,'Third','11222333000183','test')`,
+      [companyC, tenantA],
+    );
+    const other = await repository.create(companyC, tenantA, product);
+    expect(other.id).not.toBe(first.id);
+    await expect(repository.delete(first.id, companyA, tenantA)).resolves.toBe(
+      true,
+    );
+  });
+
+  it('never shows or removes a product of another tenant', async () => {
+    const mine = await repository.create(companyA, tenantA, product);
+    await repository.create(companyB, tenantB, product);
+    await expect(
+      repository.list(companyA, tenantB, 'product'),
+    ).resolves.toEqual([]);
+    await expect(repository.delete(mine.id, companyA, tenantB)).resolves.toBe(
+      false,
+    );
+    await expect(
+      repository.list(companyA, tenantA, 'product'),
+    ).resolves.toEqual([mine]);
   });
 
   it('rejects raw SQL that reads or writes across tenants through the runtime role', async () => {

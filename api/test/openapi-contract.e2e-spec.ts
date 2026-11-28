@@ -717,12 +717,11 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         { path: `${path}/${created.body.data.id}`, status: 200 },
       );
     });
-  });
 
-  describe('product favorites', () => {
-    it('product favorites: save 201, list, save again, delete', async () => {
-      const path = `/companies/${companyId}/product-favorites`;
+    it('product favorites: save as kind product, list ?kind=product, update, delete', async () => {
+      const path = `/companies/${companyId}/service-favorites`;
       const body = {
+        kind: 'product',
         description: 'Camiseta algodão',
         code: 'CAM-1',
         ncm: '61091000',
@@ -731,25 +730,30 @@ describe('OpenAPI contract against the real API (e2e)', () => {
         unitPrice: 49.9,
       };
       const created = await call(
-        'POST /companies/{companyId}/product-favorites',
+        'POST /companies/{companyId}/service-favorites',
         { path, body, status: 201 },
       );
-      await call('POST /companies/{companyId}/product-favorites', {
+      expect(created.body.data.kind).toBe('product');
+      await call('POST /companies/{companyId}/service-favorites', {
         path,
         body: { ...body, description: 'CAMISETA ALGODÃO', unitPrice: 59.9 },
         status: 201,
       });
-      const listed = await call(
-        'GET /companies/{companyId}/product-favorites',
-        {
-          path,
-          status: 200,
-        },
+      const products = await call(
+        'GET /companies/{companyId}/service-favorites',
+        { path: `${path}?kind=product`, status: 200 },
       );
-      expect(listed.body.data).toHaveLength(1);
-      expect(listed.body.data[0].unitPrice).toBe(59.9);
+      expect(products.body.data).toHaveLength(1);
+      expect(products.body.data[0].unitPrice).toBe(59.9);
+      const services = await call(
+        'GET /companies/{companyId}/service-favorites',
+        { path, status: 200 },
+      );
+      expect(
+        services.body.data.every((f: { kind: string }) => f.kind === 'service'),
+      ).toBe(true);
       await call(
-        'DELETE /companies/{companyId}/product-favorites/{productId}',
+        'DELETE /companies/{companyId}/service-favorites/{favoriteId}',
         { path: `${path}/${created.body.data.id}`, status: 200 },
       );
     });

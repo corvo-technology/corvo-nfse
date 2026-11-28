@@ -3333,38 +3333,20 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
             [
               "`service_favorite_list`",
               "`nfse:read`",
-              "`company_id`",
+              "`company_id`, `kind?` (`service` ou `product`)",
               "`{ favorites }`"
             ],
             [
               "`service_favorite_create`",
               "`nfse:write`",
-              "`company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?`",
-              "O favorito salvo (até 50 por empresa)"
+              "`company_id`, `label`, `description`, `service_code`, `amount_cents?`, `municipality_code?`; com `kind: \"product\"`: `description`, `ncm`, `unit_price`, `code?`, `gtin?`, `cest?`, `cfop?`, `unit?`, `csosn?`, `origin?`",
+              "O favorito salvo (até 50 serviços e 500 produtos por empresa; a mesma descrição de produto atualiza)"
             ],
             [
               "`service_favorite_delete`",
               "`nfse:write`",
               "`company_id`, `favorite_id`",
               "`{ favorite_id, deleted: true }`"
-            ],
-            [
-              "`product_favorite_list`",
-              "`nfse:read`",
-              "`company_id`",
-              "`{ products }`"
-            ],
-            [
-              "`product_favorite_create`",
-              "`nfse:write`",
-              "`company_id`, `description`, `ncm`, `unit_price`, `code?`, `gtin?`, `cest?`, `cfop?`, `unit?`, `csosn?`, `origin?`",
-              "O produto salvo (até 500 por empresa; a mesma descrição atualiza)"
-            ],
-            [
-              "`product_favorite_delete`",
-              "`nfse:write`",
-              "`company_id`, `product_id`",
-              "`{ product_id, deleted: true }`"
             ],
             [
               "`nfse_download_pdf`",

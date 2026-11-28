@@ -639,8 +639,8 @@ export function invoiceToolsBlocks(locale: DocsLocale): DocBlock[] {
       scopes: READ,
       success: "200 OK",
       summary: t(
-        "The favorite services of the company. Needs `nfse.invoices.view`.",
-        "Os serviços favoritos da empresa. Exige `nfse.invoices.view`.",
+        "The favorite services of the company; `?kind=product` lists the saved products instead (see NF-e). Needs `nfse.invoices.view` or `nfe.documents.view`.",
+        "Os serviços favoritos da empresa; `?kind=product` lista os produtos salvos (veja NF-e). Exige `nfse.invoices.view` ou `nfe.documents.view`.",
       ),
       label: "200 OK",
       json: `{ "data": [ {
@@ -660,8 +660,8 @@ export function invoiceToolsBlocks(locale: DocsLocale): DocBlock[] {
       scopes: WRITE,
       success: "201 Created",
       summary: t(
-        "Saves a favorite service. Needs `nfse.invoices.issue`.",
-        "Salva um serviço favorito. Exige `nfse.invoices.issue`.",
+        "Saves a favorite service, or a product with `kind: \"product\"` (see NF-e). Needs `nfse.invoices.issue` or `nfe.documents.issue`.",
+        "Salva um serviço favorito, ou um produto com `kind: \"product\"` (veja NF-e). Exige `nfse.invoices.issue` ou `nfe.documents.issue`.",
       ),
       body: {
         label: "Consultoria mensal",
