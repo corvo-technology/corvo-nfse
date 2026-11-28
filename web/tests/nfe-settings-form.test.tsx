@@ -9,9 +9,8 @@ import messages from "@/messages/en.json";
 const mocks = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn(), readiness: vi.fn() }));
 vi.mock("@/lib/nfe", async (original) => ({
   ...(await original<typeof import("@/lib/nfe")>()),
-  getNfeSettings: mocks.get,
+  getNfeSettings: async (id: string, signal?: AbortSignal, check?: boolean) => check ? { ...(await mocks.get(id, signal)), readiness: await mocks.readiness() } : mocks.get(id, signal),
   updateNfeSettings: mocks.update,
-  getNfeReadiness: mocks.readiness,
 }));
 
 const settings = (overrides = {}) => ({

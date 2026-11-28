@@ -192,7 +192,6 @@ Where each part lives:
 | `integrationOperations_retry` | POST | `/integrations/operations/{id}/retry` | 0.3.0 | Try to issue the invoice of an operation again |
 | `integrations_listProviders` | GET | `/integrations/providers` | 0.3.0 | List the payment platforms Corvo can connect to |
 | **NF-e** | | | | |
-| `companies_getNfeReadiness` | GET | `/companies/{id}/nfe-readiness` | 0.2.0 | Can the company issue NF-e and NFC-e? Checked at the SEFAZ |
 | `companies_getNfeSettings` | GET | `/companies/{id}/nfe-settings` | 0.2.0 | Get the NF-e settings of the company |
 | `companies_updateNfeSettings` | PUT | `/companies/{id}/nfe-settings` | 0.2.0 | Set the NF-e settings of the company |
 | **Health** | | | | |

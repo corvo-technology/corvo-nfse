@@ -41,7 +41,6 @@ const DASHBOARD_CALLS: [Method, string][] = [
   ["GET", "invoices/number-gaps"],
   ["GET", "companies/c1/nfe-settings"],
   ["PUT", "companies/c1/nfe-settings"],
-  ["GET", "companies/c1/nfe-readiness"],
   ["GET", "platform/contingency"],
   ["POST", "platform/contingency/SP/2/exit"],
 ];

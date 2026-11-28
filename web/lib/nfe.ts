@@ -61,9 +61,11 @@ export interface NfeSettings {
   missing: NfeMissingField[];
   /** Only after a save: the SEFAZ cadastro says the IE just saved will be refused (a warning, never a block). */
   registrationWarning?: string | null;
+  /** Can the company issue NF-e/NFC-e? Live with `?check=sefaz`; otherwise the last answer kept (`null` when never checked). */
+  readiness?: NfeReadiness | null;
 }
 export type NfeReadinessStatus = "ready" | "ie_suggested" | "ie_choose" | "no_registration" | "not_enabled" | "not_credentialed" | "ie_mismatch" | "unavailable" | "no_certificate" | "company_incomplete";
-/** Can the company issue NF-e/NFC-e? Checked at the SEFAZ cadastro (`GET /companies/{id}/nfe-readiness`). */
+/** Can the company issue NF-e/NFC-e? Checked at the SEFAZ cadastro (`readiness` of `GET /companies/{id}/nfe-settings?check=sefaz`). */
 export interface NfeReadiness { companyId: string; ready: boolean; status: NfeReadinessStatus; message: string; stateRegistration: string | null; suggestedStateRegistration: string | null; registrations: { stateRegistration: string; enabled: boolean }[]; missing: NfeMissingField[]; checkedAt: string | null }
 export interface NfeSettingsInput { /** Left out, the IE the SEFAZ has for the CNPJ is used (when exactly one is enabled). */ stateRegistration?: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; nfceAutoOffline?: boolean; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
 export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus; /** NF-e when omitted. */ type?: NfeKind }
@@ -115,8 +117,8 @@ export const nfeDownloadUrl = async (id: string, format: "pdf" | "xml") => unwra
 export const listInutilizations = async (params: PageParams & { companyId?: string } = {}, signal?: AbortSignal): Promise<Page<NfeInutilization>> => toPage(await request<ListBody<NfeInutilization>>(`/invoices/inutilizations${query({ type: "nfe", ...params })}`, { signal }));
 export const createInutilization = async (input: { companyId: string; series: number; start: number; end: number; justification: string }, idempotencyKey: string) => unwrap(await request<Envelope<NfeInutilization>>("/invoices/inutilizations", withKey({ type: "nfe", ...input }, idempotencyKey)));
 export const listNumberGaps = async (companyId?: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeNumberGap[]>>(`/invoices/number-gaps${query({ type: "nfe", companyId })}`, { signal }));
-export const getNfeSettings = async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeSettings>>(`/companies/${idPath(companyId)}/nfe-settings`, { signal }));
-export const getNfeReadiness = async (companyId: string, signal?: AbortSignal) => unwrap(await request<Envelope<NfeReadiness>>(`/companies/${idPath(companyId)}/nfe-readiness`, { signal }));
+/** With `check`, the SEFAZ cadastro is asked now and `readiness` is the live answer. */
+export const getNfeSettings = async (companyId: string, signal?: AbortSignal, check = false) => unwrap(await request<Envelope<NfeSettings>>(`/companies/${idPath(companyId)}/nfe-settings${check ? "?check=sefaz" : ""}`, { signal }));
 export const updateNfeSettings = async (companyId: string, input: NfeSettingsInput) => unwrap(await request<Envelope<NfeSettings>>(`/companies/${idPath(companyId)}/nfe-settings`, body(input, "PUT")));
 
 /** Waiting for the SEFAZ or for Corvo: the detail page keeps looking while the note is in one of these. */

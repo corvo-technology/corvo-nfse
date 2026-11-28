@@ -1010,13 +1010,16 @@ describe('OpenAPI contract against the real API (e2e)', () => {
     });
 
     it('tells whether the company can issue NF-e (the simulator has no SEFAZ cadastro, so it is not asked)', async () => {
-      const res = await call('GET /companies/{id}/nfe-readiness', {
-        path: `/companies/${companyId}/nfe-readiness`,
+      const res = await call('GET /companies/{id}/nfe-settings', {
+        path: `/companies/${companyId}/nfe-settings?check=sefaz`,
         status: 200,
       });
-      expect(res.body.data).toMatchObject({ companyId, ready: false });
+      expect(res.body.data.readiness).toMatchObject({
+        companyId,
+        ready: false,
+      });
       expect(['unavailable', 'company_incomplete']).toContain(
-        res.body.data.status,
+        res.body.data.readiness.status,
       );
     });
 

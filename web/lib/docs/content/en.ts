@@ -3407,7 +3407,7 @@ curl -X POST "$BASE_URL/v1/integrations/connections/$CONNECTION_ID/activate" -H 
           "items": [
             "`nfe_validate` (`nfse:write`): dry-run, returns the problems field by field and never the XML. Takes `type` (`nfe` or `nfce`). Run it before issuing.",
             "`nfe_repeat` (`nfse:write`): issues a new NF-e or NFC-e copying a previous one (`invoice_id`, `type`, `idempotency_key`, optional `additional_info`). The number, key and date are new; a note that is not a normal sale answers `NFE_REPEAT_NOT_NORMAL`. `nfse_email_resend` also takes `type` to send an NF-e or NFC-e e-mail again.",
-            "`nfe_settings_get` (`nfse:read`) and `nfe_settings_update` (`nfse:write`): IE, CRT, series and defaults of the company, and what is missing to issue.",
+            "`nfe_settings_get` (`nfse:read`) and `nfe_settings_update` (`nfse:write`): IE, CRT, series and defaults of the company, and what is missing to issue; with `check_sefaz: true` it also asks the SEFAZ whether the IE is enabled (`readiness`).",
             "`nfe_correct` (`nfse:write`): correction letter for an authorized NF-e (on a NFC-e it answers `INVOICE_OPERATION_NOT_SUPPORTED`).",
             "`nfe_number_gaps` (`nfse:read`) and `nfe_inutilize` (`nfse:write`): skipped numbers and the inutilization of a range, with `model` 55 (NF-e, default) or 65 (NFC-e); ask the person to confirm before inutilizing. `nfe_settings_update` also sets `nfce_default_series`, the NFC-e series.",
             "These show in the tool list for every account; cancelling, correcting and inutilizing need a role with `nfe.documents.manage`, issuing and validating `nfe.documents.issue`."

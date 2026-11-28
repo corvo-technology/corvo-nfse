@@ -369,6 +369,12 @@ export const COMPONENT_SCHEMAS: Record<string, Schema> = {
           'Set only by `PUT`: the SEFAZ cadastro says the IE just saved will be refused. A warning, never a block.',
       }),
     ),
+    readiness: {
+      ...nullable({ type: 'object' }),
+      allOf: [ref('NfeReadiness')],
+      description:
+        'Can the company issue NF-e/NFC-e? Live with `?check=sefaz`; otherwise the last conclusive answer kept, or `null` when never checked.',
+    },
   }),
   NfeReadiness: obj({
     companyId: uuid(),

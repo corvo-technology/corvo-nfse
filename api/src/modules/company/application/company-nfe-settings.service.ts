@@ -54,6 +54,11 @@ export interface NfeSettingsView {
    * a block (the consulta can be wrong or out of date); `null` when it agrees or could not be asked.
    */
   registrationWarning: string | null;
+  /**
+   * Can the company issue NF-e/NFC-e? With `check` the answer is live (asked at the SEFAZ now); without
+   * it, the last conclusive answer kept with the settings, or `null` when none was ever kept.
+   */
+  readiness: NfeReadinessView | null;
 }
 
 export type NfeReadinessStatus = RegistrationStatus | 'company_incomplete';
@@ -91,10 +96,16 @@ export class CompanyNfeSettingsService {
     private readonly cadastro: ICadastroLookup,
   ) {}
 
+  /**
+   * The settings of the company. With `check`, also asks the SEFAZ cadastro (needs the company
+   * certificate; a UF without the service, or a SEFAZ that does not answer, is "unavailable" — nothing
+   * is known — never an error). Without it, no SEFAZ call: `readiness` is the last conclusive answer.
+   */
   async get(
     companyId: string,
     tenantId: string,
     environment: ExecutionEnvironment,
+    options: { check?: boolean } = {},
   ): Promise<NfeSettingsView> {
     const company = await this.companies.findById(
       companyId,
@@ -102,28 +113,25 @@ export class CompanyNfeSettingsService {
       environment,
     );
     const stored = await this.settings.find(companyId, tenantId);
-    return this.build(company, stored, tenantId, null);
+    let readiness: NfeReadinessView | null = null;
+    if (options.check) {
+      const ie = stored?.stateRegistration ?? null;
+      const assessment = await this.assess(company, tenantId, environment, ie);
+      if (ie) await this.rememberCheck(company.id, tenantId, ie, assessment);
+      readiness = this.readinessOf(company, stored, assessment, new Date());
+    } else {
+      readiness = this.storedReadiness(company, stored);
+    }
+    return this.build(company, stored, tenantId, null, readiness);
   }
 
-  /**
-   * Asks the SEFAZ cadastro about the company and says, in plain words, whether it can issue. Needs the
-   * company certificate; a UF without the service, or a SEFAZ that does not answer, is "unavailable"
-   * (nothing is known), never an error.
-   */
-  async readiness(
-    companyId: string,
-    tenantId: string,
-    environment: ExecutionEnvironment,
-  ): Promise<NfeReadinessView> {
-    const company = await this.companies.findById(
-      companyId,
-      tenantId,
-      environment,
-    );
-    const stored = await this.settings.find(companyId, tenantId);
+  private readinessOf(
+    company: Company,
+    stored: NfeSettings | null,
+    assessment: RegistrationAssessment,
+    checkedAt: Date,
+  ): NfeReadinessView {
     const ie = stored?.stateRegistration ?? null;
-    const assessment = await this.assess(company, tenantId, environment, ie);
-    if (ie) await this.rememberCheck(company.id, tenantId, ie, assessment);
     const missing = nfeReadinessMissing(company, stored);
     const incomplete =
       missing.some((field) => field !== 'state_registration') &&
@@ -132,7 +140,7 @@ export class CompanyNfeSettingsService {
       ? 'company_incomplete'
       : assessment.status;
     return {
-      companyId,
+      companyId: company.id,
       ready: status === 'ready' && missing.length === 0,
       status,
       message:
@@ -143,8 +151,26 @@ export class CompanyNfeSettingsService {
       suggestedStateRegistration: assessment.suggested,
       registrations: assessment.registrations,
       missing,
-      checkedAt: new Date(),
+      checkedAt,
     };
+  }
+
+  /** The last conclusive answer kept with the settings, for the IE saved now; `null` when there is none. */
+  private storedReadiness(
+    company: Company,
+    stored: NfeSettings | null,
+  ): NfeReadinessView | null {
+    const check = stored?.registrationCheck;
+    const ie = stored?.stateRegistration ?? null;
+    if (!check || !ie) return null;
+    if (check.stateRegistration.replace(/\D/g, '') !== ie.replace(/\D/g, ''))
+      return null;
+    return this.readinessOf(
+      company,
+      stored,
+      { status: check.status, suggested: null, registrations: [] },
+      check.checkedAt,
+    );
   }
 
   async update(
@@ -273,6 +299,7 @@ export class CompanyNfeSettingsService {
     stored: NfeSettings | null,
     tenantId: string,
     registrationWarning: string | null,
+    readiness: NfeReadinessView | null = this.storedReadiness(company, stored),
   ): Promise<NfeSettingsView> {
     const regime = await this.companies.currentRegime(company.id, tenantId);
     return view(
@@ -281,6 +308,7 @@ export class CompanyNfeSettingsService {
       nfeReadinessMissing(company, stored),
       regime.taxRegime,
       registrationWarning,
+      readiness,
     );
   }
 }
@@ -291,6 +319,7 @@ function view(
   missing: NfeMissingField[],
   taxRegime: string | null,
   registrationWarning: string | null,
+  readiness: NfeReadinessView | null,
 ): NfeSettingsView {
   return {
     companyId,
@@ -311,5 +340,6 @@ function view(
     enabledAt: stored?.enabledAt ?? null,
     missing,
     registrationWarning,
+    readiness,
   };
 }

@@ -100,6 +100,10 @@ class CompanyInput {
   @IsUUID() company_id!: string;
 }
 
+class NfeSettingsGetInput extends CompanyInput {
+  @IsOptional() @IsBoolean() check_sefaz?: boolean;
+}
+
 class NfeIssueInput extends CompanyInput {
   @IsObject() nfe!: Record<string, unknown>;
   @IsOptional() @IsIn(['IMMEDIATE', 'SCHEDULE', 'RECURRING']) emission_type?:
@@ -645,11 +649,16 @@ export const NFE_NUMBER_GAPS_TOOL = {
 export const NFE_SETTINGS_GET_TOOL = {
   name: 'nfe_settings_get',
   description:
-    'NF-e and NFC-e settings of a company (state registration, CRT, default series, NFC-e series, nature of operation and tax defaults) and what is still missing (missing) before it can issue an NF-e.',
+    'NF-e and NFC-e settings of a company (state registration, CRT, default series, NFC-e series, nature of operation and tax defaults) and what is still missing (missing) before it can issue an NF-e. `readiness` says whether the company can issue NF-e and NFC-e: by default it is the last answer kept (null if never checked); with check_sefaz=true it asks the SEFAZ now (Consulta Cadastro, with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers `status`, a plain pt-BR `message` and `suggestedStateRegistration` (the IE to save with nfe_settings_update). Run it with check_sefaz=true BEFORE the first note: a company with no IE (service-only) cannot issue NF-e or NFC-e. `unavailable` means the state has no consulta or the SEFAZ did not answer: nothing is known.',
   inputSchema: {
     type: 'object',
     properties: {
       company_id: { type: 'string', description: 'UUID of the company' },
+      check_sefaz: {
+        type: 'boolean',
+        description:
+          'Ask the SEFAZ now and fill `readiness` with the live answer. Default false: no SEFAZ call.',
+      },
     },
     required: ['company_id'],
   },
@@ -679,19 +688,6 @@ export const NFE_SETTINGS_UPDATE_TOOL = {
   },
 } as const;
 
-export const NFE_READINESS_TOOL = {
-  name: 'nfe_readiness',
-  description:
-    'Can the company issue NF-e and NFC-e? Run it BEFORE the first note: it asks the SEFAZ (Consulta Cadastro, with the company certificate) which state registrations (IE) the CNPJ has and whether they are enabled, and answers `status`, a plain pt-BR `message` and `suggestedStateRegistration` (the IE to save with nfe_settings_update). A company with no IE (service-only) cannot issue NF-e or NFC-e. `unavailable` means the state has no consulta or the SEFAZ did not answer: nothing is known.',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      company_id: { type: 'string', description: 'UUID of the company' },
-    },
-    required: ['company_id'],
-  },
-} as const;
-
 /** The tools that exist only for NF-e and NFC-e (`nfe_correct` only with NF-e). */
 export const NFE_ONLY_TOOL_NAMES = [
   NFE_VALIDATE_TOOL.name,
@@ -701,7 +697,6 @@ export const NFE_ONLY_TOOL_NAMES = [
   NFE_NUMBER_GAPS_TOOL.name,
   NFE_SETTINGS_GET_TOOL.name,
   NFE_SETTINGS_UPDATE_TOOL.name,
-  NFE_READINESS_TOOL.name,
 ] as const;
 
 export function createNfeValidateHandler(nfe: McpNfe): Handler {
@@ -802,7 +797,7 @@ export function createNfeNumberGapsHandler(nfe: McpNfe): Handler {
 
 export function createNfeSettingsGetHandler(nfe: McpNfe): Handler {
   return async (raw, ctx) => {
-    const params = await parse(CompanyInput, raw);
+    const params = await parse(NfeSettingsGetInput, raw);
     return nfe.withSettings(
       ctx,
       'nfe.documents.view',
@@ -811,20 +806,8 @@ export function createNfeSettingsGetHandler(nfe: McpNfe): Handler {
           params.company_id,
           ctx.activeTenantId,
           executionEnvironment(ctx),
+          { check: params.check_sefaz === true },
         ),
-    );
-  };
-}
-
-export function createNfeReadinessHandler(nfe: McpNfe): Handler {
-  return async (raw, ctx) => {
-    const params = await parse(CompanyInput, raw);
-    return nfe.withSettings(ctx, 'nfe.documents.view', (settings) =>
-      settings.readiness(
-        params.company_id,
-        ctx.activeTenantId,
-        executionEnvironment(ctx),
-      ),
     );
   };
 }

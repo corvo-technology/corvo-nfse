@@ -221,7 +221,8 @@ describe('CompanyNfeSettingsService', () => {
         null,
         found({ stateRegistration: '110042490114', enabled: true }),
       );
-      const view = await service.readiness('c', tenantId, 'test');
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
       expect(view).toMatchObject({
         ready: false,
         status: 'ie_suggested',
@@ -233,7 +234,8 @@ describe('CompanyNfeSettingsService', () => {
       const { service } = build(company('SP'), 'Simples Nacional', null, {
         kind: 'not_found',
       });
-      const view = await service.readiness('c', tenantId, 'test');
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
       expect(view.status).toBe('no_registration');
       expect(view.message).toContain('Empresa sem inscrição estadual');
     });
@@ -246,7 +248,8 @@ describe('CompanyNfeSettingsService', () => {
         { ...settingsRow(c.id), crt: 1 as const },
         found({ stateRegistration: '110042490114', enabled: true }),
       );
-      const view = await service.readiness('c', tenantId, 'test');
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
       expect(view).toMatchObject({ ready: true, status: 'ready' });
       expect(repo.saveRegistrationCheck).toHaveBeenCalledWith(
         c.id,
@@ -264,7 +267,8 @@ describe('CompanyNfeSettingsService', () => {
         ...settingsRow(c.id),
         crt: 1 as const,
       });
-      const view = await service.readiness('c', tenantId, 'test');
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
       expect(view.status).toBe('unavailable');
       expect(view.message).toContain('sintegra.gov.br');
       expect(repo.saveRegistrationCheck).not.toHaveBeenCalled();
@@ -280,7 +284,8 @@ describe('CompanyNfeSettingsService', () => {
           kind: 'no_certificate',
         },
       );
-      const view = await service.readiness('c', tenantId, 'test');
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
       expect(view.status).toBe('no_certificate');
       expect(view.message).toContain('certificado');
     });
@@ -294,10 +299,41 @@ describe('CompanyNfeSettingsService', () => {
         row,
         found({ stateRegistration: '110042490114', enabled: true }),
       );
-      const view = await service.readiness('c', tenantId, 'test');
+      const view = (await service.get('c', tenantId, 'test', { check: true }))
+        .readiness!;
       expect(view).toMatchObject({
         ready: false,
         status: 'company_incomplete',
+      });
+    });
+
+    it('sem check=sefaz não consulta a SEFAZ: readiness é a última resposta guardada (ou null)', async () => {
+      const c = company('SP');
+      const { service } = build(
+        c,
+        'Simples Nacional',
+        { ...settingsRow(c.id), crt: 1 as const },
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      expect((await service.get('c', tenantId, 'test')).readiness).toBeNull();
+      const kept = build(
+        c,
+        'Simples Nacional',
+        {
+          ...settingsRow(c.id),
+          crt: 1 as const,
+          registrationCheck: {
+            status: 'not_enabled',
+            checkedAt: new Date(),
+            stateRegistration: settingsRow(c.id).stateRegistration ?? '',
+          },
+        },
+        found({ stateRegistration: '110042490114', enabled: true }),
+      );
+      const view = await kept.service.get('c', tenantId, 'test');
+      expect(view.readiness).toMatchObject({
+        ready: false,
+        status: 'not_enabled',
       });
     });
 

@@ -5,6 +5,7 @@ import {
   Param,
   ParseUUIDPipe,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -35,6 +36,7 @@ export class CompanyNfeSettingsController {
   @ApiOperation({ summary: 'Get the NF-e settings of the company' })
   async get(
     @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('check') check: string | undefined,
     @Req() req: RequestWithAuthContext,
   ) {
     const context = req.authContext!;
@@ -43,6 +45,7 @@ export class CompanyNfeSettingsController {
         id,
         context.activeTenantId,
         executionEnvironment(context),
+        { check: check === 'sefaz' },
       ),
     );
   }

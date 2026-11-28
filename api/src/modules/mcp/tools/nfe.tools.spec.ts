@@ -7,7 +7,6 @@ import {
   NFE_CORRECT_TOOL,
   NFE_INUTILIZE_TOOL,
   NFE_NUMBER_GAPS_TOOL,
-  NFE_READINESS_TOOL,
   NFE_SETTINGS_GET_TOOL,
   NFE_SETTINGS_UPDATE_TOOL,
   NFE_VALIDATE_TOOL,
@@ -25,7 +24,6 @@ import {
   createNfeListHandler,
   createNfeNumberGapsHandler,
   createNfeReviewHandler,
-  createNfeReadinessHandler,
   createNfeSettingsGetHandler,
   createNfeSettingsUpdateHandler,
   createNfeValidateHandler,
@@ -146,9 +144,6 @@ function build(
   const settings = {
     get: jest.fn().mockResolvedValue({ companyId: COMPANY, missing: [] }),
     update: jest.fn().mockResolvedValue({ companyId: COMPANY, missing: [] }),
-    readiness: jest
-      .fn()
-      .mockResolvedValue({ companyId: COMPANY, status: 'ready' }),
   };
   const nfe = new McpNfe(
     router as never,
@@ -533,7 +528,9 @@ describe('ferramentas só de NF-e', () => {
   it('nfe_settings_get e nfe_settings_update usam o serviço da empresa', async () => {
     const { nfe, settings } = build();
     await createNfeSettingsGetHandler(nfe)({ company_id: COMPANY }, ctx);
-    expect(settings.get).toHaveBeenCalledWith(COMPANY, 'tenant-1', 'test');
+    expect(settings.get).toHaveBeenCalledWith(COMPANY, 'tenant-1', 'test', {
+      check: false,
+    });
     await createNfeSettingsUpdateHandler(nfe)(
       {
         company_id: COMPANY,
@@ -561,14 +558,15 @@ describe('ferramentas só de NF-e', () => {
     ).rejects.toThrow('crt');
   });
 
-  it('nfe_readiness consulta a empresa e exige só nfe.documents.view', async () => {
+  it('nfe_settings_get com check_sefaz pede a consulta ao vivo e exige só nfe.documents.view', async () => {
     const { nfe, settings } = build({ role: 'billing' });
-    await createNfeReadinessHandler(nfe)({ company_id: COMPANY }, ctx);
-    expect(settings.readiness).toHaveBeenCalledWith(
-      COMPANY,
-      'tenant-1',
-      'test',
+    await createNfeSettingsGetHandler(nfe)(
+      { company_id: COMPANY, check_sefaz: true },
+      ctx,
     );
+    expect(settings.get).toHaveBeenCalledWith(COMPANY, 'tenant-1', 'test', {
+      check: true,
+    });
   });
 
   it('nfe_settings_update aceita a IE em branco (a SEFAZ preenche)', async () => {
@@ -606,7 +604,6 @@ describe('tools/list', () => {
       NFE_NUMBER_GAPS_TOOL,
       NFE_SETTINGS_GET_TOOL,
       NFE_SETTINGS_UPDATE_TOOL,
-      NFE_READINESS_TOOL,
     ])
       server.registerTool(tool, async () => ({}));
     const names = (await server.getToolDefinitions(ctx)).map((t) => t.name);
@@ -615,7 +612,6 @@ describe('tools/list', () => {
         'nfe_correct',
         'nfe_inutilize',
         'nfe_number_gaps',
-        'nfe_readiness',
         'nfe_settings_get',
         'nfe_settings_update',
         'nfe_validate',
