@@ -37,6 +37,12 @@ export interface RegistrationAssessment {
   sefaz?: { cStat: string; reason: string };
 }
 
+/**
+ * cStat 257 ("Solicitante não habilitado para emissão da NF-e"): the SEFAZ only answers the consulta
+ * for a CNPJ that is already enabled as an NF-e issuer in the UF, so it says the company is not.
+ */
+export const CSTAT_NOT_ISSUER = '257';
+
 /** The answers that say for sure the next note would be refused (or that it cannot be sent). */
 export const CONCLUSIVE_STATUSES: readonly RegistrationStatus[] = [
   'ready',
@@ -143,6 +149,8 @@ export function registrationMessage(
     case 'unavailable':
       return `Consulta indisponível agora ou neste estado. Confira a inscrição estadual no CCC: ${CCC_URL}`;
     case 'sefaz_rejected':
+      if (context.sefaz?.cStat === CSTAT_NOT_ISSUER)
+        return `A empresa não está habilitada para emitir NF-e na SEFAZ de ${uf}. Peça o credenciamento/inscrição estadual no site da SEFAZ (ou com o contador) antes de emitir.`;
       return context.sefaz
         ? `A SEFAZ respondeu: ${context.sefaz.cStat}${context.sefaz.reason ? ` – ${context.sefaz.reason}` : ''}`
         : `A SEFAZ de ${uf} recusou a consulta. Confira a inscrição estadual no CCC: ${CCC_URL}`;

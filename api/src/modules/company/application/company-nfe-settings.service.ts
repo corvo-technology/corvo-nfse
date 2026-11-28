@@ -14,6 +14,7 @@ import {
 import {
   assessRegistration,
   CONCLUSIVE_STATUSES,
+  CSTAT_NOT_ISSUER,
   registrationMessage,
   type RegistrationAssessment,
   type RegistrationStatus,
@@ -238,7 +239,8 @@ export class CompanyNfeSettingsService {
       company,
       stored ?? saved,
       tenantId,
-      WARNING_STATUSES.includes(checked.status)
+      WARNING_STATUSES.includes(checked.status) ||
+        checked.sefaz?.cStat === CSTAT_NOT_ISSUER
         ? this.messageOf(company, ie, checked)
         : null,
     );

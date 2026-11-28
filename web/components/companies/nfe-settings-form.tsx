@@ -136,7 +136,8 @@ function registrationText(t: ReturnType<typeof useTranslations>, readiness: NfeR
   if (failed) return { text: t("readiness.unavailable"), good: false };
   const status = readiness?.status;
   if (!readiness || !status || status === "company_incomplete") return null;
-  const text = t(`readiness.${status}`, { uf: uf || "?", ie: readiness.stateRegistration ?? "", suggested: readiness.suggestedStateRegistration ?? "", cstat: readiness.sefazCStat ?? "", reason: readiness.sefazReason ?? "", list: readiness.registrations.filter((item) => item.enabled).map((item) => item.stateRegistration).join(", ") });
+  const key = status === "sefaz_rejected" && readiness.sefazCStat === "257" ? "sefaz_not_issuer" : status;
+  const text = t(`readiness.${key}`, { uf: uf || "?", ie: readiness.stateRegistration ?? "", suggested: readiness.suggestedStateRegistration ?? "", cstat: readiness.sefazCStat ?? "", reason: readiness.sefazReason ?? "", list: readiness.registrations.filter((item) => item.enabled).map((item) => item.stateRegistration).join(", ") });
   return { text, good: status === "ready" || status === "ie_suggested" };
 }
 
