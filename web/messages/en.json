@@ -3918,6 +3918,7 @@
         "not_credentialed": "The company is not credentialed to issue NF-e at the {uf} SEFAZ. Credentialing is done on the SEFAZ website.",
         "ie_mismatch": "State registration {ie} does not belong to this CNPJ at the {uf} SEFAZ. Check the number.",
         "unavailable": "We could not check the SEFAZ right now, or this state does not offer the check. Look up the state registration at the CCC (sintegra.gov.br).",
+        "sefaz_rejected": "The SEFAZ answered: {cstat} – {reason}",
         "no_certificate": "Upload the digital certificate of the company to check the state registration at the SEFAZ."
       },
       "crt": "Tax regime",

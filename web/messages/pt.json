@@ -3918,6 +3918,7 @@
         "not_credentialed": "A empresa não está credenciada para emitir NF-e na SEFAZ de {uf}. O credenciamento é feito no site da SEFAZ.",
         "ie_mismatch": "A inscrição estadual {ie} não é deste CNPJ na SEFAZ de {uf}. Confira o número.",
         "unavailable": "Não conseguimos consultar a SEFAZ agora, ou este estado não oferece a consulta. Confira a inscrição estadual no CCC (sintegra.gov.br).",
+        "sefaz_rejected": "A SEFAZ respondeu: {cstat} – {reason}",
         "no_certificate": "Envie o certificado digital da empresa para consultar a inscrição estadual na SEFAZ."
       },
       "crt": "Regime tributário",

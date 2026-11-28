@@ -157,6 +157,12 @@ describe("NfeSettingsForm", () => {
     await waitFor(() => expect((screen.getByLabelText(/State registration \(IE\)/) as HTMLInputElement).value).toBe("110042490114"));
   });
 
+  it("shows what the SEFAZ answered when it refuses the consulta", async () => {
+    mocks.readiness.mockResolvedValue(readiness({ status: "sefaz_rejected", sefazCStat: "243", sefazReason: "XML Mal Formado" }));
+    renderForm();
+    await screen.findByText("The SEFAZ answered: 243 – XML Mal Formado");
+  });
+
   it("shows a neutral message when the check cannot be done", async () => {
     mocks.readiness.mockRejectedValue(new Error("boom"));
     renderForm();

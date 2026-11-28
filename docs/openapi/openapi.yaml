@@ -11500,6 +11500,14 @@ components:
               - enabled
             type: object
           type: array
+        sefazCStat:
+          description: 'With `sefaz_rejected`: the cStat the SEFAZ answered.'
+          nullable: true
+          type: string
+        sefazReason:
+          description: 'With `sefaz_rejected`: the xMotivo the SEFAZ answered.'
+          nullable: true
+          type: string
         stateRegistration:
           example: '110042490114'
           nullable: true
@@ -11507,7 +11515,8 @@ components:
         status:
           description: >-
             `unavailable`: the UF has no consulta or the SEFAZ did not answer (nothing is known;
-            check the IE at the CCC).
+            check the IE at the CCC). `sefaz_rejected`: the SEFAZ answered the consulta with a
+            rejection; see `sefazCStat` and `sefazReason`.
           enum:
             - ready
             - ie_suggested
@@ -11517,6 +11526,7 @@ components:
             - not_credentialed
             - ie_mismatch
             - unavailable
+            - sefaz_rejected
             - no_certificate
             - company_incomplete
           type: string
@@ -11532,6 +11542,8 @@ components:
         - stateRegistration
         - suggestedStateRegistration
         - registrations
+        - sefazCStat
+        - sefazReason
         - missing
         - checkedAt
       type: object

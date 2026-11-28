@@ -64,9 +64,9 @@ export interface NfeSettings {
   /** Can the company issue NF-e/NFC-e? Live with `?check=sefaz`; otherwise the last answer kept (`null` when never checked). */
   readiness?: NfeReadiness | null;
 }
-export type NfeReadinessStatus = "ready" | "ie_suggested" | "ie_choose" | "no_registration" | "not_enabled" | "not_credentialed" | "ie_mismatch" | "unavailable" | "no_certificate" | "company_incomplete";
+export type NfeReadinessStatus = "ready" | "ie_suggested" | "ie_choose" | "no_registration" | "not_enabled" | "not_credentialed" | "ie_mismatch" | "unavailable" | "sefaz_rejected" | "no_certificate" | "company_incomplete";
 /** Can the company issue NF-e/NFC-e? Checked at the SEFAZ cadastro (`readiness` of `GET /companies/{id}/nfe-settings?check=sefaz`). */
-export interface NfeReadiness { companyId: string; ready: boolean; status: NfeReadinessStatus; message: string; stateRegistration: string | null; suggestedStateRegistration: string | null; registrations: { stateRegistration: string; enabled: boolean }[]; missing: NfeMissingField[]; checkedAt: string | null }
+export interface NfeReadiness { companyId: string; ready: boolean; status: NfeReadinessStatus; message: string; stateRegistration: string | null; suggestedStateRegistration: string | null; registrations: { stateRegistration: string; enabled: boolean }[]; /** With `sefaz_rejected`: what the SEFAZ answered. */ sefazCStat?: string | null; sefazReason?: string | null; missing: NfeMissingField[]; checkedAt: string | null }
 export interface NfeSettingsInput { /** Left out, the IE the SEFAZ has for the CNPJ is used (when exactly one is enabled). */ stateRegistration?: string; /** Only to override: the CRT follows the tax regime of the company. */ crt?: 1 | 4; defaultSeries?: number; nfceDefaultSeries?: number; nfceAutoOffline?: boolean; defaultNatOp?: string; defaultCsosn?: "102" | "400"; defaultOrigin?: number }
 export interface NfeListQuery extends PageParams { companyId?: string; status?: NfeStatus; /** NF-e when omitted. */ type?: NfeKind }
 export interface NfeDownload { downloadUrl: string; expiresAt: string; fileName: string; mimeType: string }
